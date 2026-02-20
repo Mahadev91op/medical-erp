@@ -1,51 +1,42 @@
-import { AlertCircle, PackageCheck } from "lucide-react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 
-export default function ExpiryAlerts({ alerts = [] }) {
-  // Din calculate karne ka function
-  const calculateDaysLeft = (expiryDate) => {
-    const today = new Date();
-    const expDate = new Date(expiryDate);
-    const diffTime = expDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-    return diffDays;
-  };
-
+export default function ExpiryAlerts() {
   return (
-    <div className="bg-white rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 p-6 h-full flex flex-col">
-      <div className="mb-6 flex justify-between items-center">
-        <h2 className="text-lg font-bold text-slate-700 flex items-center">
-          <span className="w-2 h-2 rounded-full bg-rose-400 mr-3 animate-pulse"></span>
-          Expiring Next 90 Days
+    <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 p-4 md:p-6 hover:shadow-lg hover:shadow-slate-100/50 transition-all duration-300 h-full flex flex-col">
+      <div className="flex justify-between items-center mb-4 md:mb-6">
+        <h2 className="text-sm md:text-lg font-bold text-slate-700 flex items-center">
+          <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-rose-400 mr-2 md:mr-3 animate-pulse"></span>
+          Urgent Expiry Alerts
         </h2>
+        <button className="text-[10px] md:text-sm text-emerald-600 font-bold hover:text-emerald-700 flex items-center group bg-emerald-50 px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-colors shrink-0">
+          View All <ArrowRight className="w-3 h-3 md:w-4 md:h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+        </button>
       </div>
       
-      <div className="space-y-3 flex-1 overflow-y-auto pr-2">
-        {alerts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 pt-10">
-            <PackageCheck className="w-12 h-12 mb-3 text-emerald-400 opacity-50" />
-            <p className="font-medium text-sm text-center">Sab badhiya hai!<br/>Koi dawa jaldi expire nahi ho rahi.</p>
+      <div className="space-y-2.5 md:space-y-3 flex-1">
+        {/* List Item 1 */}
+        <div className="flex justify-between items-center p-3 md:p-4 bg-rose-50/40 rounded-xl md:rounded-2xl border border-rose-100/60 hover:bg-rose-50 transition-colors cursor-pointer group">
+          <div className="flex-1 pr-2 min-w-0">
+            <span className="text-xs md:text-base font-bold text-slate-800 block group-hover:text-rose-600 transition-colors truncate">Paracetamol 500mg</span>
+            <span className="text-[9px] md:text-xs font-semibold text-slate-500 block mt-0.5">Batch: B-1029</span>
           </div>
-        ) : (
-          alerts.map((med) => {
-            const daysLeft = calculateDaysLeft(med.expiryDate);
-            const isAlreadyExpired = daysLeft < 0;
-
-            return (
-              <div key={med._id} className={`flex justify-between items-center p-4 rounded-2xl border transition-colors group ${isAlreadyExpired ? 'bg-rose-100/80 border-rose-200' : 'bg-rose-50/40 border-rose-100/60 hover:bg-rose-50'}`}>
-                <div>
-                  <span className="font-bold text-slate-800 block group-hover:text-rose-600 transition-colors">{med.name}</span>
-                  <span className="text-[10px] font-bold text-slate-400 block mt-0.5 uppercase tracking-wider">Batch: {med.batch} | Qty: {med.quantity}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-rose-600 font-bold block text-sm">{new Date(med.expiryDate).toLocaleDateString('en-GB')}</span>
-                  <span className={`text-[10px] font-bold px-2 py-1 rounded-lg mt-1 inline-block uppercase tracking-wider ${isAlreadyExpired ? 'bg-rose-500 text-white' : 'bg-rose-100 text-rose-600'}`}>
-                    {isAlreadyExpired ? 'Expired!' : `${daysLeft} Days left`}
-                  </span>
-                </div>
-              </div>
-            );
-          })
-        )}
+          <div className="text-right shrink-0">
+            <span className="text-[10px] md:text-sm text-rose-600 font-bold block">12 Nov 2026</span>
+            <span className="text-[8px] md:text-xs font-semibold text-rose-500 bg-rose-100/50 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md md:rounded-lg mt-0.5 md:mt-1 inline-block">14 Days left</span>
+          </div>
+        </div>
+        
+        {/* List Item 2 */}
+        <div className="flex justify-between items-center p-3 md:p-4 bg-rose-50/40 rounded-xl md:rounded-2xl border border-rose-100/60 hover:bg-rose-50 transition-colors cursor-pointer group">
+          <div className="flex-1 pr-2 min-w-0">
+            <span className="text-xs md:text-base font-bold text-slate-800 block group-hover:text-rose-600 transition-colors truncate">Azithromycin 250mg</span>
+            <span className="text-[9px] md:text-xs font-semibold text-slate-500 block mt-0.5">Batch: AZ-992</span>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-[10px] md:text-sm text-rose-600 font-bold block">18 Nov 2026</span>
+            <span className="text-[8px] md:text-xs font-semibold text-rose-500 bg-rose-100/50 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md md:rounded-lg mt-0.5 md:mt-1 inline-block">20 Days left</span>
+          </div>
+        </div>
       </div>
     </div>
   );
