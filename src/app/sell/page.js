@@ -207,18 +207,26 @@ export default function QuickSell() {
             </form>
           </div>
 
-          {/* Search Results Display */}
+          {/* Search Results Display (FULL DATA) */}
           {searchResults.length > 0 && (
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100">
               <h3 className="text-sm font-bold mb-3 text-slate-700">Search Results:</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {searchResults.map(med => (
-                  <div key={med._id} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    <div>
+                  <div key={med._id} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200 hover:border-emerald-200 transition-colors">
+                    <div className="flex-1 pr-3">
                       <p className="font-bold text-sm text-slate-800">{med.name}</p>
-                      <p className="text-xs text-slate-500">Stock: {med.quantity} | ₹{med.mrp}</p>
+                      
+                      {/* Pura Data Badges in Search */}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        <span className="text-[9px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded shadow-sm">Stock: {med.quantity}</span>
+                        <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded shadow-sm">₹{med.mrp}</span>
+                        <span className="text-[9px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-1.5 py-0.5 rounded shadow-sm">Exp: {new Date(med.expiryDate).toLocaleDateString('en-GB')}</span>
+                        {med.rackNumber && <span className="text-[9px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded shadow-sm">Rack: {med.rackNumber}</span>}
+                      </div>
+
                     </div>
-                    <button onClick={() => addToCart(med)} className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors">
+                    <button onClick={() => addToCart(med)} className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors shrink-0">
                       + Add
                     </button>
                   </div>
@@ -241,12 +249,20 @@ export default function QuickSell() {
               <div className="space-y-3">
                 {cart.map((item) => (
                   <div key={item._id} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
-                    <div>
+                    <div className="flex-1 pr-4">
                       <p className="font-bold text-slate-800 text-lg">{item.name}</p>
-                      <p className="text-xs text-slate-500 font-medium">Batch: {item.batch}</p>
-                      <p className="text-sm text-emerald-600 font-bold mt-1">₹{item.mrp || 0} / unit</p>
+                      
+                      {/* Pura Data Badges in Cart */}
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5 mb-2">
+                        <span className="text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Batch: {item.batch}</span>
+                        <span className="text-[10px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Exp: {new Date(item.expiryDate).toLocaleDateString('en-GB')}</span>
+                        {item.rackNumber && <span className="text-[10px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Rack: {item.rackNumber}</span>}
+                        {item.distributor && <span className="text-[10px] font-bold bg-amber-50 border border-amber-100 text-amber-600 px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)] max-w-[120px] truncate">Dist: {item.distributor}</span>}
+                      </div>
+
+                      <p className="text-sm text-emerald-600 font-extrabold">₹{item.mrp || 0} / unit</p>
                     </div>
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-4 shrink-0">
                       <div className="bg-white border border-slate-200 px-4 py-1.5 rounded-xl font-bold text-slate-700 shadow-sm">
                         Qty: {item.sellQuantity}
                       </div>
