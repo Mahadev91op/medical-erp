@@ -1,60 +1,87 @@
 "use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, PackagePlus, ShoppingCart, AlertTriangle, Settings, Activity } from "lucide-react";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { 
+  LayoutDashboard, 
+  PackagePlus, 
+  ScanBarcode, 
+  BarChart3, 
+  Settings, 
+  LogOut,
+  Package 
+} from 'lucide-react';
+import { signOut, useSession } from 'next-auth/react';
 
-export default function Sidebar() {
+const Sidebar = () => {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
-  const menuItems = [
-    { name: "Dashboard", icon: LayoutDashboard, path: "/" },
-    { name: "Purchase Entry", icon: PackagePlus, path: "/purchase" },
-    { name: "Quick Sell", icon: ShoppingCart, path: "/sell" },
-    { name: "Reports & Alerts", icon: AlertTriangle, path: "/reports" },
+  // Navigation Links definition
+  const navLinks = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/', roles: ['admin'] },
+    { name: 'Inventory', icon: Package, path: '/inventory', roles: ['admin'] },
+    { name: 'Purchase Entry', icon: PackagePlus, path: '/purchase', roles: ['admin'] },
+    { name: 'Quick Sell', icon: ScanBarcode, path: '/sell', roles: ['admin', 'staff'] },
+    { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin'] },
   ];
 
-  return (
-    <div className="w-64 h-screen bg-white border-r border-slate-100 flex flex-col fixed left-0 top-0 shadow-[4px_0_24px_rgba(0,0,0,0.01)]">
-      {/* Premium Logo Area */}
-      <div className="h-20 flex items-center px-6 border-b border-slate-50">
-        <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-xl flex items-center justify-center mr-3 shadow-md shadow-emerald-100">
-          <Activity className="text-white w-5 h-5" />
-        </div>
-        <div>
-          <h1 className="text-xl font-extrabold text-slate-700 tracking-tight">
-            Pharma<span className="text-emerald-500 font-bold">ERP</span>
-          </h1>
-        </div>
-      </div>
-
-      {/* Navigation Links */}
-      <nav className="flex-1 px-4 py-6 space-y-2">
-        {menuItems.map((item) => {
-          const isActive = pathname === item.path;
-          return (
-            <Link key={item.name} href={item.path}
-              className={`flex items-center px-4 py-3.5 rounded-2xl transition-all duration-300 group ${
-                isActive 
-                  ? "bg-emerald-50/70 text-emerald-700 font-semibold border border-emerald-100/50 shadow-sm" 
-                  : "text-slate-500 hover:bg-slate-50 hover:text-emerald-600"
-              }`}
-            >
-              <item.icon className={`w-5 h-5 mr-3 transition-transform duration-300 ${
-                isActive ? "text-emerald-600" : "text-slate-400 group-hover:scale-110 group-hover:text-emerald-500"
-              }`} />
-              {item.name}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Bottom Settings */}
-      <div className="p-4 mb-2">
-        <Link href="/settings" className="flex items-center px-4 py-3.5 text-slate-500 hover:bg-slate-50 hover:text-emerald-600 rounded-2xl transition-all duration-300 group">
-          <Settings className="w-5 h-5 mr-3 text-slate-400 group-hover:rotate-90 transition-transform duration-500" />
-          <span className="font-medium">Settings</span>
-        </Link>
-      </div>
-    </div>
+  // Filter links based on user role
+  const filteredLinks = navLinks.filter(link => 
+    link.roles.includes(session?.user?.role)
   );
-}
+
+  return (
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-100 hidden lg:flex flex-col z-30">
+      <div className="p-8">
+        <div className="flex items-center space-x-3 mb-10">
+          <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200">
+            <PackagePlus className="text-white w-6 h-6" />
+          </div>
+          <span className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-500 bg-clip-text text-transparent">
+            MedERP
+          </span>
+        </div>
+
+        <nav className="space-y-1.5">
+          {filteredLinks.map((link) => {
+            const Icon = link.icon;
+            const isActive = pathname === link.path;
+            
+            return (
+              <Link
+                key={link.path}
+                href={link.path}
+                className={`flex items-center space-x-3 px-4 py-3.5 rounded-2xl transition-all duration-200 group ${
+                  isActive 
+                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100 font-bold' 
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-emerald-600'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-500'}`} />
+                <span className="text-sm tracking-wide">{link.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      <div className="mt-auto p-8 border-t border-slate-50 space-y-4">
+        <div className="bg-slate-50 p-4 rounded-2xl">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Logged in as</p>
+          <p className="text-sm font-bold text-slate-700 truncate">{session?.user?.name || 'User'}</p>
+          <p className="text-[10px] text-emerald-600 font-extrabold uppercase">{session?.user?.role}</p>
+        </div>
+
+        <button 
+          onClick={() => signOut()}
+          className="flex items-center space-x-3 px-4 py-3 w-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all duration-200 font-medium"
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="text-sm">Sign Out</span>
+        </button>
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;

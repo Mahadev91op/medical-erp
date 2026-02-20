@@ -1,8 +1,9 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { ScanBarcode, ShoppingCart, Trash2, CheckCircle, Loader2, Camera, IndianRupee } from "lucide-react";
+import { ScanBarcode, ShoppingCart, Trash2, CheckCircle, Loader2, Camera, IndianRupee, Printer } from "lucide-react";
 import CameraScanner from "@/components/sell/CameraScanner"; 
 import toast, { Toaster } from "react-hot-toast";
+import { useReactToPrint } from "react-to-print";
 
 export default function QuickSell() {
   const [barcode, setBarcode] = useState("");
@@ -10,10 +11,18 @@ export default function QuickSell() {
   const [loading, setLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   
-  // Payment method state
   const [paymentMethod, setPaymentMethod] = useState("Cash"); 
   const [showCamera, setShowCamera] = useState(false);
   const inputRef = useRef(null);
+
+  // Invoice Printing Logic
+  const invoiceRef = useRef();
+  const [lastSale, setLastSale] = useState(null);
+
+  const handlePrintInvoice = useReactToPrint({
+    content: () => invoiceRef.current,
+    documentTitle: "Medical_Invoice",
+  });
 
   useEffect(() => {
     if (!showCamera) {
@@ -33,7 +42,6 @@ export default function QuickSell() {
         const med = data.medicine;
         const existingItem = cart.find(item => item._id === med._id);
         
-        // BUG FIX: Agar stock 0 hai toh add mat hone do
         if (med.quantity <= 0) {
           toast.error(`${med.name} ka stock khatam (0) hai!`);
         } 
@@ -75,7 +83,6 @@ export default function QuickSell() {
     inputRef.current?.focus();
   };
 
-  // Total amount calculate karna (MRP * Quantity)
   const totalCartAmount = cart.reduce((total, item) => total + ((item.mrp || 0) * item.sellQuantity), 0);
 
   const handleCheckout = async () => {
@@ -91,8 +98,19 @@ export default function QuickSell() {
       const data = await res.json();
       if (data.success) {
         toast.success(`✅ Sale Complete! Bill: ₹${data.totalAmount}`);
+        
+        // Save sale data for invoice and trigger print
+        setLastSale({
+          items: [...cart],
+          total: data.totalAmount,
+          paymentMethod,
+          date: new Date().toLocaleString(),
+          saleId: data.saleId
+        });
+
         setCart([]); 
-        setPaymentMethod("Cash"); // Reset payment method
+        setPaymentMethod("Cash");
+        setTimeout(() => handlePrintInvoice(), 500);
       } else {
         toast.error(data.error || "Checkout me error aaya.");
       }
@@ -105,8 +123,6 @@ export default function QuickSell() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      
-      {/* Toast Notifications */}
       <Toaster position="top-center" reverseOrder={false} />
 
       {showCamera && (
@@ -137,10 +153,7 @@ export default function QuickSell() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        
-        {/* Left Side: Scanner Input & Cart Table */}
         <div className="lg:col-span-2 space-y-6">
-          
           <div className="bg-white p-6 rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100">
             <form onSubmit={handleFormSubmit}>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center justify-between">
@@ -177,7 +190,7 @@ export default function QuickSell() {
                   <div key={item._id} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
                     <div>
                       <p className="font-bold text-slate-800 text-lg">{item.name}</p>
-                      <p className="text-xs text-slate-500 font-medium">Batch: {item.batch} | Rack: {item.rackNumber || 'N/A'}</p>
+                      <p className="text-xs text-slate-500 font-medium">Batch: {item.batch}</p>
                       <p className="text-sm text-emerald-600 font-bold mt-1">₹{item.mrp || 0} / unit</p>
                     </div>
                     <div className="flex items-center space-x-4">
@@ -196,10 +209,8 @@ export default function QuickSell() {
               </div>
             )}
           </div>
-
         </div>
 
-        {/* Right Side: Checkout Summary */}
         <div className="bg-slate-800 p-6 md:p-8 rounded-3xl shadow-lg flex flex-col justify-between text-white lg:h-[450px] lg:sticky lg:top-24">
           <div>
             <h2 className="text-lg font-bold text-emerald-400 mb-6 flex items-center border-b border-slate-700 pb-4">
@@ -240,7 +251,56 @@ export default function QuickSell() {
             {checkoutLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Complete Sale"}
           </button>
         </div>
+      </div>
 
+      {/* Hidden Invoice Template for Thermal Printing (80mm) */}
+      <div className="hidden">
+        <div ref={invoiceRef} className="p-4 text-[10px] font-mono leading-tight text-black" style={{ width: '80mm' }}>
+          <div className="text-center mb-2">
+            <h2 className="text-sm font-bold uppercase">Medical ERP Store</h2>
+            <p>123, Market Road, City Name</p>
+            <p>GSTIN: 09XXXXXXXXXXXX</p>
+            <p className="border-b border-dashed my-1"></p>
+            <p className="font-bold">CASH MEMO / INVOICE</p>
+          </div>
+          
+          <div className="mb-2">
+            <p>Date: {lastSale?.date}</p>
+            <p>Bill No: {lastSale?.saleId?.slice(-6).toUpperCase()}</p>
+            <p>Payment: {lastSale?.paymentMethod}</p>
+          </div>
+
+          <table className="w-full border-t border-b border-dashed my-2 py-1">
+            <thead>
+              <tr className="text-left">
+                <th className="pb-1">Item</th>
+                <th className="pb-1 text-center">Qty</th>
+                <th className="pb-1 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lastSale?.items.map((item, i) => (
+                <tr key={i}>
+                  <td className="py-0.5">{item.name}</td>
+                  <td className="text-center">{item.sellQuantity}</td>
+                  <td className="text-right">₹{item.mrp * item.sellQuantity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="space-y-1">
+            <div className="flex justify-between font-bold text-xs pt-1 border-t border-dashed">
+              <span>GRAND TOTAL:</span>
+              <span>₹{lastSale?.total}</span>
+            </div>
+          </div>
+
+          <div className="text-center mt-6">
+            <p className="border-t border-dashed pt-2">Thank you! Visit Again.</p>
+            <p className="text-[8px] opacity-70 mt-1">Software by MedicalERP</p>
+          </div>
+        </div>
       </div>
     </div>
   );

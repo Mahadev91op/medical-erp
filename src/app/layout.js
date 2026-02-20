@@ -1,32 +1,40 @@
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import MobileNav from "@/components/layout/MobileNav";
 import AuthProvider from "@/components/AuthProvider";
 
+const inter = Inter({ subsets: ["latin"] });
+
 export const metadata = {
-  title: "Pharma ERP System",
-  description: "Smart billing and inventory for pharmacy",
+  title: "Medical ERP - Smart Pharmacy Management",
+  description: "Advanced medicine inventory and billing system",
 };
 
 export default function RootLayout({ children }) {
   return (
-    // suppressHydrationWarning lagane se browser extension wale error aana band ho jayenge
-    <html lang="en" suppressHydrationWarning>
-      <body className="bg-slate-50 text-slate-900 font-sans flex h-screen overflow-hidden" suppressHydrationWarning>
+    <html lang="en">
+      <body className={inter.className}>
         <AuthProvider>
-          <div className="hidden md:block">
+          <div className="min-h-screen bg-slate-50 flex">
+            {/* Sidebar for Desktop */}
             <Sidebar />
-          </div>
-          
-          <div className="flex-1 flex flex-col md:ml-64 pb-16 md:pb-0 h-screen overflow-hidden">
-            <Header />
-            <main className="flex-1 overflow-y-auto p-4 md:p-8">
-              {children}
-            </main>
-          </div>
 
-          <MobileNav />
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* Header */}
+              <Header />
+
+              {/* Main Content Area */}
+              {/* FIX: Mobile par pb-28 add kiya hai taaki content Bottom Nav ke piche na chhup jaye */}
+              <main className="flex-1 p-4 md:p-8 lg:p-10 pb-28 lg:pb-10 transition-all duration-300">
+                {children}
+              </main>
+
+              {/* Mobile Navigation (Fixed at bottom) */}
+              <MobileNav />
+            </div>
+          </div>
         </AuthProvider>
       </body>
     </html>
