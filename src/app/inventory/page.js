@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { 
   Package, Search, Printer, Edit, Trash2, 
-  Loader2, X, Filter, AlertCircle, CheckCircle2 
+  Loader2, X, AlertCircle 
 } from "lucide-react";
 import Barcode from "react-barcode";
 import { useReactToPrint } from "react-to-print";
@@ -23,7 +23,8 @@ export default function Inventory() {
   const fetchMedicines = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/medicine");
+      // API call now supports limit for performance (Browser hang fix)
+      const res = await fetch("/api/medicine?limit=100");
       const data = await res.json();
       if (data.success) setMedicines(data.medicines);
     } catch (error) {
@@ -36,6 +37,16 @@ export default function Inventory() {
     content: () => printRef.current,
     documentTitle: "Barcode_Label",
   });
+
+  // BUG FIX: State race condition fix for Print (Purana setTimeout logic replace kiya)
+  useEffect(() => {
+    if(printData) {
+      handlePrint();
+      // Print dialog open hone ke baad state clear karein
+      const timer = setTimeout(() => setPrintData(null), 1000); 
+      return () => clearTimeout(timer);
+    }
+  }, [printData]);
 
   const handleDelete = async (id) => {
     if (!confirm("Kya aap sach mein is entry ko delete karna chahte hain?")) return;
@@ -89,7 +100,7 @@ export default function Inventory() {
     <div className="max-w-7xl mx-auto space-y-8">
       <Toaster position="top-center" />
       
-      {/* Header Section */}
+      {/* Header Section (Original Design) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center">
           <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mr-4 border border-emerald-100 shadow-sm">
@@ -101,7 +112,7 @@ export default function Inventory() {
           </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar (Original Design) */}
         <div className="relative w-full md:w-96 group">
           <input 
             type="text" 
@@ -176,7 +187,8 @@ export default function Inventory() {
                     <Barcode value={med.barcodeId} width={1} height={30} fontSize={10} background="transparent" />
                   </div>
                   <button 
-                    onClick={() => { setPrintData(med); setTimeout(handlePrint, 100); }} 
+                    // BUG FIX: Yahan setPrintData ka use kiya hai bina setTimeout ke
+                    onClick={() => setPrintData(med)} 
                     className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-2xl text-xs font-bold flex items-center justify-center transition-all shadow-md"
                   >
                     <Printer className="w-4 h-4 mr-2" /> Print Sticker
@@ -188,7 +200,7 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Modern Edit Modal */}
+      {/* Modern Edit Modal (Original Design) */}
       {editMed && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
           <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">

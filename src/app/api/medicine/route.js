@@ -9,11 +9,23 @@ async function isAdmin() {
   return session?.user?.role === "admin";
 }
 
-export async function GET() {
+export async function GET(req) {
   try {
     await connectToDatabase();
-    const medicines = await Medicine.find({}).sort({ createdAt: -1 });
-    return NextResponse.json({ success: true, medicines });
+    // Pagination logic
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page")) || 1;
+    const limit = parseInt(searchParams.get("limit")) || 50; // default 50 items
+    const skip = (page - 1) * limit;
+
+    const medicines = await Medicine.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit);
+    const total = await Medicine.countDocuments();
+
+    return NextResponse.json({ 
+      success: true, 
+      medicines, 
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } 
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -24,8 +36,6 @@ export async function POST(req) {
   try {
     await connectToDatabase();
     const data = await req.json();
-    
-    // Standard Barcode ID format (stable for all entries)
     const uniqueBarcode = `MED-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
     
     const newMedicine = new Medicine({

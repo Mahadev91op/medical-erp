@@ -1,12 +1,14 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { ScanBarcode, ShoppingCart, Trash2, CheckCircle, Loader2, Camera, IndianRupee, Printer } from "lucide-react";
+import { ScanBarcode, ShoppingCart, Trash2, CheckCircle, Loader2, Camera, IndianRupee, Search } from "lucide-react";
 import CameraScanner from "@/components/sell/CameraScanner"; 
 import toast, { Toaster } from "react-hot-toast";
 import { useReactToPrint } from "react-to-print";
 
 export default function QuickSell() {
   const [barcode, setBarcode] = useState("");
+  const [manualSearch, setManualSearch] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -24,6 +26,15 @@ export default function QuickSell() {
     documentTitle: "Medical_Invoice",
   });
 
+  // State race condition fix for printing
+  useEffect(() => {
+    if (lastSale) {
+      setTimeout(() => {
+        handlePrintInvoice();
+      }, 300); 
+    }
+  }, [lastSale]);
+
   useEffect(() => {
     if (!showCamera) {
       inputRef.current?.focus();
@@ -39,23 +50,7 @@ export default function QuickSell() {
       const data = await res.json();
       
       if (data.success) {
-        const med = data.medicine;
-        const existingItem = cart.find(item => item._id === med._id);
-        
-        if (med.quantity <= 0) {
-          toast.error(`${med.name} ka stock khatam (0) hai!`);
-        } 
-        else if (existingItem) {
-          if (existingItem.sellQuantity < med.quantity) {
-            setCart(cart.map(item => item._id === med._id ? { ...item, sellQuantity: item.sellQuantity + 1 } : item));
-            toast.success(`${med.name} ki quantity badha di`);
-          } else {
-            toast.error("Bhaiya, isse zyada stock me nahi hai!");
-          }
-        } else {
-          setCart([...cart, { ...med, sellQuantity: 1 }]);
-          toast.success(`${med.name} cart me add ho gayi`);
-        }
+        addToCart(data.medicine);
       } else {
         toast.error("Dawai nahi mili. Galat barcode?"); 
       }
@@ -68,14 +63,43 @@ export default function QuickSell() {
     inputRef.current?.focus();
   };
 
-  const handleFormSubmit = (e) => {
+  const handleManualSearch = async (e) => {
     e.preventDefault();
-    processBarcode(barcode);
+    if (!manualSearch.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/medicine?limit=100`);
+      const data = await res.json();
+      if (data.success) {
+        const found = data.medicines.filter(m => m.name.toLowerCase().includes(manualSearch.toLowerCase()));
+        setSearchResults(found);
+        if(found.length === 0) toast.error("Koi dawai is naam se nahi mili");
+      }
+    } catch (error) {
+      toast.error("Search failed");
+    }
+    setLoading(false);
   };
 
-  const handleCameraScan = (decodedText) => {
-    setShowCamera(false); 
-    processBarcode(decodedText); 
+  const addToCart = (med) => {
+    const existingItem = cart.find(item => item._id === med._id);
+    
+    if (med.quantity <= 0) {
+      toast.error(`${med.name} ka stock khatam (0) hai!`);
+    } 
+    else if (existingItem) {
+      if (existingItem.sellQuantity < med.quantity) {
+        setCart(cart.map(item => item._id === med._id ? { ...item, sellQuantity: item.sellQuantity + 1 } : item));
+        toast.success(`${med.name} ki quantity badha di`);
+      } else {
+        toast.error("Bhaiya, isse zyada stock me nahi hai!");
+      }
+    } else {
+      setCart([...cart, { ...med, sellQuantity: 1 }]);
+      toast.success(`${med.name} cart me add ho gayi`);
+    }
+    setSearchResults([]);
+    setManualSearch("");
   };
 
   const removeItem = (id) => {
@@ -99,7 +123,6 @@ export default function QuickSell() {
       if (data.success) {
         toast.success(`✅ Sale Complete! Bill: ₹${data.totalAmount}`);
         
-        // Save sale data for invoice and trigger print
         setLastSale({
           items: [...cart],
           total: data.totalAmount,
@@ -110,7 +133,6 @@ export default function QuickSell() {
 
         setCart([]); 
         setPaymentMethod("Cash");
-        setTimeout(() => handlePrintInvoice(), 500);
       } else {
         toast.error(data.error || "Checkout me error aaya.");
       }
@@ -127,7 +149,7 @@ export default function QuickSell() {
 
       {showCamera && (
         <CameraScanner 
-          onScan={handleCameraScan} 
+          onScan={(decoded) => { setShowCamera(false); processBarcode(decoded); }} 
           onClose={() => setShowCamera(false)} 
         />
       )}
@@ -154,25 +176,56 @@ export default function QuickSell() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100">
-            <form onSubmit={handleFormSubmit}>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center justify-between">
-                <span>USB Scanner / Manual Entry</span>
-              </label>
+          
+          {/* Barcode & Manual Search Box */}
+          <div className="bg-white p-6 rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex gap-4 flex-col md:flex-row">
+            <form onSubmit={(e) => { e.preventDefault(); processBarcode(barcode); }} className="flex-1">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">USB Scanner / Scan Barcode</label>
               <div className="relative">
                 <input 
-                  ref={inputRef}
-                  type="text" 
-                  placeholder="Focus here to scan with USB device..." 
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl pl-12 pr-4 py-4 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold text-lg"
-                  value={barcode} 
-                  onChange={(e) => setBarcode(e.target.value)} 
+                  ref={inputRef} type="text" placeholder="Focus here to scan..." 
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl pl-12 pr-4 py-4 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold"
+                  value={barcode} onChange={(e) => setBarcode(e.target.value)} 
                 />
                 <ScanBarcode className="absolute left-4 top-4.5 text-slate-400 w-6 h-6" />
                 {loading && <Loader2 className="absolute right-4 top-4.5 text-emerald-500 w-6 h-6 animate-spin" />}
               </div>
             </form>
+
+            <form onSubmit={handleManualSearch} className="flex-1">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Manual Search</label>
+              <div className="flex">
+                <input 
+                  type="text" placeholder="Dawai ka naam..." 
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-l-2xl px-4 py-4 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold"
+                  value={manualSearch} onChange={(e) => setManualSearch(e.target.value)} 
+                />
+                <button type="submit" className="bg-emerald-500 text-white px-5 rounded-r-2xl hover:bg-emerald-600 transition-colors">
+                  <Search className="w-5 h-5"/>
+                </button>
+              </div>
+            </form>
           </div>
+
+          {/* Search Results Display */}
+          {searchResults.length > 0 && (
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100">
+              <h3 className="text-sm font-bold mb-3 text-slate-700">Search Results:</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {searchResults.map(med => (
+                  <div key={med._id} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <div>
+                      <p className="font-bold text-sm text-slate-800">{med.name}</p>
+                      <p className="text-xs text-slate-500">Stock: {med.quantity} | ₹{med.mrp}</p>
+                    </div>
+                    <button onClick={() => addToCart(med)} className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors">
+                      + Add
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="bg-white p-6 rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 min-h-[300px]">
             <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center">
