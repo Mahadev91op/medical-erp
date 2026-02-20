@@ -31,7 +31,8 @@ const Sidebar = () => {
   );
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-100 hidden lg:flex flex-col z-30">
+    // Yahan sirf z-30 ko z-[60] kiya gaya hai taaki navbar ke upar rahe
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-100 hidden lg:flex flex-col z-[60]">
       <div className="p-8">
         <div className="flex items-center space-x-3 mb-10">
           <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200">

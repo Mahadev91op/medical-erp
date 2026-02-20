@@ -21,12 +21,14 @@ export default function RootLayout({ children }) {
             {/* Sidebar for Desktop */}
             <Sidebar />
 
-            <div className="flex-1 flex flex-col min-w-0">
+            {/* 🔥 YAHAN FIX KIYA HAI: lg:ml-64 add kiya hai taaki Navbar aur Content 
+                Sidebar ke side se start ho, uske piche na jayein. */}
+            <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
+              
               {/* Header */}
               <Header />
 
               {/* Main Content Area */}
-              {/* FIX: Mobile par pb-28 add kiya hai taaki content Bottom Nav ke piche na chhup jaye */}
               <main className="flex-1 p-4 md:p-8 lg:p-10 pb-28 lg:pb-10 transition-all duration-300">
                 {children}
               </main>
