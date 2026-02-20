@@ -3,10 +3,11 @@ import { useState, useRef } from "react";
 import Barcode from "react-barcode";
 import { useReactToPrint } from "react-to-print";
 import { PackagePlus, Printer, CheckCircle2, Loader2 } from "lucide-react";
+import toast, { Toaster } from "react-hot-toast"; // NAYA: Alert ki jagah Toast
 
 export default function PurchaseEntry() {
   const [formData, setFormData] = useState({
-    name: "", batch: "", expiryDate: "", quantity: "", distributor: "A"
+    name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", purchasePrice: "", rackNumber: ""
   });
   const [loading, setLoading] = useState(false);
   const [savedMed, setSavedMed] = useState(null);
@@ -32,19 +33,22 @@ export default function PurchaseEntry() {
       const data = await res.json();
       if (data.success) {
         setSavedMed(data.medicine);
+        toast.success(`${data.medicine.name} database me save ho gayi!`); // NAYA: Toast Alert
+        
         // Form Reset kar do next entry ke liye
-        setFormData({ name: "", batch: "", expiryDate: "", quantity: "", distributor: "A" }); 
+        setFormData({ name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", purchasePrice: "", rackNumber: "" }); 
       } else {
-        alert("Error: " + data.error);
+        toast.error("Error: " + data.error);
       }
     } catch (error) {
-      alert("Kuch galat ho gaya!");
+      toast.error("Kuch galat ho gaya! Network check karein.");
     }
     setLoading(false);
   };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      <Toaster position="top-center" reverseOrder={false} /> {/* NAYA: Toast Container */}
       
       {/* Header */}
       <div className="flex items-center">
@@ -71,7 +75,7 @@ export default function PurchaseEntry() {
                 value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
             </div>
 
-            {/* Batch & Quantity (Side by Side on PC, Stacked on Mobile) */}
+            {/* Batch & Quantity */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Batch No.</label>
@@ -87,6 +91,22 @@ export default function PurchaseEntry() {
               </div>
             </div>
 
+            {/* NAYA: Price Details (MRP & Purchase Price) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">MRP (Bikri Rate) ₹</label>
+                <input type="number" required placeholder="0.00" min="0" step="0.01"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium"
+                  value={formData.mrp} onChange={(e) => setFormData({...formData, mrp: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Purchase Price ₹</label>
+                <input type="number" required placeholder="0.00" min="0" step="0.01"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium"
+                  value={formData.purchasePrice} onChange={(e) => setFormData({...formData, purchasePrice: e.target.value})} />
+              </div>
+            </div>
+
             {/* Expiry & Distributor */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
@@ -96,14 +116,20 @@ export default function PurchaseEntry() {
                   value={formData.expiryDate} onChange={(e) => setFormData({...formData, expiryDate: e.target.value})} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Distributor</label>
-                <select 
+                {/* NAYA: Select Dropdown hata kar Text Input laga diya */}
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Distributor / Agency</label>
+                <input type="text" required placeholder="e.g. Cipla / SunPharma"
                   className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium"
-                  value={formData.distributor} onChange={(e) => setFormData({...formData, distributor: e.target.value})}>
-                  <option value="A">Distributor A (Sharma Med)</option>
-                  <option value="B">Distributor B (Gupta Agency)</option>
-                </select>
+                  value={formData.distributor} onChange={(e) => setFormData({...formData, distributor: e.target.value})} />
               </div>
+            </div>
+
+            {/* NAYA: Rack Number */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Rack Number (Dawai Kahan Hai?)</label>
+              <input type="text" placeholder="e.g. Rack A-3 (Optional)"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium"
+                value={formData.rackNumber} onChange={(e) => setFormData({...formData, rackNumber: e.target.value})} />
             </div>
 
             <button type="submit" disabled={loading}
@@ -128,12 +154,12 @@ export default function PurchaseEntry() {
                 Entry Saved Successfully!
               </div>
               
-              {/* Ye Div specifically 50x25mm (Thermal Printer Size) ke liye design kiya gaya hai */}
               <div className="bg-white shadow-xl shadow-slate-200 rounded-lg p-4 mb-8">
                 <div ref={printRef} className="bg-white flex flex-col items-center justify-center overflow-hidden" style={{ width: '50mm', height: '25mm', padding: '2mm' }}>
                   <Barcode value={savedMed.barcodeId} width={1.2} height={35} fontSize={10} margin={0} background="#ffffff" lineColor="#000000" displayValue={true} />
+                  {/* NAYA: Barcode sticker me MRP bhi print hoga */}
                   <p className="text-[8px] font-bold text-black mt-1 uppercase tracking-tight w-full text-center leading-tight truncate">
-                    {savedMed.name.substring(0, 18)} | EXP: {new Date(savedMed.expiryDate).toLocaleDateString('en-GB')}
+                    {savedMed.name.substring(0, 15)} | ₹{savedMed.mrp} | EXP: {new Date(savedMed.expiryDate).toLocaleDateString('en-GB')}
                   </p>
                 </div>
               </div>

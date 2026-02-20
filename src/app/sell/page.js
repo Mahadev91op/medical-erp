@@ -1,7 +1,8 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { ScanBarcode, ShoppingCart, Trash2, CheckCircle, Loader2, Camera } from "lucide-react";
-import CameraScanner from "@/components/sell/CameraScanner"; // Naya Component Import Kiya
+import { ScanBarcode, ShoppingCart, Trash2, CheckCircle, Loader2, Camera, IndianRupee } from "lucide-react";
+import CameraScanner from "@/components/sell/CameraScanner"; 
+import toast, { Toaster } from "react-hot-toast";
 
 export default function QuickSell() {
   const [barcode, setBarcode] = useState("");
@@ -9,19 +10,17 @@ export default function QuickSell() {
   const [loading, setLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   
-  // Camera Modal dikhane ke liye state
+  // Payment method state
+  const [paymentMethod, setPaymentMethod] = useState("Cash"); 
   const [showCamera, setShowCamera] = useState(false);
-  
   const inputRef = useRef(null);
 
   useEffect(() => {
-    // Agar camera khula hai toh focus input par mat do
     if (!showCamera) {
       inputRef.current?.focus();
     }
   }, [showCamera]);
 
-  // Barcode Scan ya Type hone par ye chalega
   const processBarcode = async (scannedCode) => {
     if (!scannedCode.trim()) return;
     
@@ -34,20 +33,26 @@ export default function QuickSell() {
         const med = data.medicine;
         const existingItem = cart.find(item => item._id === med._id);
         
-        if (existingItem) {
+        // BUG FIX: Agar stock 0 hai toh add mat hone do
+        if (med.quantity <= 0) {
+          toast.error(`${med.name} ka stock khatam (0) hai!`);
+        } 
+        else if (existingItem) {
           if (existingItem.sellQuantity < med.quantity) {
             setCart(cart.map(item => item._id === med._id ? { ...item, sellQuantity: item.sellQuantity + 1 } : item));
+            toast.success(`${med.name} ki quantity badha di`);
           } else {
-            alert("Bhaiya, isse zyada stock me nahi hai!");
+            toast.error("Bhaiya, isse zyada stock me nahi hai!");
           }
         } else {
           setCart([...cart, { ...med, sellQuantity: 1 }]);
+          toast.success(`${med.name} cart me add ho gayi`);
         }
       } else {
-        alert(data.error); 
+        toast.error("Dawai nahi mili. Galat barcode?"); 
       }
     } catch (error) {
-      alert("Error fetching medicine!");
+      toast.error("Error fetching medicine!");
     }
     
     setBarcode("");
@@ -55,16 +60,14 @@ export default function QuickSell() {
     inputRef.current?.focus();
   };
 
-  // Keyboard/USB Scanner Se Submit
   const handleFormSubmit = (e) => {
     e.preventDefault();
     processBarcode(barcode);
   };
 
-  // Phone Camera Se Submit
   const handleCameraScan = (decodedText) => {
-    setShowCamera(false); // Camera band karo
-    processBarcode(decodedText); // API ko data bhejo
+    setShowCamera(false); 
+    processBarcode(decodedText); 
   };
 
   const removeItem = (id) => {
@@ -72,23 +75,29 @@ export default function QuickSell() {
     inputRef.current?.focus();
   };
 
+  // Total amount calculate karna (MRP * Quantity)
+  const totalCartAmount = cart.reduce((total, item) => total + ((item.mrp || 0) * item.sellQuantity), 0);
+
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     setCheckoutLoading(true);
     try {
       const res = await fetch("/api/sell", {
         method: "POST",
-        body: JSON.stringify({ cartItems: cart }),
+        body: JSON.stringify({ cartItems: cart, paymentMethod }), 
         headers: { "Content-Type": "application/json" }
       });
       
       const data = await res.json();
       if (data.success) {
-        alert("✅ Sale Complete! Stock minus ho gaya.");
+        toast.success(`✅ Sale Complete! Bill: ₹${data.totalAmount}`);
         setCart([]); 
+        setPaymentMethod("Cash"); // Reset payment method
+      } else {
+        toast.error(data.error || "Checkout me error aaya.");
       }
     } catch (error) {
-      alert("Checkout me error aaya.");
+      toast.error("Checkout me error aaya.");
     }
     setCheckoutLoading(false);
     inputRef.current?.focus();
@@ -97,7 +106,9 @@ export default function QuickSell() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       
-      {/* Agar showCamera true hai toh Camera Modal dikhega */}
+      {/* Toast Notifications */}
+      <Toaster position="top-center" reverseOrder={false} />
+
       {showCamera && (
         <CameraScanner 
           onScan={handleCameraScan} 
@@ -117,7 +128,6 @@ export default function QuickSell() {
           </div>
         </div>
         
-        {/* PHONE CAMERA BUTTON (Naya) */}
         <button 
           onClick={() => setShowCamera(true)}
           className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center transition-all shadow-lg md:w-auto w-full"
@@ -131,7 +141,6 @@ export default function QuickSell() {
         {/* Left Side: Scanner Input & Cart Table */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* USB Scanner Input Area */}
           <div className="bg-white p-6 rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100">
             <form onSubmit={handleFormSubmit}>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center justify-between">
@@ -152,7 +161,6 @@ export default function QuickSell() {
             </form>
           </div>
 
-          {/* Cart Table */}
           <div className="bg-white p-6 rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 min-h-[300px]">
             <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center">
               <ShoppingCart className="w-4 h-4 mr-2" /> Current Cart
@@ -169,11 +177,15 @@ export default function QuickSell() {
                   <div key={item._id} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
                     <div>
                       <p className="font-bold text-slate-800 text-lg">{item.name}</p>
-                      <p className="text-xs text-slate-500 font-medium">Batch: {item.batch} | Dist: {item.distributor}</p>
+                      <p className="text-xs text-slate-500 font-medium">Batch: {item.batch} | Rack: {item.rackNumber || 'N/A'}</p>
+                      <p className="text-sm text-emerald-600 font-bold mt-1">₹{item.mrp || 0} / unit</p>
                     </div>
                     <div className="flex items-center space-x-4">
-                      <div className="bg-white border border-slate-200 px-4 py-1.5 rounded-xl font-bold text-emerald-600 shadow-sm">
+                      <div className="bg-white border border-slate-200 px-4 py-1.5 rounded-xl font-bold text-slate-700 shadow-sm">
                         Qty: {item.sellQuantity}
+                      </div>
+                      <div className="font-bold text-lg text-slate-800 min-w-[60px] text-right">
+                        ₹{(item.mrp || 0) * item.sellQuantity}
                       </div>
                       <button onClick={() => removeItem(item._id)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors">
                         <Trash2 className="w-5 h-5" />
@@ -196,7 +208,27 @@ export default function QuickSell() {
             
             <div className="flex justify-between items-center mb-4">
               <span className="text-slate-400 font-medium">Total Items</span>
-              <span className="text-2xl font-bold">{cart.reduce((total, item) => total + item.sellQuantity, 0)}</span>
+              <span className="text-xl font-bold">{cart.reduce((total, item) => total + item.sellQuantity, 0)}</span>
+            </div>
+
+            <div className="flex justify-between items-center mb-6 pt-4 border-t border-slate-700">
+              <span className="text-slate-300 font-bold">Total Amount</span>
+              <span className="text-3xl font-bold text-emerald-400 flex items-center">
+                <IndianRupee className="w-6 h-6 mr-1" /> {totalCartAmount}
+              </span>
+            </div>
+
+            <div className="mb-6">
+              <label className="text-xs text-slate-400 uppercase tracking-wider font-bold mb-2 block">Payment Method</label>
+              <select 
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full bg-slate-700 border-none text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer"
+              >
+                <option value="Cash">💵 Cash</option>
+                <option value="UPI">📱 UPI / PhonePe</option>
+                <option value="Card">💳 Card</option>
+              </select>
             </div>
           </div>
 

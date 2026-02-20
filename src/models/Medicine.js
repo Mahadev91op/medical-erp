@@ -18,17 +18,22 @@ const MedicineSchema = new mongoose.Schema({
     required: [true, "Quantity zaroori hai"],
     min: [0, "Quantity 0 se kam nahi ho sakti"]
   },
+  mrp: { 
+    type: Number, 
+    required: [true, "MRP (Price) zaroori hai"] 
+  }, // BASH YAHI RAHEGA (Bikri Rate)
+  rackNumber: { 
+    type: String 
+  }, // Dukan me dawai kahan rakhi hai
   distributor: { 
     type: String, 
-    enum: ['A', 'B'], // Sirf A ya B allow karega
     required: true 
   },
   barcodeId: { 
     type: String, 
     unique: true, 
     required: true 
-  }, // Unique sticker ID
-}, { timestamps: true }); // createdAt aur updatedAt apne aap add ho jayega
+  },
+}, { timestamps: true });
 
-// Next.js hot-reloading me error na de isliye ye check lagate hain
 export default mongoose.models.Medicine || mongoose.model("Medicine", MedicineSchema);

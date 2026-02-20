@@ -7,15 +7,15 @@ export async function POST(req) {
     await connectToDatabase();
     const data = await req.json();
     
-    // Unique Barcode Generate karna (MED + Last 6 digits of timestamp + 2 random numbers)
     const uniqueBarcode = `MED-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 100)}`;
     
-    // Data Database me save karna
     const newMedicine = new Medicine({
       name: data.name,
       batch: data.batch,
       expiryDate: data.expiryDate,
       quantity: Number(data.quantity),
+      mrp: Number(data.mrp), // Sirf MRP yahan save hoga
+      rackNumber: data.rackNumber || "N/A", 
       distributor: data.distributor,
       barcodeId: uniqueBarcode,
     });
