@@ -14,8 +14,7 @@ export async function POST(req) {
       batch: data.batch,
       expiryDate: data.expiryDate,
       quantity: Number(data.quantity),
-      mrp: Number(data.mrp), // Sirf MRP yahan save hoga
-      rackNumber: data.rackNumber || "N/A", 
+      mrp: Number(data.mrp),
       distributor: data.distributor,
       barcodeId: uniqueBarcode,
     });
@@ -24,7 +23,6 @@ export async function POST(req) {
     
     return NextResponse.json({ success: true, medicine: newMedicine }, { status: 201 });
   } catch (error) {
-    console.error("Error saving medicine:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

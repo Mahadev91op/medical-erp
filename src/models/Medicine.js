@@ -21,10 +21,7 @@ const MedicineSchema = new mongoose.Schema({
   mrp: { 
     type: Number, 
     required: [true, "MRP (Price) zaroori hai"] 
-  }, // BASH YAHI RAHEGA (Bikri Rate)
-  rackNumber: { 
-    type: String 
-  }, // Dukan me dawai kahan rakhi hai
+  },
   distributor: { 
     type: String, 
     required: true 
