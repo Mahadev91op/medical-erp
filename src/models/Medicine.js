@@ -33,4 +33,9 @@ const MedicineSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+// 🚀 SPEED OPTIMIZATION: Indexes for faster queries
+MedicineSchema.index({ createdAt: -1 }); // API list sort karne ke liye
+MedicineSchema.index({ quantity: 1 });   // Low stock dashboard query ke liye
+MedicineSchema.index({ expiryDate: 1 }); // Expiring medicines dashboard ke liye
+
 export default mongoose.models.Medicine || mongoose.model("Medicine", MedicineSchema);

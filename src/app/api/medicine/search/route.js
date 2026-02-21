@@ -9,10 +9,10 @@ export async function GET(req) {
     const barcodeId = searchParams.get("barcode");
     const allowEmpty = searchParams.get("allowEmpty") === "true";
 
-    const medicine = await Medicine.findOne({ barcodeId });
+    // 🚀 SPEED OPTIMIZATION: Used .lean() for faster memory allocation
+    const medicine = await Medicine.findOne({ barcodeId }).lean();
     if (!medicine) return NextResponse.json({ success: false, error: "Not Found" }, { status: 404 });
 
-    // Agar billing ke liye hai (allowEmpty false), toh stock check karo
     if (!allowEmpty && medicine.quantity <= 0) {
       return NextResponse.json({ success: false, error: "Out of Stock!" }, { status: 400 });
     }

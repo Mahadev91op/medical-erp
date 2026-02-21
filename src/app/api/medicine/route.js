@@ -12,14 +12,16 @@ async function isAdmin() {
 export async function GET(req) {
   try {
     await connectToDatabase();
-    // Pagination logic
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page")) || 1;
-    const limit = parseInt(searchParams.get("limit")) || 50; // default 50 items
+    const limit = parseInt(searchParams.get("limit")) || 50; 
     const skip = (page - 1) * limit;
 
-    const medicines = await Medicine.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit);
-    const total = await Medicine.countDocuments();
+    // 🚀 SPEED OPTIMIZATION: Promise.all() for parallel execution & .lean() for fast JSON response
+    const [medicines, total] = await Promise.all([
+      Medicine.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Medicine.countDocuments()
+    ]);
 
     return NextResponse.json({ 
       success: true, 
@@ -31,6 +33,7 @@ export async function GET(req) {
   }
 }
 
+// ... baaki POST, PUT, DELETE same rahenge kyunki unme logic update ka hai ...
 export async function POST(req) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   try {
@@ -57,7 +60,7 @@ export async function PUT(req) {
   try {
     await connectToDatabase();
     const { id, ...updateData } = await req.json();
-    const updated = await Medicine.findByIdAndUpdate(id, updateData, { new: true });
+    const updated = await Medicine.findByIdAndUpdate(id, updateData, { new: true }).lean();
     return NextResponse.json({ success: true, medicine: updated });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

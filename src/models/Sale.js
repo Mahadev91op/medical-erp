@@ -5,7 +5,7 @@ const SaleItemSchema = new mongoose.Schema({
   name: { type: String, required: true },
   quantity: { type: Number, required: true },
   mrp: { type: Number, required: true },
-  total: { type: Number, required: true } // quantity * mrp
+  total: { type: Number, required: true } 
 });
 
 const SaleSchema = new mongoose.Schema({
@@ -14,5 +14,8 @@ const SaleSchema = new mongoose.Schema({
   paymentMethod: { type: String, enum: ['Cash', 'UPI', 'Card'], default: 'Cash' },
   date: { type: Date, default: Date.now }
 }, { timestamps: true });
+
+// 🚀 SPEED OPTIMIZATION: Index on date for superfast Graph data fetching
+SaleSchema.index({ date: -1 });
 
 export default mongoose.models.Sale || mongoose.model("Sale", SaleSchema);
