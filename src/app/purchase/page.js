@@ -16,14 +16,14 @@ export default function PurchaseEntry() {
   
   const nameInputRef = useRef(null); 
 
-  // Component load hote hi purane distributors fetch karenge
+  // Fetching previous distributors on component mount
   useEffect(() => {
     const fetchDistributors = async () => {
       try {
         const res = await fetch("/api/medicine?limit=1000");
         const data = await res.json();
         if (data.success) {
-          // Unique distributors nikalna
+          // Extract unique distributors
           const uniqueDists = [...new Set(data.medicines.map(m => m.distributor).filter(Boolean))];
           setDistributors(uniqueDists);
         }
@@ -42,7 +42,7 @@ export default function PurchaseEntry() {
     today.setHours(0, 0, 0, 0); 
     
     if (selectedDate <= today) {
-      toast.error("Expiry date aaj ki ya purani nahi ho sakti!");
+      toast.error("Expiry date cannot be today or in the past!");
       return;
     }
 
@@ -58,14 +58,14 @@ export default function PurchaseEntry() {
       const data = await res.json();
       if (data.success) {
         setSavedMed(data.medicine);
-        toast.success(`${data.medicine.name} database me save ho gayi!`); 
+        toast.success(`${data.medicine.name} saved to database successfully!`); 
 
-        // Agar distributor naya hai toh use local list me add kar lo
+        // If distributor is new, add it to the local list
         if (formData.distributor && !distributors.includes(formData.distributor)) {
           setDistributors([...distributors, formData.distributor]);
         }
         
-        // Form Reset (Rack Number removed)
+        // Form Reset
         setFormData({ name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "" }); 
         
         nameInputRef.current?.focus();
@@ -73,7 +73,7 @@ export default function PurchaseEntry() {
         toast.error("Error: " + data.error);
       }
     } catch (error) {
-      toast.error("Kuch galat ho gaya! Network check karein.");
+      toast.error("Something went wrong! Please check your network.");
     }
     setLoading(false);
   };
@@ -88,7 +88,7 @@ export default function PurchaseEntry() {
         </div>
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">Smart Purchase Entry</h1>
-          <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5">Naya maal enter karein aur Barcode dekhein.</p>
+          <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5">Enter new stock and generate barcodes.</p>
         </div>
       </div>
 
@@ -99,7 +99,7 @@ export default function PurchaseEntry() {
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
             
             <div>
-              <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Dawai Ka Naam</label>
+              <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Medicine Name</label>
               <input 
                 type="text" 
                 required 
@@ -119,7 +119,7 @@ export default function PurchaseEntry() {
                   value={formData.batch} onChange={(e) => setFormData({...formData, batch: e.target.value})} />
               </div>
               <div>
-                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Qty (Ptte)</label>
+                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Quantity</label>
                 <input type="number" required placeholder="0" min="1"
                   className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
                   value={formData.quantity} onChange={(e) => setFormData({...formData, quantity: e.target.value})} />
@@ -171,7 +171,7 @@ export default function PurchaseEntry() {
           {!savedMed ? (
             <div className="text-center text-slate-400">
               <Printer className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-2 md:mb-3 opacity-30" />
-              <p className="font-medium text-xs md:text-base">Form submit karein barcode dekhne ke liye</p>
+              <p className="font-medium text-xs md:text-base">Submit the form to view the barcode.</p>
             </div>
           ) : (
             <div className="w-full flex flex-col items-center animate-in fade-in zoom-in duration-300">

@@ -37,7 +37,7 @@ export default function Inventory() {
         setPrintCopies(initialCopies);
       }
     } catch (error) {
-      toast.error("Data load nahi ho paya!");
+      toast.error("Failed to load data!");
     }
     setLoading(false);
   };
@@ -60,15 +60,15 @@ export default function Inventory() {
   }, [printQueue]);
 
   const handleDelete = async (id) => {
-    if (!confirm("Kya aap sach mein is entry ko delete karna chahte hain?")) return;
+    if (!confirm("Are you sure you want to delete this entry?")) return;
     try {
       const res = await fetch(`/api/medicine?id=${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Medicine delete ho gayi!");
+        toast.success("Medicine deleted successfully!");
         fetchMedicines();
       }
     } catch (error) {
-      toast.error("Delete karne mein error aaya!");
+      toast.error("Error deleting medicine!");
     }
   };
 
@@ -82,12 +82,12 @@ export default function Inventory() {
         headers: { "Content-Type": "application/json" }
       });
       if (res.ok) {
-        toast.success("Stock update ho gaya!");
+        toast.success("Stock updated successfully!");
         setEditMed(null);
         fetchMedicines();
       }
     } catch (error) {
-      toast.error("Update fail ho gaya!");
+      toast.error("Update failed!");
     }
     setIsUpdating(false);
   };
@@ -111,7 +111,7 @@ export default function Inventory() {
     });
     
     if (queue.length === 0) {
-      toast.error("Koi medicine select nahi ki!");
+      toast.error("No medicine selected!");
       return;
     }
     setPrintQueue(queue); 
@@ -131,7 +131,7 @@ export default function Inventory() {
     return (
       <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
         <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
-        <p className="font-medium">Inventory Load Ho Rahi Hai...</p>
+        <p className="font-medium">Loading Inventory...</p>
       </div>
     );
   }
@@ -148,7 +148,7 @@ export default function Inventory() {
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight leading-tight">Medicine Inventory</h1>
-            <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5">Apna pura stock aur barcodes manage karein.</p>
+            <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5">Manage your entire stock and barcodes.</p>
           </div>
         </div>
 
@@ -180,8 +180,8 @@ export default function Inventory() {
       {filtered.length === 0 ? (
         <div className="bg-white rounded-2xl md:rounded-3xl p-10 md:p-20 text-center border border-dashed border-slate-300">
           <Package className="w-12 h-12 md:w-16 md:h-16 text-slate-200 mx-auto mb-3 md:mb-4" />
-          <h3 className="text-base md:text-lg font-bold text-slate-600">Koi medicine nahi mili</h3>
-          <p className="text-xs md:text-sm text-slate-400 mt-1">Search term badal kar dekhein ya nayi entry karein.</p>
+          <h3 className="text-base md:text-lg font-bold text-slate-600">No medicines found</h3>
+          <p className="text-xs md:text-sm text-slate-400 mt-1">Try a different search term or add a new entry.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -330,7 +330,7 @@ export default function Inventory() {
           <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="bg-emerald-500 p-4 md:p-6 flex justify-between items-center text-white">
               <div className="flex items-center">
-                <Edit className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" />
+                <Edit className="w-4 h-4 md:w-5 h-5 mr-2 md:mr-3" />
                 <h2 className="text-base md:text-lg font-bold tracking-tight">Update Details</h2>
               </div>
               <button onClick={() => setEditMed(null)} className="bg-white/20 hover:bg-white/30 p-1.5 md:p-2 rounded-full transition-colors">

@@ -12,7 +12,7 @@ export default function Dashboard() {
       {/* 2. Top Stats Cards */}
       <StatCards />
 
-      {/* 3. Graph aur Alerts Section (Responsive Grid) */}
+      {/* 3. Graph and Alerts Section (Responsive Grid) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Sales Graph (Left side on PC, Top on Mobile) */}
         <SalesChart />

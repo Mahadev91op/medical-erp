@@ -37,7 +37,7 @@ export default function Reports() {
       {/* Header */}
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">Profit-Saving Reports</h1>
-        <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5 md:mt-1">Apna nuksan bachayein aur stock maintain rakhein.</p>
+        <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5 md:mt-1">Prevent losses and efficiently manage your stock.</p>
       </div>
 
       {/* Distributor Summary Cards */}
@@ -64,7 +64,7 @@ export default function Reports() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
         
-        {/* Urgent Expiry Report (Laal List) */}
+        {/* Urgent Expiry Report */}
         <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-100 overflow-hidden flex flex-col">
           <div className="bg-rose-50/50 p-4 md:p-6 border-b border-rose-100 flex items-center justify-between">
             <h2 className="text-sm md:text-lg font-bold text-rose-700 flex items-center">
@@ -77,7 +77,7 @@ export default function Reports() {
           
           <div className="p-1 md:p-2 max-h-[300px] md:max-h-[400px] overflow-y-auto">
             {data.expiringSoon.length === 0 ? (
-              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium">Koi bhi dawai jaldi expire nahi ho rahi! 🎉</p>
+              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium">No medicines are expiring soon! 🎉</p>
             ) : (
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -122,7 +122,7 @@ export default function Reports() {
           
           <div className="p-1 md:p-2 max-h-[300px] md:max-h-[400px] overflow-y-auto">
             {data.lowStock.length === 0 ? (
-              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium">Stock ekdum full hai! 📦</p>
+              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium">All stock levels are optimal! 📦</p>
             ) : (
               <table className="w-full text-left border-collapse">
                 <thead>

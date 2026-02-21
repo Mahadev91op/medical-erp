@@ -26,7 +26,7 @@ export default function StatCards() {
         </div>
       </div>
 
-      {/* Low Stock (Mobile par full width lega, PC par single column) */}
+      {/* Low Stock (Full width on mobile, single column on PC) */}
       <div className="col-span-2 lg:col-span-1 bg-white p-3.5 md:p-6 rounded-[20px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-row md:flex-row items-center justify-between group hover:-translate-y-1 transition-all duration-300 cursor-pointer">
         <div>
           <p className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Low Stock</p>

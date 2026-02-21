@@ -7,8 +7,8 @@ if (!MONGODB_URI) {
 }
 
 /**
- * Next.js serverless environment me chalta hai, isliye hum ek global variable 
- * banate hain taaki development ke time baar-baar naye connection na bane.
+ * Next.js runs in a serverless environment, so we create a global variable 
+ * to prevent creating new connections repeatedly during development.
  */
 let cached = global.mongoose;
 
@@ -17,15 +17,15 @@ if (!cached) {
 }
 
 export async function connectToDatabase() {
-  // Agar pehle se connection hai, toh wahi return kardo (Fast response)
+  // If a connection already exists, return it (Fast response)
   if (cached.conn) {
     return cached.conn;
   }
 
-  // Agar connection nahi hai, toh naya connection banao
+  // If there is no connection, create a new one
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false, // Mongoose ko queries buffer karne se rokta hai
+      bufferCommands: false, // Prevents Mongoose from buffering queries
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {

@@ -52,7 +52,7 @@ export default function QuickSell() {
       if (data.success) {
         addToCart(data.medicine);
       } else {
-        toast.error("Dawai nahi mili. Galat barcode?"); 
+        toast.error("Medicine not found. Invalid barcode?"); 
       }
     } catch (error) {
       toast.error("Error fetching medicine!");
@@ -73,7 +73,7 @@ export default function QuickSell() {
       if (data.success) {
         const found = data.medicines.filter(m => m.name.toLowerCase().includes(manualSearch.toLowerCase()));
         setSearchResults(found);
-        if(found.length === 0) toast.error("Koi dawai is naam se nahi mili");
+        if(found.length === 0) toast.error("No medicine found with this name");
       }
     } catch (error) {
       toast.error("Search failed");
@@ -85,18 +85,18 @@ export default function QuickSell() {
     const existingItem = cart.find(item => item._id === med._id);
     
     if (med.quantity <= 0) {
-      toast.error(`${med.name} ka stock khatam (0) hai!`);
+      toast.error(`${med.name} is out of stock (0)!`);
     } 
     else if (existingItem) {
       if (existingItem.sellQuantity < med.quantity) {
         setCart(cart.map(item => item._id === med._id ? { ...item, sellQuantity: item.sellQuantity + 1 } : item));
-        toast.success(`${med.name} ki quantity badha di`);
+        toast.success(`Quantity increased for ${med.name}`);
       } else {
-        toast.error("Bhaiya, isse zyada stock me nahi hai!");
+        toast.error("Cannot add more! Insufficient stock.");
       }
     } else {
       setCart([...cart, { ...med, sellQuantity: 1 }]);
-      toast.success(`${med.name} cart me add ho gayi`);
+      toast.success(`${med.name} added to cart`);
     }
     setSearchResults([]);
     setManualSearch("");
@@ -134,10 +134,10 @@ export default function QuickSell() {
         setCart([]); 
         setPaymentMethod("Cash");
       } else {
-        toast.error(data.error || "Checkout me error aaya.");
+        toast.error(data.error || "Error during checkout.");
       }
     } catch (error) {
-      toast.error("Checkout me error aaya.");
+      toast.error("Error during checkout.");
     }
     setCheckoutLoading(false);
     inputRef.current?.focus();
@@ -162,7 +162,7 @@ export default function QuickSell() {
           </div>
           <div>
             <h1 className="text-lg md:text-2xl font-bold text-slate-800 leading-tight">Fast Billing & Outward</h1>
-            <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5">Barcode scan karein aur stock minus karein.</p>
+            <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5">Scan barcode to deduct stock.</p>
           </div>
         </div>
         
@@ -196,7 +196,7 @@ export default function QuickSell() {
               <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 md:mb-3">Manual Search</label>
               <div className="flex">
                 <input 
-                  type="text" placeholder="Dawai ka naam..." 
+                  type="text" placeholder="Medicine name..." 
                   className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-l-xl md:rounded-l-2xl px-3 md:px-4 py-3 md:py-4 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-semibold"
                   value={manualSearch} onChange={(e) => setManualSearch(e.target.value)} 
                 />
@@ -243,7 +243,7 @@ export default function QuickSell() {
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-32 md:h-48 text-slate-400">
                 <ScanBarcode className="w-10 h-10 md:w-12 md:h-12 mb-2 md:mb-3 opacity-20" />
-                <p className="font-medium text-xs md:text-sm">Cart khaali hai. Barcode scan karein.</p>
+                <p className="font-medium text-xs md:text-sm">Cart is empty. Scan a barcode.</p>
               </div>
             ) : (
               <div className="space-y-2 md:space-y-3">

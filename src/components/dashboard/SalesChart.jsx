@@ -7,7 +7,7 @@ export default function SalesChart({ data }) {
     return (
       <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] h-full flex flex-col justify-center items-center min-h-[300px]">
         <IndianRupee className="w-10 h-10 text-slate-200 mb-3" />
-        <p className="text-slate-400 font-medium">Pichle 7 dino ka koi sales data nahi hai.</p>
+        <p className="text-slate-400 font-medium">No sales data available for the last 7 days.</p>
       </div>
     );
   }
@@ -19,7 +19,7 @@ export default function SalesChart({ data }) {
           <span className="w-2 h-2 rounded-full bg-emerald-400 mr-3"></span>
           Last 7 Days Revenue
         </h2>
-        <p className="text-xs font-semibold text-slate-400 mt-1">Daily sales performance ka graph</p>
+        <p className="text-xs font-semibold text-slate-400 mt-1">Daily sales performance graph</p>
       </div>
       
       <div className="flex-1 w-full min-h-[250px]">

@@ -3,24 +3,24 @@ import mongoose from "mongoose";
 const MedicineSchema = new mongoose.Schema({
   name: { 
     type: String, 
-    required: [true, "Dawai ka naam zaroori hai"] 
+    required: [true, "Medicine name is required"] 
   },
   batch: { 
     type: String, 
-    required: [true, "Batch number zaroori hai"] 
+    required: [true, "Batch number is required"] 
   },
   expiryDate: { 
     type: Date, 
-    required: [true, "Expiry date zaroori hai"] 
+    required: [true, "Expiry date is required"] 
   },
   quantity: { 
     type: Number, 
-    required: [true, "Quantity zaroori hai"],
-    min: [0, "Quantity 0 se kam nahi ho sakti"]
+    required: [true, "Quantity is required"],
+    min: [0, "Quantity cannot be less than 0"]
   },
   mrp: { 
     type: Number, 
-    required: [true, "MRP (Price) zaroori hai"] 
+    required: [true, "MRP is required"] 
   },
   distributor: { 
     type: String, 
@@ -34,8 +34,8 @@ const MedicineSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // 🚀 SPEED OPTIMIZATION: Indexes for faster queries
-MedicineSchema.index({ createdAt: -1 }); // API list sort karne ke liye
-MedicineSchema.index({ quantity: 1 });   // Low stock dashboard query ke liye
-MedicineSchema.index({ expiryDate: 1 }); // Expiring medicines dashboard ke liye
+MedicineSchema.index({ createdAt: -1 });
+MedicineSchema.index({ quantity: 1 });
+MedicineSchema.index({ expiryDate: 1 });
 
 export default mongoose.models.Medicine || mongoose.model("Medicine", MedicineSchema);
