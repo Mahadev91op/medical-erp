@@ -140,7 +140,7 @@ export default function Inventory() {
     <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
       <Toaster position="top-center" />
       
-      {/* Header Section (Mobile App like spacing) */}
+      {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center">
           <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-50 text-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center mr-3 md:mr-4 border border-emerald-100 shadow-sm shrink-0">
@@ -204,11 +204,11 @@ export default function Inventory() {
                       </button>
                       <div className="min-w-0">
                         <h3 className="font-bold text-sm md:text-lg text-slate-800 group-hover:text-emerald-600 transition-colors leading-tight truncate">{med.name}</h3>
-                        <span className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5 md:mt-1">{med.barcodeId}</span>
+                        <span className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5 md:mt-1">ID: {med.barcodeId}</span>
                       </div>
                     </div>
                     
-                    {/* PC pe hover pr dikhega, Mobile par hamesha dikhega par chota */}
+                    {/* Actions */}
                     <div className="flex space-x-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <button 
                         onClick={() => setEditMed(med)}
@@ -225,7 +225,7 @@ export default function Inventory() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6 pl-7 md:pl-8">
+                  <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-5 pl-7 md:pl-8">
                     <div className="bg-slate-50 p-2 md:p-3 rounded-xl md:rounded-2xl">
                       <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase mb-0.5 md:mb-1 tracking-wider">Stock Qty</p>
                       <p className={`text-base md:text-lg font-extrabold ${med.quantity < 10 ? 'text-rose-500' : 'text-slate-700'}`}>
@@ -237,6 +237,22 @@ export default function Inventory() {
                       <p className="text-base md:text-lg font-extrabold text-emerald-600">
                         ₹{med.mrp}
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Visual Barcode Preview */}
+                  <div className="pl-7 md:pl-8 mb-4 md:mb-5 flex justify-center">
+                    <div className="bg-white px-3 py-1 border border-slate-100 rounded-xl shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] inline-block">
+                      <Barcode 
+                        value={med.barcodeId} 
+                        width={1.2} 
+                        height={35} 
+                        fontSize={11} 
+                        margin={0} 
+                        displayValue={true} 
+                        background="transparent"
+                        lineColor="#334155" 
+                      />
                     </div>
                   </div>
 
@@ -265,9 +281,10 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Bulk Print Config Modal */}
+      {/* Bulk Print Config Modal - Logic waisa hi rakha hai jaisa tha */}
       {showBulkModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+          {/* ... Modal Code ... */}
           <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
             <div className="bg-slate-800 p-4 md:p-6 flex justify-between items-center text-white">
               <div className="flex items-center">
@@ -324,7 +341,7 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal - Logic waisa hi rakha hai */}
       {editMed && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
           <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
