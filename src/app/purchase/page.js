@@ -6,24 +6,21 @@ import toast, { Toaster } from "react-hot-toast";
 
 export default function PurchaseEntry() {
   const [formData, setFormData] = useState({
-    name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: ""
+    name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", billNumber: "", purchaseDate: ""
   });
   const [loading, setLoading] = useState(false);
   const [savedMed, setSavedMed] = useState(null);
   
-  // Distributor Auto-suggest List State
   const [distributors, setDistributors] = useState([]);
   
   const nameInputRef = useRef(null); 
 
-  // Fetching previous distributors on component mount
   useEffect(() => {
     const fetchDistributors = async () => {
       try {
         const res = await fetch("/api/medicine?limit=1000");
         const data = await res.json();
         if (data.success) {
-          // Extract unique distributors
           const uniqueDists = [...new Set(data.medicines.map(m => m.distributor).filter(Boolean))];
           setDistributors(uniqueDists);
         }
@@ -37,14 +34,17 @@ export default function PurchaseEntry() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const selectedDate = new Date(formData.expiryDate);
+    // Expiry Date Validation (Past date not allowed for Expiry)
+    const selectedExpiry = new Date(formData.expiryDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0); 
     
-    if (selectedDate <= today) {
+    if (selectedExpiry <= today) {
       toast.error("Expiry date cannot be today or in the past!");
       return;
     }
+    
+    // Note: Purchase Date me past dates allowed hain isliye uspe validation nahi lagayi hai.
 
     setLoading(true);
     
@@ -60,13 +60,11 @@ export default function PurchaseEntry() {
         setSavedMed(data.medicine);
         toast.success(`${data.medicine.name} saved to database successfully!`); 
 
-        // If distributor is new, add it to the local list
         if (formData.distributor && !distributors.includes(formData.distributor)) {
           setDistributors([...distributors, formData.distributor]);
         }
         
-        // Form Reset
-        setFormData({ name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "" }); 
+        setFormData({ name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", billNumber: "", purchaseDate: "" }); 
         
         nameInputRef.current?.focus();
       } else {
@@ -94,7 +92,6 @@ export default function PurchaseEntry() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8">
         
-        {/* Left Side: Entry Form */}
         <div className="bg-white p-4 md:p-6 lg:p-8 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100">
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
             
@@ -123,6 +120,22 @@ export default function PurchaseEntry() {
                 <input type="number" required placeholder="0" min="1"
                   className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
                   value={formData.quantity} onChange={(e) => setFormData({...formData, quantity: e.target.value})} />
+              </div>
+            </div>
+
+            {/* Bill Number aur Purchase Date ab Expiry wale row se upar aa gaya hai */}
+            <div className="grid grid-cols-2 gap-3 md:gap-5">
+              <div>
+                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Dist. Bill Number</label>
+                <input type="text" required placeholder="e.g. INV-1002"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
+                  value={formData.billNumber} onChange={(e) => setFormData({...formData, billNumber: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Purchase Date</label>
+                <input type="date" required
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-[11px] md:text-base font-medium"
+                  value={formData.purchaseDate} onChange={(e) => setFormData({...formData, purchaseDate: e.target.value})} />
               </div>
             </div>
 
@@ -165,7 +178,6 @@ export default function PurchaseEntry() {
           </form>
         </div>
 
-        {/* Right Side: Barcode Sticker Preview */}
         <div className="bg-slate-100/50 p-6 md:p-8 rounded-[24px] md:rounded-3xl border border-slate-100 flex flex-col items-center justify-center min-h-[250px] md:min-h-[400px]">
           
           {!savedMed ? (
@@ -182,10 +194,15 @@ export default function PurchaseEntry() {
               
               <div className="bg-white shadow-xl shadow-slate-200 rounded-lg md:rounded-xl p-3 md:p-4 mb-4 md:mb-8 scale-[0.85] md:scale-100 origin-center">
                 <div className="bg-white flex flex-col items-center justify-center overflow-hidden" style={{ width: '50mm', height: '25mm', padding: '2mm' }}>
-                  <Barcode value={savedMed.barcodeId} width={1.2} height={35} fontSize={10} margin={0} background="#ffffff" lineColor="#000000" displayValue={true} />
-                  <p className="text-[8px] font-bold text-black mt-1 uppercase tracking-tight w-full text-center leading-tight truncate">
-                    {savedMed.name.substring(0, 15)} | ₹{savedMed.mrp} | EXP: {new Date(savedMed.expiryDate).toLocaleDateString('en-GB')}
-                  </p>
+                  {/* Barcode ki height 32 kardi hai taaki space cover ho jaye */}
+                  <Barcode value={savedMed.barcodeId} width={1.2} height={32} fontSize={10} margin={0} background="#ffffff" lineColor="#000000" displayValue={true} />
+                  
+                  <div className="w-full text-center mt-1">
+                    {/* Ab sirf Bill Number aur Purchase date hi dikhega */}
+                    <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate">
+                      BILL: {savedMed.billNumber} | PUR: {new Date(savedMed.purchaseDate).toLocaleDateString('en-GB')}
+                    </p>
+                  </div>
                 </div>
               </div>
               

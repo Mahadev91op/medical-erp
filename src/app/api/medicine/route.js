@@ -5,77 +5,83 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 
 async function isAdmin() {
-  const session = await getServerSession(authOptions);
-  return session?.user?.role === "admin";
+    const session = await getServerSession(authOptions);
+    return session ? .user ? .role === "admin";
 }
 
 export async function GET(req) {
-  try {
-    await connectToDatabase();
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page")) || 1;
-    const limit = parseInt(searchParams.get("limit")) || 50; 
-    const skip = (page - 1) * limit;
+    try {
+        await connectToDatabase();
+        const { searchParams } = new URL(req.url);
+        const page = parseInt(searchParams.get("page")) || 1;
+        const limit = parseInt(searchParams.get("limit")) || 50;
+        const skip = (page - 1) * limit;
 
-    // 🚀 SPEED OPTIMIZATION: Promise.all() for parallel execution & .lean() for fast JSON response
-    const [medicines, total] = await Promise.all([
-      Medicine.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-      Medicine.countDocuments()
-    ]);
+        const [medicines, total] = await Promise.all([
+            Medicine.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            Medicine.countDocuments()
+        ]);
 
-    return NextResponse.json({ 
-      success: true, 
-      medicines, 
-      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } 
-    });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+        return NextResponse.json({
+            success: true,
+            medicines,
+            pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
+        });
+    } catch (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
 }
 
-// ... baaki POST, PUT, DELETE same rahenge kyunki unme logic update ka hai ...
 export async function POST(req) {
-  if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  try {
-    await connectToDatabase();
-    const data = await req.json();
-    const uniqueBarcode = `MED-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
-    
-    const newMedicine = new Medicine({
-      ...data,
-      barcodeId: uniqueBarcode,
-      quantity: Number(data.quantity),
-      mrp: Number(data.mrp)
-    });
-    
-    await newMedicine.save();
-    return NextResponse.json({ success: true, medicine: newMedicine }, { status: 201 });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+    if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    try {
+        await connectToDatabase();
+        const data = await req.json();
+
+        // 🟢 DEBUG LOG 1: Check karna ki form se Data API tak pahuncha ya nahi
+        console.log("➡️ DATA RECEIVED FROM FORM:", data);
+
+        const uniqueBarcode = `MED-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
+
+        const newMedicine = new Medicine({
+            ...data,
+            barcodeId: uniqueBarcode,
+            quantity: Number(data.quantity),
+            mrp: Number(data.mrp)
+        });
+
+        // 🟢 DEBUG LOG 2: Check karna ki Mongoose ne Data accept kiya ya reject kar diya
+        console.log("➡️ DATA ACCEPTED BY DATABASE MODEL:", newMedicine);
+
+        await newMedicine.save();
+        return NextResponse.json({ success: true, medicine: newMedicine }, { status: 201 });
+    } catch (error) {
+        console.error("❌ API ERROR:", error.message);
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
 }
 
 export async function PUT(req) {
-  if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  try {
-    await connectToDatabase();
-    const { id, ...updateData } = await req.json();
-    const updated = await Medicine.findByIdAndUpdate(id, updateData, { new: true }).lean();
-    return NextResponse.json({ success: true, medicine: updated });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+    if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    try {
+        await connectToDatabase();
+        const { id, ...updateData } = await req.json();
+        const updated = await Medicine.findByIdAndUpdate(id, updateData, { new: true }).lean();
+        return NextResponse.json({ success: true, medicine: updated });
+    } catch (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
 }
 
 export async function DELETE(req) {
-  if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  try {
-    await connectToDatabase();
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-    await Medicine.findByIdAndDelete(id);
-    return NextResponse.json({ success: true, message: "Deleted" });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+    if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    try {
+        await connectToDatabase();
+        const { searchParams } = new URL(req.url);
+        const id = searchParams.get("id");
+        await Medicine.findByIdAndDelete(id);
+        return NextResponse.json({ success: true, message: "Deleted" });
+    } catch (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
 }

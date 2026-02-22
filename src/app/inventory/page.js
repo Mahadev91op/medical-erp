@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { 
   Package, Search, Printer, Edit, Trash2, 
-  Loader2, X, AlertCircle, CheckSquare, Square
+  Loader2, X, AlertCircle, CheckSquare, Square, RefreshCw
 } from "lucide-react";
 import Barcode from "react-barcode";
 import { useReactToPrint } from "react-to-print";
@@ -14,6 +14,7 @@ export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editMed, setEditMed] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Bulk Print States
   const [selectedMeds, setSelectedMeds] = useState([]); 
@@ -22,42 +23,79 @@ export default function Inventory() {
   
   const printRef = useRef();
   const [printQueue, setPrintQueue] = useState([]); 
+  
+  const isActionActive = useRef(false);
 
-  useEffect(() => { fetchMedicines(); }, []);
+  useEffect(() => {
+    isActionActive.current = showBulkModal || !!editMed;
+  }, [showBulkModal, editMed]);
 
-  const fetchMedicines = async () => {
-    setLoading(true);
+  useEffect(() => { 
+    fetchMedicines(); 
+
+    // Auto Refresh - Every 30 Seconds
+    const interval = setInterval(() => {
+      if (!isActionActive.current) {
+        fetchMedicines(true);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchMedicines = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const res = await fetch("/api/medicine?limit=100");
       const data = await res.json();
       if (data.success) {
         setMedicines(data.medicines);
-        const initialCopies = {};
-        data.medicines.forEach(m => initialCopies[m._id] = 1);
-        setPrintCopies(initialCopies);
+        
+        if (!isSilent) {
+          const initialCopies = {};
+          data.medicines.forEach(m => initialCopies[m._id] = 1);
+          setPrintCopies(initialCopies);
+        } else {
+          setPrintCopies(prev => {
+            const newCopies = { ...prev };
+            data.medicines.forEach(m => {
+              if (newCopies[m._id] === undefined) newCopies[m._id] = 1;
+            });
+            return newCopies;
+          });
+        }
       }
     } catch (error) {
-      toast.error("Failed to load data!");
+      if (!isSilent) toast.error("Failed to load data!");
     }
-    setLoading(false);
+    if (!isSilent) setLoading(false);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchMedicines(true);
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
+
+  // 🔥 ERROR FIX: onAfterPrint hata diya taaki React array error na aaye 🔥
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
     documentTitle: "Bulk_Barcode_Labels",
   });
 
+  // 🔥 RACE CONDITION FIX: Print ko 500ms hold kiya taaki Barcode draw ho sake,
+  // aur print hone ke baad automatically queue clear ho jaye 🔥
   useEffect(() => {
     if(printQueue.length > 0) {
-      handlePrint();
-      const timer = setTimeout(() => {
+      const timer = setTimeout(async () => {
+        handlePrint();
+        // Print window close hone ke baad modal reset hoga
         setPrintQueue([]);
         setShowBulkModal(false);
         setSelectedMeds([]);
-      }, 1000); 
+      }, 500); // 500ms delay
       return () => clearTimeout(timer);
     }
-  }, [printQueue]);
+  }, [printQueue, handlePrint]);
 
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this entry?")) return;
@@ -141,7 +179,7 @@ export default function Inventory() {
       <Toaster position="top-center" />
       
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center">
           <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-50 text-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center mr-3 md:mr-4 border border-emerald-100 shadow-sm shrink-0">
             <Package className="w-5 h-5 md:w-6 md:h-6" />
@@ -152,8 +190,18 @@ export default function Inventory() {
           </div>
         </div>
 
-        {/* Search Bar & Bulk Print Button */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+          
+          <button 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center justify-center bg-white border border-slate-200 text-slate-600 px-3 py-3 md:py-3.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold shadow-sm hover:bg-slate-50 hover:text-emerald-600 hover:border-emerald-200 transition-all shrink-0"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin text-emerald-500' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+
           {selectedMeds.length > 0 && (
             <button 
               onClick={() => setShowBulkModal(true)}
@@ -164,7 +212,7 @@ export default function Inventory() {
             </button>
           )}
 
-          <div className="relative w-full md:w-80 group">
+          <div className="relative w-full sm:w-80 group">
             <input 
               type="text" 
               placeholder="Search Name, Batch or Barcode..." 
@@ -195,7 +243,6 @@ export default function Inventory() {
                 <div className="p-4 md:p-6">
                   <div className="flex justify-between items-start mb-3 md:mb-4">
                     <div className="flex items-start gap-2.5 md:gap-3">
-                      {/* Selection Checkbox */}
                       <button onClick={() => toggleSelection(med._id)} className="mt-0.5 md:mt-1 focus:outline-none shrink-0">
                         {isSelected ? 
                           <CheckSquare className="w-4 h-4 md:w-5 md:h-5 text-emerald-500" /> : 
@@ -208,7 +255,6 @@ export default function Inventory() {
                       </div>
                     </div>
                     
-                    {/* Actions */}
                     <div className="flex space-x-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <button 
                         onClick={() => setEditMed(med)}
@@ -240,19 +286,23 @@ export default function Inventory() {
                     </div>
                   </div>
 
-                  {/* Visual Barcode Preview */}
                   <div className="pl-7 md:pl-8 mb-4 md:mb-5 flex justify-center">
-                    <div className="bg-white px-3 py-1 border border-slate-100 rounded-xl shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] inline-block">
+                    <div className="bg-white px-3 py-2 border border-slate-100 rounded-xl shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] inline-flex flex-col items-center">
                       <Barcode 
                         value={med.barcodeId} 
                         width={1.2} 
-                        height={35} 
-                        fontSize={11} 
+                        height={32} 
+                        fontSize={10} 
                         margin={0} 
                         displayValue={true} 
                         background="transparent"
                         lineColor="#334155" 
                       />
+                      <div className="w-full text-center mt-1">
+                        <p className="text-[8px] font-bold text-slate-700 uppercase tracking-tight leading-tight truncate">
+                          BILL: {med.billNumber || "N/A"} | PUR: {med.purchaseDate ? new Date(med.purchaseDate).toLocaleDateString('en-GB') : "N/A"}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -281,10 +331,9 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Bulk Print Config Modal - Logic waisa hi rakha hai jaisa tha */}
+      {/* Bulk Print Config Modal */}
       {showBulkModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
-          {/* ... Modal Code ... */}
           <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
             <div className="bg-slate-800 p-4 md:p-6 flex justify-between items-center text-white">
               <div className="flex items-center">
@@ -341,7 +390,7 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Edit Modal - Logic waisa hi rakha hai */}
+      {/* Edit Modal */}
       {editMed && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
           <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -431,27 +480,23 @@ export default function Inventory() {
           </style>
 
           {printQueue.map((item, index) => (
-            <div key={`${item._id}-${index}`} className="thermal-label">
-              <p className="text-[9px] font-bold text-center w-full truncate leading-none mb-[1px]" style={{fontFamily: 'sans-serif', color: '#000'}}>
-                {item.name}
-              </p>
+            <div key={`${item._id}-${index}`} className="thermal-label" style={{ backgroundColor: '#ffffff' }}>
+              <Barcode 
+                value={item.barcodeId} 
+                width={1.2} 
+                height={32} 
+                fontSize={10} 
+                margin={0} 
+                background="#ffffff" 
+                lineColor="#000000" 
+                displayValue={true} 
+              />
               
-              <div className="flex justify-center items-center scale-[0.85] origin-top">
-                <Barcode 
-                  value={item.barcodeId} 
-                  width={1.4} 
-                  height={30} 
-                  fontSize={10} 
-                  margin={0} 
-                  displayValue={true} 
-                  background="transparent"
-                  lineColor="#000"
-                />
+              <div className="w-full text-center mt-[1px]">
+                <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate" style={{ fontFamily: 'sans-serif' }}>
+                  BILL: {item.billNumber || "N/A"} | PUR: {item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString('en-GB') : "N/A"}
+                </p>
               </div>
-
-              <p className="text-[8px] font-bold text-center uppercase leading-none mt-[1px]" style={{fontFamily: 'sans-serif', color: '#000'}}>
-                MRP: ₹{item.mrp}
-              </p>
             </div>
           ))}
         </div>

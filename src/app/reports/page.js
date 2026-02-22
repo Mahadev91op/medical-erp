@@ -1,16 +1,24 @@
 "use client";
 import { useState, useEffect } from "react";
-import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock } from "lucide-react";
+import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw } from "lucide-react";
 
 export default function Reports() {
   const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [] });
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     fetchReports();
+
+    // Auto Refresh - Every 30 Seconds
+    const interval = setInterval(() => {
+      fetchReports(true);
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchReports = async () => {
+  const fetchReports = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const res = await fetch("/api/reports");
       const result = await res.json();
@@ -20,7 +28,13 @@ export default function Reports() {
     } catch (error) {
       console.error("Error fetching reports:", error);
     }
-    setLoading(false);
+    if (!isSilent) setLoading(false);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchReports(true);
+    setTimeout(() => setIsRefreshing(false), 500);
   };
 
   if (loading) {
@@ -34,10 +48,22 @@ export default function Reports() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 md:space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">Profit-Saving Reports</h1>
-        <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5 md:mt-1">Prevent losses and efficiently manage your stock.</p>
+      
+      {/* Header with Refresh Button */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">Profit-Saving Reports</h1>
+          <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5 md:mt-1">Prevent losses and efficiently manage your stock.</p>
+        </div>
+        
+        <button 
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="flex items-center justify-center text-xs md:text-sm font-bold bg-white border border-slate-200 text-slate-600 px-3 py-2 md:px-4 md:py-2.5 rounded-xl shadow-sm hover:bg-slate-50 hover:text-emerald-600 hover:border-emerald-200 transition-all focus:outline-none w-full md:w-auto shrink-0"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin text-emerald-500' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+        </button>
       </div>
 
       {/* Distributor Summary Cards */}
