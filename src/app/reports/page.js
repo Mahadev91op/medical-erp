@@ -3,12 +3,19 @@ import { useState, useEffect } from "react";
 import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw, Search, X, IndianRupee, ShoppingCart, PackageOpen, Award, Package, Receipt, TrendingUp } from "lucide-react";
 
 export default function Reports() {
-  // `todayOverview` state me add kar diya
   const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [], todayOverview: {} });
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
   const [showAllDistributors, setShowAllDistributors] = useState(false);
   const [distributorSearch, setDistributorSearch] = useState("");
+  
+  const [showTodayItems, setShowTodayItems] = useState(false);
+
+  // Naye States: Niche wale 3 boxes me "See All" toggle karne ke liye
+  const [showAllBottomSold, setShowAllBottomSold] = useState(false);
+  const [showAllBottomExpiring, setShowAllBottomExpiring] = useState(false);
+  const [showAllBottomLowStock, setShowAllBottomLowStock] = useState(false);
 
   useEffect(() => {
     fetchReports();
@@ -71,8 +78,9 @@ export default function Reports() {
         </button>
       </div>
 
-      {/* NEW: Today's Flash Report (Daily Insights) */}
+      {/* Today's Flash Report (Daily Insights) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
+        
         {/* Revenue */}
         <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-lg text-white flex items-center hover:shadow-emerald-500/30 transition-shadow">
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mr-4 shrink-0">
@@ -87,12 +95,19 @@ export default function Reports() {
         </div>
         
         {/* Items Sold */}
-        <div className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex items-center">
-            <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mr-4 shrink-0">
-                <Package className="w-6 h-6 text-indigo-500" />
+        <div 
+          onClick={() => setShowTodayItems(true)}
+          className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex items-center cursor-pointer hover:border-indigo-100 hover:shadow-md transition-all group"
+          title="Click to view details"
+        >
+            <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mr-4 shrink-0 group-hover:bg-indigo-500 group-hover:text-white transition-colors text-indigo-500">
+                <Package className="w-6 h-6" />
             </div>
-            <div>
-                <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Items Sold Today</p>
+            <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Items Sold Today</p>
+                  <span className="text-[9px] font-bold text-indigo-400 bg-indigo-50 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">Click to View</span>
+                </div>
                 <p className="text-xl md:text-2xl font-extrabold text-slate-700">
                     {data.todayOverview?.itemsSold || 0}
                 </p>
@@ -173,10 +188,9 @@ export default function Reports() {
         )}
       </div>
 
-      {/* Alerts Grid (Ab isme 3 columns hain bade screen par jisse aapka Aaj ka Items list achhe se set ho) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
         
-        {/* NEW: Today's Sold Items List */}
+        {/* Today's Sold Items List */}
         <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-emerald-100 overflow-hidden flex flex-col">
           <div className="bg-emerald-50/50 p-4 md:p-5 border-b border-emerald-100 flex items-center justify-between">
             <h2 className="text-sm md:text-lg font-bold text-emerald-700 flex items-center">
@@ -187,44 +201,59 @@ export default function Reports() {
             </span>
           </div>
           
-          <div className="p-1 md:p-2 max-h-[300px] md:max-h-[350px] overflow-y-auto custom-scrollbar">
+          <div className="p-2 md:p-3 flex-1 flex flex-col overflow-y-auto custom-scrollbar max-h-[300px] md:max-h-[350px]">
             {(!data.todayOverview?.soldItems || data.todayOverview.soldItems.length === 0) ? (
-              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium">No sales yet today! 😴</p>
+              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium m-auto">No sales yet today! 😴</p>
             ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                    <th className="p-2.5 md:p-3 font-bold">Medicine</th>
-                    <th className="p-2.5 md:p-3 font-bold text-center">Qty</th>
-                    <th className="p-2.5 md:p-3 font-bold text-right">Revenue</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {data.todayOverview.soldItems.map((item, index) => (
-                    <tr key={index} className="hover:bg-emerald-50/30 transition-colors">
-                      <td className="p-2.5 md:p-3 max-w-[120px]">
-                        <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight truncate" title={item.name}>{item.name}</p>
-                      </td>
-                      <td className="p-2.5 md:p-3 text-center">
-                        <span className="text-[10px] md:text-sm font-extrabold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg inline-block">
-                          {item.quantity}
-                        </span>
-                      </td>
-                      <td className="p-2.5 md:p-3 flex justify-end">
-                        <div className="flex items-center text-[10px] md:text-sm font-bold text-slate-700">
-                          <IndianRupee className="w-3 h-3 mr-0.5 text-slate-400" />
-                          {item.total.toLocaleString('en-IN')}
-                        </div>
-                      </td>
+              <>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                      <th className="p-1.5 md:p-2 font-bold">Medicine</th>
+                      <th className="p-1.5 md:p-2 font-bold text-center">Qty</th>
+                      <th className="p-1.5 md:p-2 font-bold text-right">Revenue</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {/* Yahan hum slice() function ka use kar rahe hain data ko limit karne ke liye */}
+                    {data.todayOverview.soldItems.slice(0, showAllBottomSold ? undefined : 5).map((item, index) => (
+                      <tr key={index} className="hover:bg-emerald-50/30 transition-colors">
+                        <td className="p-1.5 md:p-2 max-w-[120px]">
+                          <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight truncate" title={item.name}>{item.name}</p>
+                        </td>
+                        <td className="p-1.5 md:p-2 text-center">
+                          <span className="text-[10px] md:text-sm font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 md:py-1 rounded-lg inline-block">
+                            {item.quantity}
+                          </span>
+                        </td>
+                        <td className="p-1.5 md:p-2 flex justify-end">
+                          <div className="flex items-center text-[10px] md:text-sm font-bold text-slate-700">
+                            <IndianRupee className="w-3 h-3 mr-0.5 text-slate-400" />
+                            {item.total.toLocaleString('en-IN')}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                
+                {/* See All Button */}
+                {data.todayOverview.soldItems.length > 5 && (
+                  <div className="mt-auto pt-2 text-center">
+                    <button
+                      onClick={() => setShowAllBottomSold(!showAllBottomSold)}
+                      className="text-[10px] md:text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-4 py-1.5 rounded-xl transition-colors w-full"
+                    >
+                      {showAllBottomSold ? "Show Less" : `See All (${data.todayOverview.soldItems.length})`}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {/* Urgent Expiry Report (Existing) */}
+        {/* Urgent Expiry Report */}
         <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-100 overflow-hidden flex flex-col">
           <div className="bg-rose-50/50 p-4 md:p-5 border-b border-rose-100 flex items-center justify-between">
             <h2 className="text-sm md:text-lg font-bold text-rose-700 flex items-center">
@@ -235,39 +264,53 @@ export default function Reports() {
             </span>
           </div>
           
-          <div className="p-1 md:p-2 max-h-[300px] md:max-h-[350px] overflow-y-auto custom-scrollbar">
+          <div className="p-2 md:p-3 flex-1 flex flex-col overflow-y-auto custom-scrollbar max-h-[300px] md:max-h-[350px]">
             {data.expiringSoon?.length === 0 ? (
-              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium">No medicines are expiring soon! 🎉</p>
+              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium m-auto">No medicines are expiring soon! 🎉</p>
             ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                    <th className="p-2.5 md:p-3 font-bold">Medicine</th>
-                    <th className="p-2.5 md:p-3 font-bold text-right md:text-left">Expiry</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {data.expiringSoon?.map((med) => (
-                    <tr key={med._id} className="hover:bg-rose-50/30 transition-colors">
-                      <td className="p-2.5 md:p-3 max-w-[120px] md:max-w-none">
-                        <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight md:leading-normal truncate" title={med.name}>{med.name}</p>
-                        <p className="text-[9px] text-slate-400 mt-0.5">Qty: <span className="font-bold text-rose-500">{med.quantity}</span> | {med.batch}</p>
-                      </td>
-                      <td className="p-2.5 md:p-3 flex justify-end md:justify-start">
-                        <div className="flex items-center text-[9px] md:text-xs font-bold text-rose-600 bg-rose-50 px-2 py-1.5 rounded-lg w-fit whitespace-nowrap">
-                          <CalendarClock className="w-3 h-3 mr-1 shrink-0" />
-                          {new Date(med.expiryDate).toLocaleDateString('en-GB')}
-                        </div>
-                      </td>
+              <>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                      <th className="p-1.5 md:p-2 font-bold">Medicine</th>
+                      <th className="p-1.5 md:p-2 font-bold text-right md:text-left">Expiry</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {data.expiringSoon?.slice(0, showAllBottomExpiring ? undefined : 5).map((med) => (
+                      <tr key={med._id} className="hover:bg-rose-50/30 transition-colors">
+                        <td className="p-1.5 md:p-2 max-w-[120px] md:max-w-none">
+                          <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight md:leading-normal truncate" title={med.name}>{med.name}</p>
+                          <p className="text-[9px] text-slate-400 mt-0.5">Qty: <span className="font-bold text-rose-500">{med.quantity}</span> | {med.batch}</p>
+                        </td>
+                        <td className="p-1.5 md:p-2 flex justify-end md:justify-start">
+                          <div className="flex items-center text-[9px] md:text-xs font-bold text-rose-600 bg-rose-50 px-2 py-1 md:py-1.5 rounded-lg w-fit whitespace-nowrap">
+                            <CalendarClock className="w-3 h-3 mr-1 shrink-0" />
+                            {new Date(med.expiryDate).toLocaleDateString('en-GB')}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* See All Button */}
+                {data.expiringSoon?.length > 5 && (
+                  <div className="mt-auto pt-2 text-center">
+                    <button
+                      onClick={() => setShowAllBottomExpiring(!showAllBottomExpiring)}
+                      className="text-[10px] md:text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-1.5 rounded-xl transition-colors w-full"
+                    >
+                      {showAllBottomExpiring ? "Show Less" : `See All (${data.expiringSoon.length})`}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {/* Low Stock Report (Existing) */}
+        {/* Low Stock Report */}
         <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-amber-100 overflow-hidden flex flex-col mt-4 md:mt-0 lg:mt-0">
           <div className="bg-amber-50/50 p-4 md:p-5 border-b border-amber-100 flex items-center justify-between">
             <h2 className="text-sm md:text-lg font-bold text-amber-700 flex items-center">
@@ -278,40 +321,101 @@ export default function Reports() {
             </span>
           </div>
           
-          <div className="p-1 md:p-2 max-h-[300px] md:max-h-[350px] overflow-y-auto custom-scrollbar">
+          <div className="p-2 md:p-3 flex-1 flex flex-col overflow-y-auto custom-scrollbar max-h-[300px] md:max-h-[350px]">
             {data.lowStock?.length === 0 ? (
-              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium">All stock levels are optimal! 📦</p>
+              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium m-auto">All stock levels are optimal! 📦</p>
             ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                    <th className="p-2.5 md:p-3 font-bold">Medicine</th>
-                    <th className="p-2.5 md:p-3 font-bold text-right">Left</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {data.lowStock?.map((med) => (
-                    <tr key={med._id} className="hover:bg-amber-50/30 transition-colors">
-                      <td className="p-2.5 md:p-3 max-w-[120px] md:max-w-none">
-                        <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight md:leading-normal truncate" title={med.name}>{med.name}</p>
-                        <p className="text-[9px] text-slate-400 mt-0.5 truncate">Dist: {med.distributor}</p>
-                      </td>
-                      <td className="p-2.5 md:p-3 text-right">
-                        <span className="text-sm md:text-base font-extrabold text-amber-500 bg-amber-50 px-2 py-1.5 rounded-xl inline-block">
-                          {med.quantity}
-                        </span>
-                      </td>
+              <>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                      <th className="p-1.5 md:p-2 font-bold">Medicine</th>
+                      <th className="p-1.5 md:p-2 font-bold text-right">Left</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {data.lowStock?.slice(0, showAllBottomLowStock ? undefined : 5).map((med) => (
+                      <tr key={med._id} className="hover:bg-amber-50/30 transition-colors">
+                        <td className="p-1.5 md:p-2 max-w-[120px] md:max-w-none">
+                          <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight md:leading-normal truncate" title={med.name}>{med.name}</p>
+                          <p className="text-[9px] text-slate-400 mt-0.5 truncate">Dist: {med.distributor}</p>
+                        </td>
+                        <td className="p-1.5 md:p-2 text-right">
+                          <span className="text-xs md:text-sm font-extrabold text-amber-500 bg-amber-50 px-2 py-1 rounded-xl inline-block">
+                            {med.quantity}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* See All Button */}
+                {data.lowStock?.length > 5 && (
+                  <div className="mt-auto pt-2 text-center">
+                    <button
+                      onClick={() => setShowAllBottomLowStock(!showAllBottomLowStock)}
+                      className="text-[10px] md:text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-4 py-1.5 rounded-xl transition-colors w-full"
+                    >
+                      {showAllBottomLowStock ? "Show Less" : `See All (${data.lowStock.length})`}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
 
       </div>
 
-      {/* Pop Up Modal (View All Distributors - Unchanged Logic) */}
+      {/* MODAL 1: Today's Items Sold Full Details (Top box modal) */}
+      {showTodayItems && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] md:rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+            <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-lg md:text-xl font-bold text-slate-800 flex items-center">
+                <Package className="w-5 h-5 mr-2 text-indigo-500" />
+                Items Sold Today
+              </h2>
+              <button 
+                onClick={() => setShowTodayItems(false)}
+                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
+              >
+                <X className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50/30">
+              {(!data.todayOverview?.soldItems || data.todayOverview.soldItems.length === 0) ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                  <Package className="w-10 h-10 mb-3 text-slate-300" />
+                  <p className="text-sm md:text-base font-medium">No sales recorded today. 😴</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {data.todayOverview.soldItems.map((item, index) => (
+                    <div key={index} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover:shadow-md transition-all">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-700 md:text-lg">{item.name}</span>
+                        <span className="text-xs font-medium text-slate-500 mt-0.5">Quantity Sold: <span className="font-bold text-indigo-500 text-sm">{item.quantity}</span></span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Revenue</span>
+                        <span className="text-base md:text-lg font-extrabold text-emerald-600 flex items-center">
+                          <IndianRupee className="w-3 h-3 md:w-4 md:h-4 mr-0.5" />
+                          {item.total.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: View All Distributors */}
       {showAllDistributors && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[24px] md:rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
