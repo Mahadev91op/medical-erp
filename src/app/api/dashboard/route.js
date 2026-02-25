@@ -5,7 +5,6 @@ import Sale from "@/models/Sale";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 
-// To disable caching
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
@@ -22,46 +21,57 @@ export async function GET() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // 🚀 SPEED OPTIMIZATION: Executing all 5 database queries concurrently
+    // Aaj ki date ka start time (aaj ki total kamai nikalne ke liye)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     const [
       totalMedicines,
       stockAggregation,
       lowStockCount,
+      expiringCount,
       expiringMedicines,
-      rawSalesData
+      rawSalesData,
+      todaysSales
     ] = await Promise.all([
-      Medicine.countDocuments(),
+      Medicine.countDocuments({ quantity: { $gt: 0 } }),
       
-      // Calculate Total Stock Value (Quantity * MRP)
       Medicine.aggregate([
-        { $project: { totalValue: { $multiply: ["$quantity", "$mrp"] } } },
-        { $group: { _id: null, totalStockValue: { $sum: "$totalValue" } } }
+        { $match: { quantity: { $gt: 0 } } },
+        { $project: { totalValue: { $multiply: ["$quantity", "$mrp"] }, quantity: 1 } },
+        { $group: { _id: null, totalStockValue: { $sum: "$totalValue" }, totalUnits: { $sum: "$quantity" } } }
       ]),
       
-      Medicine.countDocuments({ quantity: { $lt: 10 } }),
+      Medicine.countDocuments({ quantity: { $lt: 10, $gt: 0 } }),
       
-      // Medicines expiring in the next 90 days (Showing top 6 only)
-      Medicine.find({ expiryDate: { $lte: ninetyDaysFromNow } })
+      Medicine.countDocuments({ expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } }),
+      
+      Medicine.find({ expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } })
               .sort({ expiryDate: 1 })
               .limit(6)
               .lean(), 
               
-      // Sales Data for Graph (Last 7 days)
       Sale.aggregate([
         { $match: { date: { $gte: sevenDaysAgo } } },
         {
           $group: {
-            _id: { $dateToString: { format: "%d %b", date: "$date" } }, 
+            _id: { $dateToString: { format: "%d %b", date: "$date", timezone: "Asia/Kolkata" } }, 
             revenue: { $sum: "$totalAmount" }
           }
         },
         { $sort: { _id: 1 } }
+      ]),
+
+      Sale.aggregate([
+        { $match: { date: { $gte: startOfToday } } },
+        { $group: { _id: null, todayRevenue: { $sum: "$totalAmount" } } }
       ])
     ]);
 
     const totalStockValue = stockAggregation[0]?.totalStockValue || 0;
+    const totalUnits = stockAggregation[0]?.totalUnits || 0;
+    const todayRevenue = todaysSales[0]?.todayRevenue || 0;
 
-    // Format data for the graph
     const salesData = rawSalesData.map(item => ({
       date: item._id,
       Revenue: item.revenue
@@ -69,7 +79,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      stats: { totalMedicines, totalStockValue, lowStockCount },
+      stats: { totalMedicines, totalUnits, totalStockValue, lowStockCount, expiringCount, todayRevenue },
       expiringMedicines,
       salesData
     });

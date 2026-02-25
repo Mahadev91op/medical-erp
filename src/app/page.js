@@ -1,35 +1,61 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Loader2 } from "lucide-react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import StatCards from "@/components/dashboard/StatCards";
 import ExpiryAlerts from "@/components/dashboard/ExpiryAlerts";
 import SalesChart from "@/components/dashboard/SalesChart";
+import toast from "react-hot-toast";
 
 export default function Dashboard() {
-  const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Manual Refresh Logic
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    router.refresh(); // Next.js ke server se fresh data fetch karta hai
-    setTimeout(() => setIsRefreshing(false), 1000); // 1 sec spin animation ke liye
+  // Live Data Fetch Function
+  const fetchDashboardData = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const res = await fetch("/api/dashboard", { cache: "no-store" });
+      const data = await res.json();
+      if (data.success) {
+        setDashboardData(data);
+      } else {
+        toast.error("Failed to load dashboard data");
+      }
+    } catch (error) {
+      console.error("Dashboard Error:", error);
+    }
+    if (!silent) setLoading(false);
   };
 
-  // Auto Refresh Logic (Har 30 seconds me background me data update hoga)
+  // Har 30 sec auto-refresh
   useEffect(() => {
+    fetchDashboardData();
     const interval = setInterval(() => {
-      router.refresh();
-    }, 30000); // 30000 ms = 30 seconds
+      fetchDashboardData(true);
+    }, 30000); 
     return () => clearInterval(interval);
-  }, [router]);
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchDashboardData(true);
+    setTimeout(() => setIsRefreshing(false), 500); 
+  };
+
+  if (loading) {
+    return (
+      <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
+        <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
+        <p className="font-medium">Loading Dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-8 max-w-7xl mx-auto relative">
       
-      {/* 🔥 Manual Refresh Button (Top Right) 🔥 */}
       <div className="flex justify-end">
         <button 
           onClick={handleRefresh}
@@ -42,20 +68,15 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-[-1rem] md:mt-[-2rem]">
-        {/* 1. Header Section */}
         <DashboardHeader />
       </div>
 
-      {/* 2. Top Stats Cards */}
-      <StatCards />
+      {/* Passing Live Data to Cards */}
+      <StatCards stats={dashboardData?.stats} />
 
-      {/* 3. Graph and Alerts Section (Responsive Grid) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        {/* Sales Graph (Left side on PC, Top on Mobile) */}
-        <SalesChart />
-
-        {/* Expiry Alerts (Right side on PC, Bottom on Mobile) */}
-        <ExpiryAlerts />
+        <SalesChart data={dashboardData?.salesData} />
+        <ExpiryAlerts alerts={dashboardData?.expiringMedicines} />
       </div>
     </div>
   );
