@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
 const MedicineSchema = new mongoose.Schema({
-    // trim: true lagane se extra galti se dabaye gaye spaces save nahi honge (Space bachega)
     name: { type: String, required: [true, "Medicine name is required"], trim: true },
     batch: { type: String, required: [true, "Batch number is required"], trim: true },
     expiryDate: { type: Date, required: [true, "Expiry date is required"] },
@@ -15,13 +14,18 @@ const MedicineSchema = new mongoose.Schema({
     barcodeId: { type: String, unique: true, required: true, trim: true },
 }, { 
     timestamps: true, 
-    versionKey: false // 🔥 STORAGE SAVER: Mongoose har entry me '__v: 0' save karta hai, ise false karne se har row me space bachegi
+    versionKey: false 
 });
 
-// 🚀 SPEED OPTIMIZATION
-MedicineSchema.index({ createdAt: -1 });
+// 🚀 ENTERPRISE SPEED OPTIMIZATION FOR LAKHS OF DATA
+// Ye Indexes 2 Lakh data hone par bhi search results ko micro-seconds mein layenge
+MedicineSchema.index({ name: 1 }); 
+MedicineSchema.index({ barcodeId: 1 });
+MedicineSchema.index({ distributor: 1 });
+MedicineSchema.index({ batch: 1 });
 MedicineSchema.index({ quantity: 1 });
 MedicineSchema.index({ expiryDate: 1 });
+MedicineSchema.index({ createdAt: -1 });
 
 if (mongoose.models.Medicine) {
     delete mongoose.models.Medicine;

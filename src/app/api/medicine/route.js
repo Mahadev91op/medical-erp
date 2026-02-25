@@ -14,11 +14,21 @@ export async function GET(req) {
         await connectToDatabase();
         const { searchParams } = new URL(req.url);
         const page = parseInt(searchParams.get("page")) || 1;
-        const limit = parseInt(searchParams.get("limit")) || 50;
+        const limit = parseInt(searchParams.get("limit")) || 100; // Limit lazmi hai
+        const search = searchParams.get("search") || "";
         const skip = (page - 1) * limit;
 
-        // 🔥 FIX: Sirf wahi medicines fetch hongi jinka stock 0 se bada (greater than 0) hai
+        // 🔥 SERVER-SIDE SEARCH FOR LAKHS OF DATA
         const query = { quantity: { $gt: 0 } };
+        
+        // Agar user ne kuch search kiya hai, toh database usay fast search karega
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: "i" } },
+                { batch: { $regex: search, $options: "i" } },
+                { barcodeId: { $regex: search, $options: "i" } }
+            ];
+        }
 
         const [medicines, total] = await Promise.all([
             Medicine.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
@@ -40,24 +50,16 @@ export async function POST(req) {
     try {
         await connectToDatabase();
         const data = await req.json();
-
-        console.log("➡️ DATA RECEIVED FROM FORM:", data);
-
         const uniqueBarcode = `MED-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
-
         const newMedicine = new Medicine({
             ...data,
             barcodeId: uniqueBarcode,
             quantity: Number(data.quantity),
             mrp: Number(data.mrp)
         });
-
-        console.log("➡️ DATA ACCEPTED BY DATABASE MODEL:", newMedicine);
-
         await newMedicine.save();
         return NextResponse.json({ success: true, medicine: newMedicine }, { status: 201 });
     } catch (error) {
-        console.error("❌ API ERROR:", error.message);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

@@ -6,7 +6,7 @@ const SaleItemSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   mrp: { type: Number, required: true },
   total: { type: Number, required: true } 
-}, { _id: false }); // 🔥 HUGE STORAGE SAVER: Pehle bill ke andar har dawai ka apna naya ID banta tha, jiska koi kaam nahi tha. Ise hatane se lakho bills me bohot MBs data bachega.
+}, { _id: false }); 
 
 const SaleSchema = new mongoose.Schema({
   items: [SaleItemSchema],
@@ -15,10 +15,11 @@ const SaleSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now }
 }, { 
     timestamps: true, 
-    versionKey: false // 🔥 STORAGE SAVER: Removes useless '__v' field
+    versionKey: false 
 });
 
-// 🚀 SPEED OPTIMIZATION
+// 🚀 SPEED OPTIMIZATION FOR REPORTS
 SaleSchema.index({ date: -1 });
+SaleSchema.index({ "items.medicineId": 1 }); // Har dawai ka link fast dhoondne ke liye
 
 export default mongoose.models.Sale || mongoose.model("Sale", SaleSchema);

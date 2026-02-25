@@ -68,17 +68,34 @@ export default function QuickSell() {
     inputRef.current?.focus();
   };
 
+  // const handleManualSearch = async (e) => {
+  //   e.preventDefault();
+  //   if (!manualSearch.trim()) return;
+  //   setLoading(true);
+  //   try {
+  //     const res = await fetch(`/api/medicine?limit=100`);
+  //     const data = await res.json();
+  //     if (data.success) {
+  //       const found = data.medicines.filter(m => m.name.toLowerCase().includes(manualSearch.toLowerCase()));
+  //       setSearchResults(found);
+  //       if(found.length === 0) toast.error("No medicine found with this name");
+  //     }
+  //   } catch (error) {
+  //     toast.error("Search failed");
+  //   }
+  //   setLoading(false);
+  // };
   const handleManualSearch = async (e) => {
     e.preventDefault();
     if (!manualSearch.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/medicine?limit=100`);
+      // 🔥 FAST SERVER-SIDE SEARCH: Ab 2 Lakh data browser me load hone ki jagah seedhe search hokar aayega
+      const res = await fetch(`/api/medicine?search=${encodeURIComponent(manualSearch)}&limit=50`);
       const data = await res.json();
       if (data.success) {
-        const found = data.medicines.filter(m => m.name.toLowerCase().includes(manualSearch.toLowerCase()));
-        setSearchResults(found);
-        if(found.length === 0) toast.error("No medicine found with this name");
+        setSearchResults(data.medicines);
+        if(data.medicines.length === 0) toast.error("No medicine found with this name");
       }
     } catch (error) {
       toast.error("Search failed");

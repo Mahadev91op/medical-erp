@@ -16,7 +16,6 @@ export default function Inventory() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Bulk Print States
   const [selectedMeds, setSelectedMeds] = useState([]); 
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [printCopies, setPrintCopies] = useState({}); 
@@ -30,22 +29,29 @@ export default function Inventory() {
     isActionActive.current = showBulkModal || !!editMed;
   }, [showBulkModal, editMed]);
 
-  useEffect(() => { 
-    fetchMedicines(); 
+  // 🔥 DEBOUNCED SERVER-SIDE SEARCH: Typing rokne ke aadhe second baad automatically backend se data mangwayega (Fast & smooth)
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      fetchMedicines(false, searchTerm);
+    }, 400);
 
-    // Auto Refresh - Every 30 Seconds
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
+
+  // Auto Refresh
+  useEffect(() => {
     const interval = setInterval(() => {
       if (!isActionActive.current) {
-        fetchMedicines(true);
+        fetchMedicines(true, searchTerm);
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [searchTerm]);
 
-  const fetchMedicines = async (isSilent = false) => {
+  const fetchMedicines = async (isSilent = false, search = "") => {
     if (!isSilent) setLoading(true);
     try {
-      const res = await fetch("/api/medicine?limit=100");
+      const res = await fetch(`/api/medicine?limit=100&search=${encodeURIComponent(search)}`);
       const data = await res.json();
       if (data.success) {
         setMedicines(data.medicines);
@@ -72,27 +78,23 @@ export default function Inventory() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchMedicines(true);
+    await fetchMedicines(true, searchTerm);
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  // 🔥 ERROR FIX: onAfterPrint hata diya taaki React array error na aaye 🔥
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
     documentTitle: "Bulk_Barcode_Labels",
   });
 
-  // 🔥 RACE CONDITION FIX: Print ko 500ms hold kiya taaki Barcode draw ho sake,
-  // aur print hone ke baad automatically queue clear ho jaye 🔥
   useEffect(() => {
     if(printQueue.length > 0) {
       const timer = setTimeout(async () => {
         handlePrint();
-        // Print window close hone ke baad modal reset hoga
         setPrintQueue([]);
         setShowBulkModal(false);
         setSelectedMeds([]);
-      }, 500); // 500ms delay
+      }, 500); 
       return () => clearTimeout(timer);
     }
   }, [printQueue, handlePrint]);
@@ -103,7 +105,7 @@ export default function Inventory() {
       const res = await fetch(`/api/medicine?id=${id}`, { method: "DELETE" });
       if (res.ok) {
         toast.success("Medicine deleted successfully!");
-        fetchMedicines();
+        fetchMedicines(true, searchTerm);
       }
     } catch (error) {
       toast.error("Error deleting medicine!");
@@ -122,7 +124,7 @@ export default function Inventory() {
       if (res.ok) {
         toast.success("Stock updated successfully!");
         setEditMed(null);
-        fetchMedicines();
+        fetchMedicines(true, searchTerm);
       }
     } catch (error) {
       toast.error("Update failed!");
@@ -159,13 +161,7 @@ export default function Inventory() {
     setPrintQueue([med]);
   };
 
-  const filtered = medicines.filter(m => 
-    m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.batch.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.barcodeId.includes(searchTerm)
-  );
-
-  if (loading) {
+  if (loading && medicines.length === 0) {
     return (
       <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
         <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
@@ -178,7 +174,6 @@ export default function Inventory() {
     <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
       <Toaster position="top-center" />
       
-      {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center">
           <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-50 text-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center mr-3 md:mr-4 border border-emerald-100 shadow-sm shrink-0">
@@ -190,7 +185,6 @@ export default function Inventory() {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
           
           <button 
@@ -217,6 +211,7 @@ export default function Inventory() {
               type="text" 
               placeholder="Search Name, Batch or Barcode..." 
               className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-3.5 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium shadow-sm"
+              value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <Search className="absolute left-3.5 md:left-4 top-3 md:top-4 text-slate-400 w-4 h-4 md:w-5 md:h-5 group-focus-within:text-emerald-500 transition-colors" />
@@ -224,8 +219,8 @@ export default function Inventory() {
         </div>
       </div>
 
-      {/* Inventory Grid */}
-      {filtered.length === 0 ? (
+      {/* Yahan 'filtered' ki jagah seedha 'medicines' array use karenge kyunki filter API kar raha hai */}
+      {medicines.length === 0 ? (
         <div className="bg-white rounded-2xl md:rounded-3xl p-10 md:p-20 text-center border border-dashed border-slate-300">
           <Package className="w-12 h-12 md:w-16 md:h-16 text-slate-200 mx-auto mb-3 md:mb-4" />
           <h3 className="text-base md:text-lg font-bold text-slate-600">No medicines found</h3>
@@ -233,7 +228,7 @@ export default function Inventory() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {filtered.map((med) => {
+          {medicines.map((med) => {
             const isSelected = selectedMeds.includes(med._id);
             return (
               <div 
@@ -331,7 +326,7 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Bulk Print Config Modal */}
+      {/* Bulk Print Config Modal (Unchanged) */}
       {showBulkModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
           <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
@@ -390,7 +385,7 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal (Unchanged) */}
       {editMed && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
           <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -448,50 +443,28 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Hidden Thermal Print Content */}
+      {/* Hidden Thermal Print Content (Unchanged) */}
       <div className="hidden">
         <div ref={printRef}>
           <style type="text/css" media="print">
             {`
-              @page { 
-                size: 50mm 25mm; 
-                margin: 0; 
-              }
-              body { 
-                margin: 0; 
-                padding: 0;
-              }
+              @page { size: 50mm 25mm; margin: 0; }
+              body { margin: 0; padding: 0; }
               .thermal-label {
-                width: 50mm;
-                height: 25mm;
-                page-break-after: always; 
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                box-sizing: border-box;
-                padding: 2mm;
-                overflow: hidden;
+                width: 50mm; height: 25mm; page-break-after: always; display: flex;
+                flex-direction: column; justify-content: center; align-items: center;
+                box-sizing: border-box; padding: 2mm; overflow: hidden;
               }
-              .thermal-label:last-child {
-                page-break-after: auto; 
-              }
+              .thermal-label:last-child { page-break-after: auto; }
             `}
           </style>
 
           {printQueue.map((item, index) => (
             <div key={`${item._id}-${index}`} className="thermal-label" style={{ backgroundColor: '#ffffff' }}>
               <Barcode 
-                value={item.barcodeId} 
-                width={1.2} 
-                height={32} 
-                fontSize={10} 
-                margin={0} 
-                background="#ffffff" 
-                lineColor="#000000" 
-                displayValue={true} 
+                value={item.barcodeId} width={1.2} height={32} fontSize={10} 
+                margin={0} background="#ffffff" lineColor="#000000" displayValue={true} 
               />
-              
               <div className="w-full text-center mt-[1px]">
                 <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate" style={{ fontFamily: 'sans-serif' }}>
                   BILL: {item.billNumber || "N/A"} | PUR: {item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString('en-GB') : "N/A"}
