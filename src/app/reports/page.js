@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
-import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw, Search, X, IndianRupee, ShoppingCart, PackageOpen, Award } from "lucide-react";
+import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw, Search, X, IndianRupee, ShoppingCart, PackageOpen, Award, Package, Receipt, TrendingUp } from "lucide-react";
 
 export default function Reports() {
-  const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [] });
+  // `todayOverview` state me add kar diya
+  const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [], todayOverview: {} });
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showAllDistributors, setShowAllDistributors] = useState(false);
@@ -20,7 +21,6 @@ export default function Reports() {
   const fetchReports = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      // cache: 'no-store' add kiya taaki hamesha fresh data aaye
       const res = await fetch("/api/reports", { cache: "no-store" });
       const result = await res.json();
       if (result.success) {
@@ -38,9 +38,9 @@ export default function Reports() {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  const filteredDistributors = data.distributorStock.filter((dist) =>
+  const filteredDistributors = data.distributorStock?.filter((dist) =>
     dist._id?.toLowerCase().includes(distributorSearch.toLowerCase())
-  );
+  ) || [];
 
   if (loading) {
     return (
@@ -52,7 +52,7 @@ export default function Reports() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 md:space-y-8 relative">
+    <div className="max-w-7xl mx-auto space-y-4 md:space-y-6 relative">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -71,14 +71,55 @@ export default function Reports() {
         </button>
       </div>
 
+      {/* NEW: Today's Flash Report (Daily Insights) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
+        {/* Revenue */}
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-lg text-white flex items-center hover:shadow-emerald-500/30 transition-shadow">
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mr-4 shrink-0">
+                <IndianRupee className="w-6 h-6 text-white" />
+            </div>
+            <div>
+                <p className="text-emerald-100 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Today's Profit / Revenue</p>
+                <p className="text-xl md:text-2xl font-extrabold flex items-center">
+                    ₹ {(data.todayOverview?.revenue || 0).toLocaleString('en-IN')}
+                </p>
+            </div>
+        </div>
+        
+        {/* Items Sold */}
+        <div className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex items-center">
+            <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mr-4 shrink-0">
+                <Package className="w-6 h-6 text-indigo-500" />
+            </div>
+            <div>
+                <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Items Sold Today</p>
+                <p className="text-xl md:text-2xl font-extrabold text-slate-700">
+                    {data.todayOverview?.itemsSold || 0}
+                </p>
+            </div>
+        </div>
+
+        {/* Bills Generated */}
+        <div className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex items-center">
+            <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mr-4 shrink-0">
+                <Receipt className="w-6 h-6 text-amber-500" />
+            </div>
+            <div>
+                <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Total Bills Generated</p>
+                <p className="text-xl md:text-2xl font-extrabold text-slate-700">
+                    {data.todayOverview?.billsGenerated || 0}
+                </p>
+            </div>
+        </div>
+      </div>
+
       {/* Top Performing Distributors Section */}
-      <div className="space-y-3 md:space-y-4">
+      <div className="space-y-3 md:space-y-4 pt-2">
         <h2 className="text-sm md:text-lg font-bold text-slate-700">Top Performing Distributors</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
-          {data.distributorStock.slice(0, 2).map((dist, index) => (
-            <div key={dist._id} className="relative bg-white p-4 md:p-6 rounded-[20px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col group hover:border-indigo-100 transition-all">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
+          {data.distributorStock?.slice(0, 2).map((dist, index) => (
+            <div key={dist._id} className="relative bg-white p-4 md:p-5 rounded-[20px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col group hover:border-indigo-100 transition-all">
               
-              {/* Rank 1 Badge (Fixed undefined check) */}
               {index === 0 && (dist?.revenueGenerated || 0) > 0 && (
                 <div className="absolute -top-3 -right-2 md:-right-4 bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 md:py-1.5 rounded-full shadow-lg flex items-center z-10 animate-bounce">
                   <Award className="w-3 h-3 md:w-4 md:h-4 mr-1" /> Top Earner
@@ -97,7 +138,6 @@ export default function Reports() {
                   <p className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Revenue</p>
                   <p className="text-base md:text-xl font-extrabold text-emerald-600 flex items-center justify-end">
                     <IndianRupee className="w-3 h-3 md:w-4 md:h-4 mr-0.5" />
-                    {/* Fallback to 0 if undefined */}
                     {(dist?.revenueGenerated || 0).toLocaleString('en-IN')}
                   </p>
                 </div>
@@ -121,7 +161,7 @@ export default function Reports() {
           ))}
         </div>
 
-        {data.distributorStock.length > 2 && (
+        {data.distributorStock?.length > 2 && (
           <div className="flex justify-end mt-2 md:mt-0">
             <button
               onClick={() => setShowAllDistributors(true)}
@@ -133,42 +173,89 @@ export default function Reports() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
+      {/* Alerts Grid (Ab isme 3 columns hain bade screen par jisse aapka Aaj ka Items list achhe se set ho) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
         
-        {/* Urgent Expiry Report */}
-        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-100 overflow-hidden flex flex-col">
-          <div className="bg-rose-50/50 p-4 md:p-6 border-b border-rose-100 flex items-center justify-between">
-            <h2 className="text-sm md:text-lg font-bold text-rose-700 flex items-center">
-              <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">60 Days Expiry Alert</span>
+        {/* NEW: Today's Sold Items List */}
+        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-emerald-100 overflow-hidden flex flex-col">
+          <div className="bg-emerald-50/50 p-4 md:p-5 border-b border-emerald-100 flex items-center justify-between">
+            <h2 className="text-sm md:text-lg font-bold text-emerald-700 flex items-center">
+              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">Today's Sold Items</span>
             </h2>
-            <span className="bg-rose-200 text-rose-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
-              {data.expiringSoon.length} Items
+            <span className="bg-emerald-200 text-emerald-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
+              {data.todayOverview?.soldItems?.length || 0} Items
             </span>
           </div>
           
-          <div className="p-1 md:p-2 max-h-[300px] md:max-h-[400px] overflow-y-auto custom-scrollbar">
-            {data.expiringSoon.length === 0 ? (
+          <div className="p-1 md:p-2 max-h-[300px] md:max-h-[350px] overflow-y-auto custom-scrollbar">
+            {(!data.todayOverview?.soldItems || data.todayOverview.soldItems.length === 0) ? (
+              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium">No sales yet today! 😴</p>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                    <th className="p-2.5 md:p-3 font-bold">Medicine</th>
+                    <th className="p-2.5 md:p-3 font-bold text-center">Qty</th>
+                    <th className="p-2.5 md:p-3 font-bold text-right">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {data.todayOverview.soldItems.map((item, index) => (
+                    <tr key={index} className="hover:bg-emerald-50/30 transition-colors">
+                      <td className="p-2.5 md:p-3 max-w-[120px]">
+                        <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight truncate" title={item.name}>{item.name}</p>
+                      </td>
+                      <td className="p-2.5 md:p-3 text-center">
+                        <span className="text-[10px] md:text-sm font-extrabold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg inline-block">
+                          {item.quantity}
+                        </span>
+                      </td>
+                      <td className="p-2.5 md:p-3 flex justify-end">
+                        <div className="flex items-center text-[10px] md:text-sm font-bold text-slate-700">
+                          <IndianRupee className="w-3 h-3 mr-0.5 text-slate-400" />
+                          {item.total.toLocaleString('en-IN')}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Urgent Expiry Report (Existing) */}
+        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-100 overflow-hidden flex flex-col">
+          <div className="bg-rose-50/50 p-4 md:p-5 border-b border-rose-100 flex items-center justify-between">
+            <h2 className="text-sm md:text-lg font-bold text-rose-700 flex items-center">
+              <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">60 Days Expiry</span>
+            </h2>
+            <span className="bg-rose-200 text-rose-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
+              {data.expiringSoon?.length || 0}
+            </span>
+          </div>
+          
+          <div className="p-1 md:p-2 max-h-[300px] md:max-h-[350px] overflow-y-auto custom-scrollbar">
+            {data.expiringSoon?.length === 0 ? (
               <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium">No medicines are expiring soon! 🎉</p>
             ) : (
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                    <th className="p-2.5 md:p-4 font-bold">Medicine</th>
-                    <th className="p-2.5 md:p-4 font-bold">Batch</th>
-                    <th className="p-2.5 md:p-4 font-bold text-right md:text-left">Expiry</th>
+                    <th className="p-2.5 md:p-3 font-bold">Medicine</th>
+                    <th className="p-2.5 md:p-3 font-bold text-right md:text-left">Expiry</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {data.expiringSoon.map((med) => (
+                  {data.expiringSoon?.map((med) => (
                     <tr key={med._id} className="hover:bg-rose-50/30 transition-colors">
-                      <td className="p-2.5 md:p-4 max-w-[120px] md:max-w-none">
-                        <p className="font-bold text-slate-700 text-xs md:text-base leading-tight md:leading-normal truncate">{med.name}</p>
-                        <p className="text-[9px] md:text-xs text-slate-400 mt-0.5 md:mt-0">Qty: <span className="font-bold text-rose-500">{med.quantity}</span></p>
+                      <td className="p-2.5 md:p-3 max-w-[120px] md:max-w-none">
+                        <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight md:leading-normal truncate" title={med.name}>{med.name}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">Qty: <span className="font-bold text-rose-500">{med.quantity}</span> | {med.batch}</p>
                       </td>
-                      <td className="p-2.5 md:p-4 text-[10px] md:text-sm font-medium text-slate-600 truncate max-w-[60px] md:max-w-none">{med.batch}</td>
-                      <td className="p-2.5 md:p-4 flex justify-end md:justify-start">
-                        <div className="flex items-center text-[9px] md:text-sm font-bold text-rose-600 bg-rose-50 px-2 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl w-fit whitespace-nowrap">
-                          <CalendarClock className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-1.5 shrink-0" />
+                      <td className="p-2.5 md:p-3 flex justify-end md:justify-start">
+                        <div className="flex items-center text-[9px] md:text-xs font-bold text-rose-600 bg-rose-50 px-2 py-1.5 rounded-lg w-fit whitespace-nowrap">
+                          <CalendarClock className="w-3 h-3 mr-1 shrink-0" />
                           {new Date(med.expiryDate).toLocaleDateString('en-GB')}
                         </div>
                       </td>
@@ -180,43 +267,37 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* Low Stock Report */}
-        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-amber-100 overflow-hidden flex flex-col mt-4 md:mt-0">
-          <div className="bg-amber-50/50 p-4 md:p-6 border-b border-amber-100 flex items-center justify-between">
+        {/* Low Stock Report (Existing) */}
+        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-amber-100 overflow-hidden flex flex-col mt-4 md:mt-0 lg:mt-0">
+          <div className="bg-amber-50/50 p-4 md:p-5 border-b border-amber-100 flex items-center justify-between">
             <h2 className="text-sm md:text-lg font-bold text-amber-700 flex items-center">
-              <TrendingDown className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">Low Stock Alert</span>
+              <TrendingDown className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">Low Stock</span>
             </h2>
             <span className="bg-amber-200 text-amber-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
-              {data.lowStock.length} Items
+              {data.lowStock?.length || 0}
             </span>
           </div>
           
-          <div className="p-1 md:p-2 max-h-[300px] md:max-h-[400px] overflow-y-auto custom-scrollbar">
-            {data.lowStock.length === 0 ? (
+          <div className="p-1 md:p-2 max-h-[300px] md:max-h-[350px] overflow-y-auto custom-scrollbar">
+            {data.lowStock?.length === 0 ? (
               <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium">All stock levels are optimal! 📦</p>
             ) : (
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                    <th className="p-2.5 md:p-4 font-bold">Medicine</th>
-                    <th className="p-2.5 md:p-4 font-bold">Distributor</th>
-                    <th className="p-2.5 md:p-4 font-bold text-right">Left</th>
+                    <th className="p-2.5 md:p-3 font-bold">Medicine</th>
+                    <th className="p-2.5 md:p-3 font-bold text-right">Left</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {data.lowStock.map((med) => (
+                  {data.lowStock?.map((med) => (
                     <tr key={med._id} className="hover:bg-amber-50/30 transition-colors">
-                      <td className="p-2.5 md:p-4 max-w-[120px] md:max-w-none">
-                        <p className="font-bold text-slate-700 text-xs md:text-base leading-tight md:leading-normal truncate">{med.name}</p>
-                        <p className="text-[9px] md:text-xs text-slate-400 mt-0.5 md:mt-0 truncate">Batch: {med.batch}</p>
+                      <td className="p-2.5 md:p-3 max-w-[120px] md:max-w-none">
+                        <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight md:leading-normal truncate" title={med.name}>{med.name}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5 truncate">Dist: {med.distributor}</p>
                       </td>
-                      <td className="p-2.5 md:p-4">
-                        <span className="bg-slate-100 text-slate-600 text-[9px] md:text-xs font-bold px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-md md:rounded-lg inline-block truncate max-w-[70px] md:max-w-[120px]">
-                          {med.distributor}
-                        </span>
-                      </td>
-                      <td className="p-2.5 md:p-4 text-right">
-                        <span className="text-sm md:text-lg font-extrabold text-amber-500 bg-amber-50 px-2 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl">
+                      <td className="p-2.5 md:p-3 text-right">
+                        <span className="text-sm md:text-base font-extrabold text-amber-500 bg-amber-50 px-2 py-1.5 rounded-xl inline-block">
                           {med.quantity}
                         </span>
                       </td>
@@ -230,11 +311,10 @@ export default function Reports() {
 
       </div>
 
-      {/* Pop Up Modal (View All Distributors) */}
+      {/* Pop Up Modal (View All Distributors - Unchanged Logic) */}
       {showAllDistributors && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[24px] md:rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
-            
             <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h2 className="text-lg md:text-xl font-bold text-slate-800 flex items-center">
                 <Truck className="w-5 h-5 mr-2 text-indigo-500" />
@@ -271,14 +351,11 @@ export default function Reports() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredDistributors.map((dist, index) => (
                     <div key={dist._id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col hover:shadow-md transition-all relative">
-                      
-                      {/* Rank 1 Badge in Modal */}
                       {index === 0 && (dist?.revenueGenerated || 0) > 0 && distributorSearch === "" && (
                         <div className="absolute -top-3 -right-2 bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md z-10 flex items-center">
                           <Award className="w-3 h-3 mr-0.5" /> #1 Earner
                         </div>
                       )}
-
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center space-x-3 truncate">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${index === 0 ? 'bg-amber-50 text-amber-500' : 'bg-indigo-50 text-indigo-500'}`}>
@@ -287,7 +364,6 @@ export default function Reports() {
                           <span className="font-bold text-slate-700 text-sm truncate" title={dist._id}>{dist._id}</span>
                         </div>
                       </div>
-
                       <div className="space-y-2 mt-auto">
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-slate-500 flex items-center"><ShoppingCart className="w-3 h-3 mr-1 text-slate-400"/> Sold Units</span>
