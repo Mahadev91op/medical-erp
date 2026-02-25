@@ -7,53 +7,69 @@ export async function GET() {
   try {
     await connectToDatabase();
 
-    // 1. Expiry Report (Agle 60 din mein expire hone wali dawaiyan)
     const sixtyDaysFromNow = new Date();
     sixtyDaysFromNow.setDate(sixtyDaysFromNow.getDate() + 60);
 
-    const expiringSoon = await Medicine.find({
-      expiryDate: { $lte: sixtyDaysFromNow },
-      quantity: { $gt: 0 } 
-    }).sort({ expiryDate: 1 }); 
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
 
-    // 2. Low Stock Report (Jinki quantity 10 ya usse kam hai)
-    const lowStock = await Medicine.find({
-      quantity: { $lt: 10, $gt: 0 }
-    }).sort({ quantity: 1 });
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
 
-    // 3. Current Stock grouped by Distributor (Kitna bacha hai)
-    const distributorStock = await Medicine.aggregate([
-      {
-        $group: {
-          _id: "$distributor", 
-          totalQuantity: { $sum: "$quantity" },
-          totalItems: { $sum: 1 } 
+    // 🚀 SPEED OPTIMIZATION: Promise.all se saari queries ek sath parallel chalengi.
+    // .lean() lagane se Mongoose documents plain JSON me convert ho jayenge jo 3x fast hote hain!
+    const [
+      expiringSoon,
+      lowStock,
+      distributorStock,
+      distributorPerformance,
+      todaysSales
+    ] = await Promise.all([
+      Medicine.find({
+        expiryDate: { $lte: sixtyDaysFromNow },
+        quantity: { $gt: 0 } 
+      }).sort({ expiryDate: 1 }).lean(), // ⚡ Fast read
+
+      Medicine.find({
+        quantity: { $lt: 10, $gt: 0 }
+      }).sort({ quantity: 1 }).lean(), // ⚡ Fast read
+
+      Medicine.aggregate([
+        {
+          $group: {
+            _id: "$distributor", 
+            totalQuantity: { $sum: "$quantity" },
+            totalItems: { $sum: 1 } 
+          }
         }
-      }
+      ]),
+
+      Sale.aggregate([
+        { $unwind: "$items" },
+        {
+          $lookup: {
+            from: "medicines", 
+            localField: "items.medicineId",
+            foreignField: "_id",
+            as: "medicineDetails"
+          }
+        },
+        { $unwind: "$medicineDetails" },
+        {
+          $group: {
+            _id: "$medicineDetails.distributor",
+            soldQuantity: { $sum: "$items.quantity" }, 
+            revenueGenerated: { $sum: "$items.total" } 
+          }
+        }
+      ]),
+
+      Sale.find({
+        date: { $gte: startOfToday, $lte: endOfToday }
+      }).lean() // ⚡ Fast read
     ]);
 
-    // 4. Sales Performance grouped by Distributor (Kitna bika aur kitna paisa aaya)
-    const distributorPerformance = await Sale.aggregate([
-      { $unwind: "$items" },
-      {
-        $lookup: {
-          from: "medicines", 
-          localField: "items.medicineId",
-          foreignField: "_id",
-          as: "medicineDetails"
-        }
-      },
-      { $unwind: "$medicineDetails" },
-      {
-        $group: {
-          _id: "$medicineDetails.distributor",
-          soldQuantity: { $sum: "$items.quantity" }, 
-          revenueGenerated: { $sum: "$items.total" } 
-        }
-      }
-    ]);
-
-    // 5. Merge Dono Data (Stock + Sales) & Sort by Top Revenue
+    // Merge Dono Data (Stock + Sales) & Sort by Top Revenue
     const completeDistributorData = distributorStock.map(stock => {
       const perf = distributorPerformance.find(p => p._id === stock._id);
       return {
@@ -65,19 +81,7 @@ export async function GET() {
       };
     }).sort((a, b) => b.revenueGenerated - a.revenueGenerated);
 
-    // -------------------------------------------------------------
-    // 6. TODAY'S SALES & OVERVIEW (Naya Feature: Aaj ka Hisaab)
-    // -------------------------------------------------------------
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
-
-    const todaysSales = await Sale.find({
-      date: { $gte: startOfToday, $lte: endOfToday }
-    });
-
+    // TODAY'S SALES & OVERVIEW
     let todayRevenue = 0;
     let todayItemsSold = 0;
     let soldItemsMap = {};
@@ -100,7 +104,6 @@ export async function GET() {
       });
     });
 
-    // Object ko Array mein convert karo aur sabse zyada bikne wali dawai upar rakho
     const todaySoldItemsList = Object.values(soldItemsMap).sort((a, b) => b.quantity - a.quantity);
 
     const todayOverview = {
