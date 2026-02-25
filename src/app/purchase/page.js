@@ -18,11 +18,11 @@ export default function PurchaseEntry() {
   useEffect(() => {
     const fetchDistributors = async () => {
       try {
-        const res = await fetch("/api/medicine?limit=1000");
+        // 🔥 OPTIMIZED: 1000s of data load karne ki jagah ab directly chota array load hoga backend se
+        const res = await fetch("/api/medicine?getDistributors=true");
         const data = await res.json();
         if (data.success) {
-          const uniqueDists = [...new Set(data.medicines.map(m => m.distributor).filter(Boolean))];
-          setDistributors(uniqueDists);
+          setDistributors(data.distributors);
         }
       } catch (error) {
         console.error("Error fetching distributors:", error);
@@ -43,8 +43,6 @@ export default function PurchaseEntry() {
       toast.error("Expiry date cannot be today or in the past!");
       return;
     }
-    
-    // Note: Purchase Date me past dates allowed hain isliye uspe validation nahi lagayi hai.
 
     setLoading(true);
     
@@ -123,7 +121,6 @@ export default function PurchaseEntry() {
               </div>
             </div>
 
-            {/* Bill Number aur Purchase Date ab Expiry wale row se upar aa gaya hai */}
             <div className="grid grid-cols-2 gap-3 md:gap-5">
               <div>
                 <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Dist. Bill Number</label>
@@ -194,11 +191,9 @@ export default function PurchaseEntry() {
               
               <div className="bg-white shadow-xl shadow-slate-200 rounded-lg md:rounded-xl p-3 md:p-4 mb-4 md:mb-8 scale-[0.85] md:scale-100 origin-center">
                 <div className="bg-white flex flex-col items-center justify-center overflow-hidden" style={{ width: '50mm', height: '25mm', padding: '2mm' }}>
-                  {/* Barcode ki height 32 kardi hai taaki space cover ho jaye */}
                   <Barcode value={savedMed.barcodeId} width={1.2} height={32} fontSize={10} margin={0} background="#ffffff" lineColor="#000000" displayValue={true} />
                   
                   <div className="w-full text-center mt-1">
-                    {/* Ab sirf Bill Number aur Purchase date hi dikhega */}
                     <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate">
                       BILL: {savedMed.billNumber} | PUR: {new Date(savedMed.purchaseDate).toLocaleDateString('en-GB')}
                     </p>

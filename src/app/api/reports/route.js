@@ -3,6 +3,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
 
+export const dynamic = 'force-dynamic'; // 🔥 BUG FIX: Next.js Vercel Cache bypass. Ab real-time me reports show hongi
+
 export async function GET() {
   try {
     await connectToDatabase();

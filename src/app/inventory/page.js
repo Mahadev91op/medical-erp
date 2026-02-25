@@ -29,7 +29,7 @@ export default function Inventory() {
     isActionActive.current = showBulkModal || !!editMed;
   }, [showBulkModal, editMed]);
 
-  // 🔥 DEBOUNCED SERVER-SIDE SEARCH: Typing rokne ke aadhe second baad automatically backend se data mangwayega (Fast & smooth)
+  // 🔥 DEBOUNCED SERVER-SIDE SEARCH
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       fetchMedicines(false, searchTerm);
@@ -105,6 +105,10 @@ export default function Inventory() {
       const res = await fetch(`/api/medicine?id=${id}`, { method: "DELETE" });
       if (res.ok) {
         toast.success("Medicine deleted successfully!");
+        
+        // 🔥 BUG FIX: Removed from selection if it was selected to prevent crash
+        setSelectedMeds(prev => prev.filter(medId => medId !== id)); 
+        
         fetchMedicines(true, searchTerm);
       }
     } catch (error) {
@@ -219,7 +223,6 @@ export default function Inventory() {
         </div>
       </div>
 
-      {/* Yahan 'filtered' ki jagah seedha 'medicines' array use karenge kyunki filter API kar raha hai */}
       {medicines.length === 0 ? (
         <div className="bg-white rounded-2xl md:rounded-3xl p-10 md:p-20 text-center border border-dashed border-slate-300">
           <Package className="w-12 h-12 md:w-16 md:h-16 text-slate-200 mx-auto mb-3 md:mb-4" />
@@ -326,7 +329,6 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Bulk Print Config Modal (Unchanged) */}
       {showBulkModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
           <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
@@ -385,7 +387,6 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Edit Modal (Unchanged) */}
       {editMed && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
           <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -443,7 +444,6 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Hidden Thermal Print Content (Unchanged) */}
       <div className="hidden">
         <div ref={printRef}>
           <style type="text/css" media="print">

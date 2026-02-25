@@ -4,6 +4,8 @@ import Medicine from "@/models/Medicine";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 
+export const dynamic = 'force-dynamic'; // 🔥 BUG FIX: Yeh API hamesha taaza (fresh) data degi, purana cache nahi dikhayegi
+
 async function isAdmin() {
     const session = await getServerSession(authOptions);
     return session?.user?.role === "admin";
@@ -13,15 +15,20 @@ export async function GET(req) {
     try {
         await connectToDatabase();
         const { searchParams } = new URL(req.url);
+
+        // 🔥 BUG FIX: Purchase page ko hang hone se bachane ke liye sirf Distributor ka naam bhejna (Data 100x fast load hoga)
+        if (searchParams.get("getDistributors") === "true") {
+            const distributors = await Medicine.distinct("distributor");
+            return NextResponse.json({ success: true, distributors });
+        }
+
         const page = parseInt(searchParams.get("page")) || 1;
-        const limit = parseInt(searchParams.get("limit")) || 100; // Limit lazmi hai
+        const limit = parseInt(searchParams.get("limit")) || 100; 
         const search = searchParams.get("search") || "";
         const skip = (page - 1) * limit;
 
-        // 🔥 SERVER-SIDE SEARCH FOR LAKHS OF DATA
         const query = { quantity: { $gt: 0 } };
         
-        // Agar user ne kuch search kiya hai, toh database usay fast search karega
         if (search) {
             query.$or = [
                 { name: { $regex: search, $options: "i" } },
