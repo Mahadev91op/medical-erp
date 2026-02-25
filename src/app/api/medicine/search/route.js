@@ -7,16 +7,13 @@ export async function GET(req) {
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const barcodeId = searchParams.get("barcode");
-    const allowEmpty = searchParams.get("allowEmpty") === "true";
 
     // 🚀 SPEED OPTIMIZATION: Used .lean()
     const medicine = await Medicine.findOne({ barcodeId }).lean();
     if (!medicine) return NextResponse.json({ success: false, error: "Not Found" }, { status: 404 });
 
-    // If searching for billing (allowEmpty is false), check stock
-    if (!allowEmpty && medicine.quantity <= 0) {
-      return NextResponse.json({ success: false, error: "Out of Stock!" }, { status: 400 });
-    }
+    // Ab hum stock 0 hone par yahan se error nahi bhejenge, 
+    // balki frontend par details dikhayenge aur wahan block karenge.
 
     return NextResponse.json({ success: true, medicine });
   } catch (error) {

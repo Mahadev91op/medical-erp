@@ -26,7 +26,6 @@ export default function QuickSell() {
     documentTitle: "Medical_Invoice",
   });
 
-  // State race condition fix for printing
   useEffect(() => {
     if (lastSale) {
       setTimeout(() => {
@@ -50,9 +49,15 @@ export default function QuickSell() {
       const data = await res.json();
       
       if (data.success) {
-        addToCart(data.medicine);
+        // 🔥 LOGIC FIX: Agar stock 0 hai toh cart me mat dalo, sirf details show karo
+        if (data.medicine.quantity <= 0) {
+          setSearchResults([data.medicine]);
+          toast.error(`${data.medicine.name} is completely Sold Out!`);
+        } else {
+          addToCart(data.medicine);
+        }
       } else {
-        toast.error("Medicine not found. Invalid barcode?"); 
+        toast.error(data.error || "Medicine not found. Invalid barcode?"); 
       }
     } catch (error) {
       toast.error("Error fetching medicine!");
@@ -82,12 +87,15 @@ export default function QuickSell() {
   };
 
   const addToCart = (med) => {
+    // 🔥 Double Check: Add hone se pehle block karna
+    if (med.quantity <= 0) {
+      toast.error(`${med.name} is out of stock!`);
+      return; 
+    } 
+
     const existingItem = cart.find(item => item._id === med._id);
     
-    if (med.quantity <= 0) {
-      toast.error(`${med.name} is out of stock (0)!`);
-    } 
-    else if (existingItem) {
+    if (existingItem) {
       if (existingItem.sellQuantity < med.quantity) {
         setCart(cart.map(item => item._id === med._id ? { ...item, sellQuantity: item.sellQuantity + 1 } : item));
         toast.success(`Quantity increased for ${med.name}`);
@@ -226,9 +234,16 @@ export default function QuickSell() {
                       </div>
 
                     </div>
-                    <button onClick={() => addToCart(med)} className="bg-emerald-100 text-emerald-700 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold hover:bg-emerald-200 transition-colors shrink-0">
-                      + Add
-                    </button>
+                    {/* 🔥 Agar Stock 0 hai toh Add button ki jagah "Sold Out" badge */}
+                    {med.quantity <= 0 ? (
+                      <button disabled className="bg-rose-100 text-rose-700 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold shrink-0 opacity-80 cursor-not-allowed border border-rose-200">
+                        Sold Out
+                      </button>
+                    ) : (
+                      <button onClick={() => addToCart(med)} className="bg-emerald-100 text-emerald-700 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold hover:bg-emerald-200 transition-colors shrink-0">
+                        + Add
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

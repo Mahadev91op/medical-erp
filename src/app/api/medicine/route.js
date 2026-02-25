@@ -6,7 +6,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 
 async function isAdmin() {
     const session = await getServerSession(authOptions);
-    return session ? .user ? .role === "admin";
+    return session?.user?.role === "admin";
 }
 
 export async function GET(req) {
@@ -17,9 +17,12 @@ export async function GET(req) {
         const limit = parseInt(searchParams.get("limit")) || 50;
         const skip = (page - 1) * limit;
 
+        // 🔥 FIX: Sirf wahi medicines fetch hongi jinka stock 0 se bada (greater than 0) hai
+        const query = { quantity: { $gt: 0 } };
+
         const [medicines, total] = await Promise.all([
-            Medicine.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-            Medicine.countDocuments()
+            Medicine.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            Medicine.countDocuments(query)
         ]);
 
         return NextResponse.json({
@@ -38,7 +41,6 @@ export async function POST(req) {
         await connectToDatabase();
         const data = await req.json();
 
-        // 🟢 DEBUG LOG 1: Check karna ki form se Data API tak pahuncha ya nahi
         console.log("➡️ DATA RECEIVED FROM FORM:", data);
 
         const uniqueBarcode = `MED-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
@@ -50,7 +52,6 @@ export async function POST(req) {
             mrp: Number(data.mrp)
         });
 
-        // 🟢 DEBUG LOG 2: Check karna ki Mongoose ne Data accept kiya ya reject kar diya
         console.log("➡️ DATA ACCEPTED BY DATABASE MODEL:", newMedicine);
 
         await newMedicine.save();
