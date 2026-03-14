@@ -84,7 +84,7 @@ export default function Inventory() {
 
   const handlePrintFn = useReactToPrint({
     contentRef: printRef,
-    documentTitle: "Barcode_Label", // Title change kiya hai
+    documentTitle: "Barcode_Label",
     onAfterPrint: () => {
       console.log("Print process finished, clearing queue.");
       setPrintQueue([]);
@@ -102,7 +102,7 @@ export default function Inventory() {
     if (printQueue.length > 0) {
       const timer = setTimeout(() => {
         handlePrintFn();
-      }, 400); 
+      }, 500);
       return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -451,7 +451,7 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* 🔥 FIX: Thermal Printer Specific CSS and margin removals */}
+      {/* 🔥 THE FINAL MASTER FIX: Text chipkane wala update */}
       <div style={{ position: 'absolute', top: '-10000px', left: '-10000px', overflow: 'hidden' }}>
         <div ref={printRef}>
           <style type="text/css" media="print">
@@ -465,8 +465,8 @@ export default function Inventory() {
                 padding: 0mm !important; 
               }
               .thermal-label {
-                width: 50mm; 
-                height: 25mm; 
+                width: 50mm !important; 
+                height: 25mm !important; 
                 page-break-after: always; 
                 page-break-inside: avoid;
                 display: flex;
@@ -474,9 +474,32 @@ export default function Inventory() {
                 justify-content: center; 
                 align-items: center;
                 box-sizing: border-box; 
-                overflow: hidden;
                 background-color: white;
+                overflow: hidden !important; 
+                /* 🔥 Scanner zone ke liye left/right 3mm padding rakhi hai */
+                padding: 1mm 3mm; 
               }
+              
+              .barcode-wrapper {
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+              }
+              
+              .barcode-wrapper svg {
+                max-width: 100% !important; 
+                max-height: 20mm !important; 
+                object-fit: contain;
+              }
+
+              .text-wrapper {
+                width: 100%;
+                text-align: center;
+                /* 🔥 Barcode ke theek niche text ko satane (chipkane) ke liye margin-top */
+                margin-top: 1px; 
+              }
+
               .thermal-label:last-child { 
                 page-break-after: auto; 
               }
@@ -485,21 +508,30 @@ export default function Inventory() {
 
           {printQueue.map((item, index) => (
             <div key={`${item._id}-${index}`} className="thermal-label">
-              <Barcode 
-                value={item.barcodeId} 
-                width={1.2} 
-                height={30} 
-                fontSize={10} 
-                margin={0} 
-                background="#ffffff" 
-                lineColor="#000000" 
-                displayValue={true} 
-              />
-              <div className="w-full text-center mt-[2px]">
+              
+              <div className="barcode-wrapper">
+                <Barcode 
+                  value={item.barcodeId} 
+                  format="CODE128"
+                  renderer="svg"     
+                  width={1.5}        
+                  height={40}        
+                  fontSize={10}      
+                  /* 🔥 margin=0 karne se Barcode ka internal white space khatam ho jayega jisse gap aa raha tha */
+                  margin={0}         
+                  textMargin={1}     
+                  background="#ffffff" 
+                  lineColor="#000000" 
+                  displayValue={true} 
+                />
+              </div>
+
+              <div className="text-wrapper">
                 <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate" style={{ fontFamily: 'sans-serif' }}>
                   BILL: {item.billNumber || "N/A"} | PUR: {item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString('en-GB') : "N/A"}
                 </p>
               </div>
+
             </div>
           ))}
         </div>
