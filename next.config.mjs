@@ -14,14 +14,12 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Wapas inko root level par rakhein (experimental se bahar)
-  reactCompiler: true,
-  turbopack: {}, 
-  
-  // Cross-origin network dev error ko chupane ke liye (Optional but recommended)
+  // reactCompiler ko hamesha experimental ke andar rakhna hota hai
   experimental: {
+    reactCompiler: true,
     allowedDevOrigins: ["localhost:3000", "10.89.231.77:3000"]
   }
+  turbopack: {}
 };
 
 export default withPWA(nextConfig);

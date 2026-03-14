@@ -82,18 +82,26 @@ export default function Inventory() {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
+  // 🔥 FIX 1: Print hone ke baad (onAfterPrint) hi queue ko clear karna hai
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
     documentTitle: "Bulk_Barcode_Labels",
+    onAfterPrint: () => {
+      console.log("Print process finished, clearing queue.");
+      setPrintQueue([]);
+      setShowBulkModal(false);
+      setSelectedMeds([]);
+    },
+    onPrintError: (error) => {
+      console.error("Print Error:", error);
+      toast.error("Error generating print!");
+    }
   });
 
   useEffect(() => {
     if(printQueue.length > 0) {
-      const timer = setTimeout(async () => {
+      const timer = setTimeout(() => {
         handlePrint();
-        setPrintQueue([]);
-        setShowBulkModal(false);
-        setSelectedMeds([]);
       }, 500); 
       return () => clearTimeout(timer);
     }
@@ -444,7 +452,8 @@ export default function Inventory() {
         </div>
       )}
 
-      <div className="hidden">
+      {/* 🔥 FIX 2: hidden class hata diya, screen se bahar (absolute position) bheja */}
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, overflow: 'hidden' }}>
         <div ref={printRef}>
           <style type="text/css" media="print">
             {`
