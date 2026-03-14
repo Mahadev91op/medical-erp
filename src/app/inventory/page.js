@@ -20,7 +20,7 @@ export default function Inventory() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [printCopies, setPrintCopies] = useState({}); 
   
-  const printRef = useRef();
+  const printRef = useRef(null);
   const [printQueue, setPrintQueue] = useState([]); 
   
   const isActionActive = useRef(false);
@@ -29,7 +29,7 @@ export default function Inventory() {
     isActionActive.current = showBulkModal || !!editMed;
   }, [showBulkModal, editMed]);
 
-  // 🔥 DEBOUNCED SERVER-SIDE SEARCH
+  // DEBOUNCED SERVER-SIDE SEARCH
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       fetchMedicines(false, searchTerm);
@@ -82,10 +82,9 @@ export default function Inventory() {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  // 🔥 FIX 1: Print hone ke baad (onAfterPrint) hi queue ko clear karna hai
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: "Bulk_Barcode_Labels",
+  const handlePrintFn = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: "Barcode_Label", // Title change kiya hai
     onAfterPrint: () => {
       console.log("Print process finished, clearing queue.");
       setPrintQueue([]);
@@ -95,17 +94,19 @@ export default function Inventory() {
     onPrintError: (error) => {
       console.error("Print Error:", error);
       toast.error("Error generating print!");
+      setPrintQueue([]);
     }
   });
 
   useEffect(() => {
-    if(printQueue.length > 0) {
+    if (printQueue.length > 0) {
       const timer = setTimeout(() => {
-        handlePrint();
-      }, 500); 
+        handlePrintFn();
+      }, 400); 
       return () => clearTimeout(timer);
     }
-  }, [printQueue, handlePrint]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [printQueue]);
 
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this entry?")) return;
@@ -113,10 +114,7 @@ export default function Inventory() {
       const res = await fetch(`/api/medicine?id=${id}`, { method: "DELETE" });
       if (res.ok) {
         toast.success("Medicine deleted successfully!");
-        
-        // 🔥 BUG FIX: Removed from selection if it was selected to prevent crash
         setSelectedMeds(prev => prev.filter(medId => medId !== id)); 
-        
         fetchMedicines(true, searchTerm);
       }
     } catch (error) {
@@ -166,6 +164,7 @@ export default function Inventory() {
       toast.error("No medicine selected!");
       return;
     }
+    
     setPrintQueue(queue); 
   };
 
@@ -452,29 +451,51 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* 🔥 FIX 2: hidden class hata diya, screen se bahar (absolute position) bheja */}
-      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', opacity: 0, overflow: 'hidden' }}>
+      {/* 🔥 FIX: Thermal Printer Specific CSS and margin removals */}
+      <div style={{ position: 'absolute', top: '-10000px', left: '-10000px', overflow: 'hidden' }}>
         <div ref={printRef}>
           <style type="text/css" media="print">
             {`
-              @page { size: 50mm 25mm; margin: 0; }
-              body { margin: 0; padding: 0; }
-              .thermal-label {
-                width: 50mm; height: 25mm; page-break-after: always; display: flex;
-                flex-direction: column; justify-content: center; align-items: center;
-                box-sizing: border-box; padding: 2mm; overflow: hidden;
+              @page { 
+                size: 50mm 25mm; 
+                margin: 0mm !important; 
               }
-              .thermal-label:last-child { page-break-after: auto; }
+              body { 
+                margin: 0mm !important; 
+                padding: 0mm !important; 
+              }
+              .thermal-label {
+                width: 50mm; 
+                height: 25mm; 
+                page-break-after: always; 
+                page-break-inside: avoid;
+                display: flex;
+                flex-direction: column; 
+                justify-content: center; 
+                align-items: center;
+                box-sizing: border-box; 
+                overflow: hidden;
+                background-color: white;
+              }
+              .thermal-label:last-child { 
+                page-break-after: auto; 
+              }
             `}
           </style>
 
           {printQueue.map((item, index) => (
-            <div key={`${item._id}-${index}`} className="thermal-label" style={{ backgroundColor: '#ffffff' }}>
+            <div key={`${item._id}-${index}`} className="thermal-label">
               <Barcode 
-                value={item.barcodeId} width={1.2} height={32} fontSize={10} 
-                margin={0} background="#ffffff" lineColor="#000000" displayValue={true} 
+                value={item.barcodeId} 
+                width={1.2} 
+                height={30} 
+                fontSize={10} 
+                margin={0} 
+                background="#ffffff" 
+                lineColor="#000000" 
+                displayValue={true} 
               />
-              <div className="w-full text-center mt-[1px]">
+              <div className="w-full text-center mt-[2px]">
                 <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate" style={{ fontFamily: 'sans-serif' }}>
                   BILL: {item.billNumber || "N/A"} | PUR: {item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString('en-GB') : "N/A"}
                 </p>
