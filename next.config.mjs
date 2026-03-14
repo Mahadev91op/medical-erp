@@ -18,7 +18,7 @@ const nextConfig = {
   experimental: {
     reactCompiler: true,
     allowedDevOrigins: ["localhost:3000", "10.89.231.77:3000"]
-  }
+  }, // <-- Yahan par comma (,) lagana zaroori hai
   turbopack: {}
 };
 

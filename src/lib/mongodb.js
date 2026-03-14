@@ -3,13 +3,9 @@ import mongoose from "mongoose";
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI environment variable inside .env");
+  throw new Error("🚨 Please define the MONGODB_URI environment variable inside .env");
 }
 
-/**
- * Next.js runs in a serverless environment, so we create a global variable 
- * to prevent creating new connections repeatedly during development.
- */
 let cached = global.mongoose;
 
 if (!cached) {
@@ -17,21 +13,28 @@ if (!cached) {
 }
 
 export async function connectToDatabase() {
-  // If a connection already exists, return it (Fast response)
   if (cached.conn) {
+    console.log("⚡ Purana MongoDB connection use ho raha hai.");
     return cached.conn;
   }
 
-  // If there is no connection, create a new one
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false, // Prevents Mongoose from buffering queries
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000, // 5 second me timeout hoga, website infinite load nahi hogi
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log("✅ MongoDB Connected Successfully!");
-      return mongoose;
-    });
+    console.log("⏳ MongoDB se connect ho raha hai...");
+    
+    cached.promise = mongoose.connect(MONGODB_URI, opts)
+      .then((mongoose) => {
+        console.log("✅ MongoDB Connected Successfully!");
+        return mongoose;
+      })
+      .catch((err) => {
+        console.error("❌ MongoDB Connection Error:", err.message);
+        throw err;
+      });
   }
   
   cached.conn = await cached.promise;

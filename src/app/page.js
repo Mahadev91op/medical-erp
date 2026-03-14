@@ -12,19 +12,25 @@ export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Live Data Fetch Function
+  // Live Data Fetch Function (With Console Debugging)
   const fetchDashboardData = async (silent = false) => {
     if (!silent) setLoading(true);
+    console.log("🟢 Dashboard API ko call ja rahi hai...");
     try {
       const res = await fetch("/api/dashboard", { cache: "no-store" });
+      console.log("🟡 API Status:", res.status);
+      
       const data = await res.json();
+      console.log("🟣 API Response Data:", data);
+
       if (data.success) {
         setDashboardData(data);
       } else {
         toast.error("Failed to load dashboard data");
       }
     } catch (error) {
-      console.error("Dashboard Error:", error);
+      console.error("🔴 Dashboard Fetch Error:", error);
+      toast.error("Network ya Server error aaya hai!");
     }
     if (!silent) setLoading(false);
   };
