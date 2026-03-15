@@ -2,22 +2,22 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
     const barcodeId = searchParams.get("barcode");
 
-    // Agar empty scan hua toh error bhej do
     if (!barcodeId || barcodeId.trim() === "") {
         return NextResponse.json({ success: false, error: "Empty Barcode" }, { status: 400 });
     }
 
-    // 🚀 BUG FIX: Clean barcode aur Regex use kiya gaya hai taaki extra spaces ya case mismatch problem na karein
     const cleanBarcode = barcodeId.trim();
 
+    // Fast Regex Search for matching Barcode exactly (Case Insensitive)
     const medicine = await Medicine.findOne({ 
-        // Case-insensitive aur exact match smart search
         barcodeId: { $regex: new RegExp(`^${cleanBarcode}$`, "i") } 
     }).lean();
 
