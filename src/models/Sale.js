@@ -20,6 +20,6 @@ const SaleSchema = new mongoose.Schema({
 
 // 🚀 SPEED OPTIMIZATION FOR REPORTS
 SaleSchema.index({ date: -1 });
-SaleSchema.index({ "items.medicineId": 1 }); // Har dawai ka link fast dhoondne ke liye
+SaleSchema.index({ "items.medicineId": 1 });
 
 export default mongoose.models.Sale || mongoose.model("Sale", SaleSchema);

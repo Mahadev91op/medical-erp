@@ -18,7 +18,6 @@ const MedicineSchema = new mongoose.Schema({
 });
 
 // 🚀 ENTERPRISE SPEED OPTIMIZATION FOR LAKHS OF DATA
-// Ye Indexes 2 Lakh data hone par bhi search results ko micro-seconds mein layenge
 MedicineSchema.index({ name: 1 }); 
 MedicineSchema.index({ barcodeId: 1 });
 MedicineSchema.index({ distributor: 1 });

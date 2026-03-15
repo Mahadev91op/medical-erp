@@ -8,12 +8,22 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const barcodeId = searchParams.get("barcode");
 
-    // 🚀 SPEED OPTIMIZATION: Used .lean()
-    const medicine = await Medicine.findOne({ barcodeId }).lean();
-    if (!medicine) return NextResponse.json({ success: false, error: "Not Found" }, { status: 404 });
+    // Agar empty scan hua toh error bhej do
+    if (!barcodeId || barcodeId.trim() === "") {
+        return NextResponse.json({ success: false, error: "Empty Barcode" }, { status: 400 });
+    }
 
-    // Ab hum stock 0 hone par yahan se error nahi bhejenge, 
-    // balki frontend par details dikhayenge aur wahan block karenge.
+    // 🚀 BUG FIX: Clean barcode aur Regex use kiya gaya hai taaki extra spaces ya case mismatch problem na karein
+    const cleanBarcode = barcodeId.trim();
+
+    const medicine = await Medicine.findOne({ 
+        // Case-insensitive aur exact match smart search
+        barcodeId: { $regex: new RegExp(`^${cleanBarcode}$`, "i") } 
+    }).lean();
+
+    if (!medicine) {
+        return NextResponse.json({ success: false, error: "Medicine Not Found" }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true, medicine });
   } catch (error) {

@@ -3,7 +3,6 @@ import { useState, useRef, useEffect } from "react";
 import { ScanBarcode, ShoppingCart, Trash2, CheckCircle, Loader2, Camera, IndianRupee, Search } from "lucide-react";
 import CameraScanner from "@/components/sell/CameraScanner"; 
 import toast, { Toaster } from "react-hot-toast";
-import { useReactToPrint } from "react-to-print";
 
 export default function QuickSell() {
   const [barcode, setBarcode] = useState("");
@@ -17,23 +16,6 @@ export default function QuickSell() {
   const [showCamera, setShowCamera] = useState(false);
   const inputRef = useRef(null);
 
-  // Invoice Printing Logic
-  const invoiceRef = useRef();
-  const [lastSale, setLastSale] = useState(null);
-
-  const handlePrintInvoice = useReactToPrint({
-    content: () => invoiceRef.current,
-    documentTitle: "Medical_Invoice",
-  });
-
-  useEffect(() => {
-    if (lastSale) {
-      setTimeout(() => {
-        handlePrintInvoice();
-      }, 300); 
-    }
-  }, [lastSale]);
-
   useEffect(() => {
     if (!showCamera) {
       inputRef.current?.focus();
@@ -45,11 +27,10 @@ export default function QuickSell() {
     
     setLoading(true);
     try {
-      const res = await fetch(`/api/medicine/search?barcode=${scannedCode}`);
+      const res = await fetch(`/api/medicine/search?barcode=${encodeURIComponent(scannedCode.trim())}`);
       const data = await res.json();
       
       if (data.success) {
-        // 🔥 LOGIC FIX: Agar stock 0 hai toh cart me mat dalo, sirf details show karo
         if (data.medicine.quantity <= 0) {
           setSearchResults([data.medicine]);
           toast.error(`${data.medicine.name} is completely Sold Out!`);
@@ -57,7 +38,7 @@ export default function QuickSell() {
           addToCart(data.medicine);
         }
       } else {
-        toast.error(data.error || "Medicine not found. Invalid barcode?"); 
+        toast.error(data.error || "Medicine not found."); 
       }
     } catch (error) {
       toast.error("Error fetching medicine!");
@@ -68,29 +49,11 @@ export default function QuickSell() {
     inputRef.current?.focus();
   };
 
-  // const handleManualSearch = async (e) => {
-  //   e.preventDefault();
-  //   if (!manualSearch.trim()) return;
-  //   setLoading(true);
-  //   try {
-  //     const res = await fetch(`/api/medicine?limit=100`);
-  //     const data = await res.json();
-  //     if (data.success) {
-  //       const found = data.medicines.filter(m => m.name.toLowerCase().includes(manualSearch.toLowerCase()));
-  //       setSearchResults(found);
-  //       if(found.length === 0) toast.error("No medicine found with this name");
-  //     }
-  //   } catch (error) {
-  //     toast.error("Search failed");
-  //   }
-  //   setLoading(false);
-  // };
   const handleManualSearch = async (e) => {
     e.preventDefault();
     if (!manualSearch.trim()) return;
     setLoading(true);
     try {
-      // 🔥 FAST SERVER-SIDE SEARCH: Ab 2 Lakh data browser me load hone ki jagah seedhe search hokar aayega
       const res = await fetch(`/api/medicine?search=${encodeURIComponent(manualSearch)}&limit=50`);
       const data = await res.json();
       if (data.success) {
@@ -104,7 +67,6 @@ export default function QuickSell() {
   };
 
   const addToCart = (med) => {
-    // 🔥 Double Check: Add hone se pehle block karna
     if (med.quantity <= 0) {
       toast.error(`${med.name} is out of stock!`);
       return; 
@@ -147,15 +109,6 @@ export default function QuickSell() {
       const data = await res.json();
       if (data.success) {
         toast.success(`✅ Sale Complete! Bill: ₹${data.totalAmount}`);
-        
-        setLastSale({
-          items: [...cart],
-          total: data.totalAmount,
-          paymentMethod,
-          date: new Date().toLocaleString(),
-          saleId: data.saleId
-        });
-
         setCart([]); 
         setPaymentMethod("Cash");
       } else {
@@ -232,7 +185,7 @@ export default function QuickSell() {
             </form>
           </div>
 
-          {/* Search Results Display (FULL DATA) */}
+          {/* Search Results Display */}
           {searchResults.length > 0 && (
             <div className="bg-white p-3 md:p-4 rounded-2xl md:rounded-3xl shadow-sm border border-emerald-100">
               <h3 className="text-xs md:text-sm font-bold mb-2 md:mb-3 text-slate-700">Search Results:</h3>
@@ -242,16 +195,13 @@ export default function QuickSell() {
                     <div className="flex-1 pr-2 md:pr-3 min-w-0">
                       <p className="font-bold text-xs md:text-sm text-slate-800 truncate">{med.name}</p>
                       
-                      {/* Pura Data Badges in Search */}
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                         <span className="text-[8px] md:text-[9px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded shadow-sm">Stock: {med.quantity}</span>
                         <span className="text-[8px] md:text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded shadow-sm">₹{med.mrp}</span>
                         <span className="text-[8px] md:text-[9px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-1.5 py-0.5 rounded shadow-sm">Exp: {new Date(med.expiryDate).toLocaleDateString('en-GB')}</span>
                         {med.rackNumber && <span className="text-[8px] md:text-[9px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded shadow-sm">Rack: {med.rackNumber}</span>}
                       </div>
-
                     </div>
-                    {/* 🔥 Agar Stock 0 hai toh Add button ki jagah "Sold Out" badge */}
                     {med.quantity <= 0 ? (
                       <button disabled className="bg-rose-100 text-rose-700 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold shrink-0 opacity-80 cursor-not-allowed border border-rose-200">
                         Sold Out
@@ -284,7 +234,6 @@ export default function QuickSell() {
                     <div className="flex-1 pr-0 sm:pr-4 min-w-0">
                       <p className="font-bold text-slate-800 text-sm md:text-lg truncate">{item.name}</p>
                       
-                      {/* Pura Data Badges in Cart */}
                       <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1 mb-1.5 md:mb-2">
                         <span className="text-[9px] md:text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Batch: {item.batch}</span>
                         <span className="text-[9px] md:text-[10px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Exp: {new Date(item.expiryDate).toLocaleDateString('en-GB')}</span>
@@ -353,56 +302,6 @@ export default function QuickSell() {
           >
             {checkoutLoading ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : "Complete Sale"}
           </button>
-        </div>
-      </div>
-
-      {/* Hidden Invoice Template for Thermal Printing (80mm) */}
-      <div className="hidden">
-        <div ref={invoiceRef} className="p-4 text-[10px] font-mono leading-tight text-black" style={{ width: '80mm' }}>
-          <div className="text-center mb-2">
-            <h2 className="text-sm font-bold uppercase">Medical ERP Store</h2>
-            <p>123, Market Road, City Name</p>
-            <p>GSTIN: 09XXXXXXXXXXXX</p>
-            <p className="border-b border-dashed my-1"></p>
-            <p className="font-bold">CASH MEMO / INVOICE</p>
-          </div>
-          
-          <div className="mb-2">
-            <p>Date: {lastSale?.date}</p>
-            <p>Bill No: {lastSale?.saleId?.slice(-6).toUpperCase()}</p>
-            <p>Payment: {lastSale?.paymentMethod}</p>
-          </div>
-
-          <table className="w-full border-t border-b border-dashed my-2 py-1">
-            <thead>
-              <tr className="text-left">
-                <th className="pb-1">Item</th>
-                <th className="pb-1 text-center">Qty</th>
-                <th className="pb-1 text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lastSale?.items.map((item, i) => (
-                <tr key={i}>
-                  <td className="py-0.5">{item.name}</td>
-                  <td className="text-center">{item.sellQuantity}</td>
-                  <td className="text-right">₹{item.mrp * item.sellQuantity}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="space-y-1">
-            <div className="flex justify-between font-bold text-xs pt-1 border-t border-dashed">
-              <span>GRAND TOTAL:</span>
-              <span>₹{lastSale?.total}</span>
-            </div>
-          </div>
-
-          <div className="text-center mt-6">
-            <p className="border-t border-dashed pt-2">Thank you! Visit Again.</p>
-            <p className="text-[8px] opacity-70 mt-1">Software by MedicalERP</p>
-          </div>
         </div>
       </div>
     </div>

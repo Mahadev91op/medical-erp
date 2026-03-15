@@ -3,7 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
 
-export const dynamic = 'force-dynamic'; // 🔥 BUG FIX: Next.js Vercel Cache bypass. Ab real-time me reports show hongi
+export const dynamic = 'force-dynamic'; 
 
 export async function GET() {
   try {
@@ -18,8 +18,6 @@ export async function GET() {
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
 
-    // 🚀 SPEED OPTIMIZATION: Promise.all se saari queries ek sath parallel chalengi.
-    // .lean() lagane se Mongoose documents plain JSON me convert ho jayenge jo 3x fast hote hain!
     const [
       expiringSoon,
       lowStock,
@@ -30,11 +28,11 @@ export async function GET() {
       Medicine.find({
         expiryDate: { $lte: sixtyDaysFromNow },
         quantity: { $gt: 0 } 
-      }).sort({ expiryDate: 1 }).lean(), // ⚡ Fast read
+      }).sort({ expiryDate: 1 }).lean(), 
 
       Medicine.find({
         quantity: { $lt: 10, $gt: 0 }
-      }).sort({ quantity: 1 }).lean(), // ⚡ Fast read
+      }).sort({ quantity: 1 }).lean(), 
 
       Medicine.aggregate([
         {
@@ -68,10 +66,9 @@ export async function GET() {
 
       Sale.find({
         date: { $gte: startOfToday, $lte: endOfToday }
-      }).lean() // ⚡ Fast read
+      }).lean() 
     ]);
 
-    // Merge Dono Data (Stock + Sales) & Sort by Top Revenue
     const completeDistributorData = distributorStock.map(stock => {
       const perf = distributorPerformance.find(p => p._id === stock._id);
       return {
@@ -83,7 +80,6 @@ export async function GET() {
       };
     }).sort((a, b) => b.revenueGenerated - a.revenueGenerated);
 
-    // TODAY'S SALES & OVERVIEW
     let todayRevenue = 0;
     let todayItemsSold = 0;
     let soldItemsMap = {};
