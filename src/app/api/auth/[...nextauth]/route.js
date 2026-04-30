@@ -24,22 +24,16 @@ export const authOptions = {
           throw new Error("Server Error: .env file me ADMIN_USERNAME ya ADMIN_PASSWORD set nahi hai!");
         }
 
-        // 2. Database me user dhundo
+        // 2. Pehle check karo ki kya ye Admin hai (Seedha .env se)
+        if (credentials.username === envAdminUser && credentials.password === envAdminPass) {
+          return { id: "admin_id_env", name: envAdminUser, role: "admin" };
+        }
+
+        // 3. Agar admin nahi hai, toh database me doosre users dhundo (Staff ke liye)
         const user = await User.findOne({ username: credentials.username });
         
-        // 3. Agar naya system hai aur database me koi nahi hai
         if (!user) {
-          // Jo user ne likha hai, wo .env wale se exact match hona chahiye
-          if (credentials.username === envAdminUser && credentials.password === envAdminPass) {
-            const hashedPassword = await bcrypt.hash(envAdminPass, 10); // .env wale password ko hash karo
-            const newUser = await User.create({
-              username: envAdminUser,
-              password: hashedPassword,
-              role: "admin"
-            });
-            return { id: newUser._id.toString(), name: newUser.username, role: newUser.role };
-          }
-          throw new Error("User nahi mila. Kripya sahi username dalein.");
+          throw new Error("User nahi mila ya password galat hai.");
         }
 
         // 4. Agar user database me mil gaya, toh password match karo

@@ -4,11 +4,17 @@ import Medicine from "@/models/Medicine";
 
 export const dynamic = 'force-dynamic'; 
 
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 async function isAdmin() {
-    // Local database aur testing ke liye temporarily sabko admin maan rahe hain 
-    // taaki "Unauthorized" error aaye bina medicines easily add/edit ho sakein.
-    return true; 
+    const session = await getServerSession(authOptions);
+    return session?.user?.role === "admin";
 }
+
+const escapeRegex = (string) => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
 
 export async function GET(req) {
     try {
@@ -28,10 +34,11 @@ export async function GET(req) {
         const query = { quantity: { $gt: 0 } };
         
         if (search) {
+            const escapedSearch = escapeRegex(search);
             query.$or = [
-                { name: { $regex: search, $options: "i" } },
-                { batch: { $regex: search, $options: "i" } },
-                { barcodeId: { $regex: search, $options: "i" } }
+                { name: { $regex: escapedSearch, $options: "i" } },
+                { batch: { $regex: escapedSearch, $options: "i" } },
+                { barcodeId: { $regex: escapedSearch, $options: "i" } }
             ];
         }
 

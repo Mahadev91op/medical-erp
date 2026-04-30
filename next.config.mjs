@@ -14,11 +14,7 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // reactCompiler ko hamesha experimental ke andar rakhna hota hai
-  experimental: {
-    reactCompiler: true,
-    allowedDevOrigins: ["localhost:3000", "10.89.231.77:3000"]
-  }, // <-- Yahan par comma (,) lagana zaroori hai
+  reactCompiler: true,
   turbopack: {}
 };
 

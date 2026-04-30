@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { exec } from "child_process";
 import util from "util";
 import fs from "fs";
+import path from "path";
 
 const execPromise = util.promisify(exec);
 
@@ -9,8 +10,19 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        // Asli backup folder ka path jahan database save hua tha
-        const backupFolder = "D:\\MedicalBackup\\medical-erp"; 
+        const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/medicalshop";
+        const backupBaseDir = process.env.BACKUP_DIR || path.join(process.cwd(), "public", "backups");
+        
+        let dbName = "medicalshop";
+        try {
+            const url = new URL(mongoUri);
+            dbName = url.pathname.substring(1) || "medicalshop"; 
+        } catch(e) {
+             const parts = mongoUri.split('/');
+             dbName = parts[parts.length - 1].split('?')[0];
+        }
+
+        const backupFolder = path.join(backupBaseDir, dbName);
 
         if (!fs.existsSync(backupFolder)) {
              return NextResponse.json({ 
@@ -20,7 +32,7 @@ export async function GET() {
         }
 
         // 🚀 SMART LOGIC: '--drop' ka matlab hai pehle current data ko saaf karo, phir backup dalo
-        const command = `mongorestore --uri="mongodb://127.0.0.1:27017/medical-erp" --drop "${backupFolder}"`;
+        const command = `mongorestore --uri="${mongoUri}" --drop "${backupFolder}"`;
         
         try {
             const { stdout, stderr } = await execPromise(command);
@@ -31,8 +43,10 @@ export async function GET() {
             });
         } catch (err) {
             // Agar normal command fail ho toh path wali command chalayega
-            const mongorestorePath = `"C:\\Program Files\\MongoDB\\Tools\\100\\bin\\mongorestore.exe"`;
-            const fallbackCommand = `${mongorestorePath} --uri="mongodb://127.0.0.1:27017/medical-erp" --drop "${backupFolder}"`;
+            const defaultMongoRestore = `"C:\\Program Files\\MongoDB\\Tools\\100\\bin\\mongorestore.exe"`;
+            const mongorestoreExe = process.env.MONGORESTORE_PATH ? `"${process.env.MONGORESTORE_PATH}"` : defaultMongoRestore;
+            
+            const fallbackCommand = `${mongorestoreExe} --uri="${mongoUri}" --drop "${backupFolder}"`;
             
             const { stdout, stderr } = await execPromise(fallbackCommand);
             return NextResponse.json({ 

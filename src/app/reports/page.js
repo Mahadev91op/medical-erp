@@ -17,14 +17,6 @@ export default function Reports() {
   const [showAllBottomExpiring, setShowAllBottomExpiring] = useState(false);
   const [showAllBottomLowStock, setShowAllBottomLowStock] = useState(false);
 
-  useEffect(() => {
-    fetchReports();
-    const interval = setInterval(() => {
-      fetchReports(true);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
   const fetchReports = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
@@ -44,6 +36,14 @@ export default function Reports() {
     await fetchReports(true);
     setTimeout(() => setIsRefreshing(false), 500);
   };
+
+  useEffect(() => {
+    fetchReports();
+    const interval = setInterval(() => {
+      fetchReports(true);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const filteredDistributors = data.distributorStock?.filter((dist) =>
     dist._id?.toLowerCase().includes(distributorSearch.toLowerCase())
@@ -87,7 +87,7 @@ export default function Reports() {
                 <IndianRupee className="w-6 h-6 text-white" />
             </div>
             <div>
-                <p className="text-emerald-100 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Today's Profit / Revenue</p>
+                <p className="text-emerald-100 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Today&apos;s Profit / Revenue</p>
                 <p className="text-xl md:text-2xl font-extrabold flex items-center">
                     ₹ {(data.todayOverview?.revenue || 0).toLocaleString('en-IN')}
                 </p>
@@ -194,7 +194,7 @@ export default function Reports() {
         <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-emerald-100 overflow-hidden flex flex-col">
           <div className="bg-emerald-50/50 p-4 md:p-5 border-b border-emerald-100 flex items-center justify-between">
             <h2 className="text-sm md:text-lg font-bold text-emerald-700 flex items-center">
-              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">Today's Sold Items</span>
+              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">Today&apos;s Sold Items</span>
             </h2>
             <span className="bg-emerald-200 text-emerald-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
               {data.todayOverview?.soldItems?.length || 0} Items
@@ -449,7 +449,7 @@ export default function Reports() {
               {filteredDistributors.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-slate-400">
                   <Search className="w-10 h-10 mb-3 text-slate-300" />
-                  <p className="text-sm md:text-base font-medium">No distributors found matching "{distributorSearch}"</p>
+                  <p className="text-sm md:text-base font-medium">No distributors found matching &quot;{distributorSearch}&quot;</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

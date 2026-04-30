@@ -3,10 +3,12 @@ import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
 
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 export async function POST(req) {
-  // Temporary bypass for local development to avoid "Unauthorized" blocking
-  // const session = await getServerSession(authOptions);
-  // if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     await connectToDatabase();
@@ -32,10 +34,19 @@ export async function POST(req) {
       if (!med) throw new Error(`${item.name} database me nahi mili!`);
       if (med.quantity < item.sellQuantity) throw new Error(`${item.name} ka stock kam hai! Available: ${med.quantity}`);
 
-      med.quantity -= item.sellQuantity;
+      // Atomic stock update to prevent race conditions
+      const updatePromise = Medicine.updateOne(
+        { _id: med._id, quantity: { $gte: item.sellQuantity } },
+        { $inc: { quantity: -item.sellQuantity } }
+      ).then(res => {
+         if (res.modifiedCount === 0) {
+           throw new Error(`${item.name} ka stock kam hai ya update fail ho gaya!`);
+         }
+         return res;
+      });
       
       // Stock update ko save array me daalo
-      savePromises.push(med.save());
+      savePromises.push(updatePromise);
 
       const itemTotal = item.sellQuantity * (item.mrp || 0);
       calculatedTotal += itemTotal;

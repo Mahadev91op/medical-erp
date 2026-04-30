@@ -26,8 +26,4 @@ MedicineSchema.index({ quantity: 1 });
 MedicineSchema.index({ expiryDate: 1 });
 MedicineSchema.index({ createdAt: -1 });
 
-if (mongoose.models.Medicine) {
-    delete mongoose.models.Medicine;
-}
-
-export default mongoose.model("Medicine", MedicineSchema);
+export default mongoose.models.Medicine || mongoose.model("Medicine", MedicineSchema);

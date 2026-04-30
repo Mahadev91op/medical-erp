@@ -29,19 +29,20 @@ export default function Dashboard() {
     if (!silent) setLoading(false);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchDashboardData(true);
+    setTimeout(() => setIsRefreshing(false), 500); 
+  };
+
   useEffect(() => {
     fetchDashboardData();
     const interval = setInterval(() => {
       fetchDashboardData(true);
     }, 30000); 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchDashboardData(true);
-    setTimeout(() => setIsRefreshing(false), 500); 
-  };
 
   // 📦 BACKUP LENE KA FUNCTION
   const handleBackup = async () => {
@@ -81,6 +82,7 @@ export default function Dashboard() {
       
       if (data.success) {
         toast.success(data.message, { id: toastId, duration: 6000 });
+        alert(`✅ RESTORE SUCCESSFUL!\n\n${data.message}`);
         // Restore hone ke baad website ko naye data ke sath refresh karo
         setTimeout(() => window.location.reload(), 2000);
       } else {
