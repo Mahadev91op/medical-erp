@@ -6,7 +6,6 @@ import {
   PackagePlus, 
   ScanBarcode, 
   BarChart3, 
-  Settings, 
   LogOut,
   Package 
 } from 'lucide-react';
@@ -31,7 +30,6 @@ const Sidebar = () => {
   );
 
   return (
-    // Yahan sirf z-30 ko z-[60] kiya gaya hai taaki navbar ke upar rahe
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-100 hidden lg:flex flex-col z-[60]">
       <div className="p-8">
         <div className="flex items-center space-x-3 mb-10">
