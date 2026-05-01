@@ -3,7 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
 
-export const dynamic = 'force-dynamic'; 
+export const revalidate = 60; // 🚀 SPEED OPTIMIZATION: Cache for 60 seconds 
 
 export async function GET() {
   try {
@@ -45,6 +45,7 @@ export async function GET() {
       ]),
 
       Sale.aggregate([
+        { $match: { date: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) } } }, // 🚀 SPEED OPTIMIZATION: Limit to 30 days
         { $unwind: "$items" },
         {
           $lookup: {

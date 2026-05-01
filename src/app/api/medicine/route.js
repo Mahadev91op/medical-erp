@@ -42,9 +42,10 @@ export async function GET(req) {
             ];
         }
 
+        // 🚀 SPEED OPTIMIZATION: O(1) count for default pagination instead of O(N) full scan
         const [medicines, total] = await Promise.all([
             Medicine.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-            Medicine.countDocuments(query)
+            search ? Medicine.countDocuments(query) : Medicine.estimatedDocumentCount()
         ]);
 
         return NextResponse.json({

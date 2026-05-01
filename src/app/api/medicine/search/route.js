@@ -16,9 +16,9 @@ export async function GET(req) {
 
     const cleanBarcode = barcodeId.trim();
 
-    // Fast Regex Search for matching Barcode exactly (Case Insensitive)
+    // 🚀 SPEED OPTIMIZATION: Exact match for fast B-Tree index lookup (O(1) time)
     const medicine = await Medicine.findOne({ 
-        barcodeId: { $regex: new RegExp(`^${cleanBarcode}$`, "i") } 
+        barcodeId: cleanBarcode 
     }).lean();
 
     if (!medicine) {
