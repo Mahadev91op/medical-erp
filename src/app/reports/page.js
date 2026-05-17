@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw, Search, X, IndianRupee, ShoppingCart, PackageOpen, Award, Package, Receipt, TrendingUp } from "lucide-react";
+import { formatDate } from "@/lib/formatDate";
 
 export default function Reports() {
   const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [], todayOverview: {} });
@@ -257,7 +258,7 @@ export default function Reports() {
         <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-100 overflow-hidden flex flex-col">
           <div className="bg-rose-50/50 p-4 md:p-5 border-b border-rose-100 flex items-center justify-between">
             <h2 className="text-sm md:text-lg font-bold text-rose-700 flex items-center">
-              <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">60 Days Expiry</span>
+              <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">90 Days Expiry</span>
             </h2>
             <span className="bg-rose-200 text-rose-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
               {data.expiringSoon?.length || 0}
@@ -286,7 +287,7 @@ export default function Reports() {
                         <td className="p-1.5 md:p-2 flex justify-end md:justify-start">
                           <div className="flex items-center text-[9px] md:text-xs font-bold text-rose-600 bg-rose-50 px-2 py-1 md:py-1.5 rounded-lg w-fit whitespace-nowrap">
                             <CalendarClock className="w-3 h-3 mr-1 shrink-0" />
-                            {new Date(med.expiryDate).toLocaleDateString('en-GB')}
+                            {formatDate(med.expiryDate)}
                           </div>
                         </td>
                       </tr>

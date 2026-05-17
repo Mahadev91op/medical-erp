@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import Barcode from "react-barcode";
 import { PackagePlus, Printer, CheckCircle2, Loader2 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast"; 
+import { formatDate } from "@/lib/formatDate";
 
 export default function PurchaseEntry() {
   const [formData, setFormData] = useState({
@@ -195,7 +196,7 @@ export default function PurchaseEntry() {
                   
                   <div className="w-full text-center mt-1">
                     <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate">
-                      BILL: {savedMed.billNumber} | PUR: {new Date(savedMed.purchaseDate).toLocaleDateString('en-GB')}
+                      BILL: {savedMed.billNumber} | PUR: {formatDate(savedMed.purchaseDate)}
                     </p>
                   </div>
                 </div>

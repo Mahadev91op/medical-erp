@@ -10,7 +10,7 @@ export async function GET() {
     await connectToDatabase();
 
     const sixtyDaysFromNow = new Date();
-    sixtyDaysFromNow.setDate(sixtyDaysFromNow.getDate() + 60);
+    sixtyDaysFromNow.setDate(sixtyDaysFromNow.getDate() + 90);
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);

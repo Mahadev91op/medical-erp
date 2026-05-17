@@ -7,6 +7,7 @@ import {
 import Barcode from "react-barcode";
 import { useReactToPrint } from "react-to-print";
 import toast, { Toaster } from "react-hot-toast";
+import { formatDate } from "@/lib/formatDate";
 
 export default function Inventory() {
   const [medicines, setMedicines] = useState([]);
@@ -305,7 +306,7 @@ export default function Inventory() {
                       />
                       <div className="w-full text-center mt-1">
                         <p className="text-[8px] font-bold text-slate-700 uppercase tracking-tight leading-tight truncate">
-                          BILL: {med.billNumber || "N/A"} | PUR: {med.purchaseDate ? new Date(med.purchaseDate).toLocaleDateString('en-GB') : "N/A"}
+                          BILL: {med.billNumber || "N/A"} | PUR: {med.purchaseDate ? formatDate(med.purchaseDate) : "N/A"}
                         </p>
                       </div>
                     </div>
@@ -317,7 +318,7 @@ export default function Inventory() {
                       Batch: <span className="text-slate-800 ml-1">{med.batch}</span>
                     </div>
                     <div className="flex items-center">
-                      Exp: <span className="text-slate-800 ml-1">{new Date(med.expiryDate).toLocaleDateString('en-GB')}</span>
+                      Exp: <span className="text-slate-800 ml-1">{formatDate(med.expiryDate)}</span>
                     </div>
                   </div>
 
@@ -528,7 +529,7 @@ export default function Inventory() {
 
               <div className="text-wrapper">
                 <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate" style={{ fontFamily: 'sans-serif' }}>
-                  BILL: {item.billNumber || "N/A"} | PUR: {item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString('en-GB') : "N/A"}
+                  BILL: {item.billNumber || "N/A"} | PUR: {item.purchaseDate ? formatDate(item.purchaseDate) : "N/A"}
                 </p>
               </div>
 

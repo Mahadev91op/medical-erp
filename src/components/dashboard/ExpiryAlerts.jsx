@@ -1,5 +1,6 @@
 import { AlertCircle, ArrowRight, PackageOpen } from "lucide-react";
 import Link from "next/link";
+import { formatDate } from "@/lib/formatDate";
 
 export default function ExpiryAlerts({ alerts }) {
   
@@ -42,7 +43,7 @@ export default function ExpiryAlerts({ alerts }) {
                   <span className="text-[9px] md:text-xs font-semibold text-slate-500 block mt-0.5">Batch: {med.batch} | Qty: {med.quantity}</span>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-[10px] md:text-sm text-rose-600 font-bold block">{new Date(med.expiryDate).toLocaleDateString('en-GB')}</span>
+                  <span className="text-[10px] md:text-sm text-rose-600 font-bold block">{formatDate(med.expiryDate)}</span>
                   {/* Agar 15 din se kam bache hain toh red alert me dikhega */}
                   <span className={`text-[8px] md:text-xs font-semibold px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md md:rounded-lg mt-0.5 md:mt-1 inline-block ${daysLeft <= 15 ? 'text-white bg-rose-500 shadow-md' : 'text-rose-500 bg-rose-100/50'}`}>
                     {daysLeft} Days left
