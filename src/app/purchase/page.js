@@ -5,10 +5,43 @@ import { PackagePlus, Printer, CheckCircle2, Loader2 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast"; 
 import { formatDate } from "@/lib/formatDate";
 
+const getTodayInputString = () => {
+  const today = new Date();
+  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const year = String(today.getFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
+};
+
+const formatPurchaseDateInput = (value) => {
+  let clean = value.replace(/\D/g, "");
+  if (clean.length > 6) clean = clean.slice(0, 6);
+  
+  if (clean.length <= 2) {
+    return clean;
+  }
+  if (clean.length <= 4) {
+    return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+  }
+  return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
+};
+
+const formatExpiryDateInput = (value) => {
+  let clean = value.replace(/\D/g, "");
+  if (clean.length > 4) clean = clean.slice(0, 4);
+  
+  if (clean.length <= 2) {
+    return clean;
+  }
+  return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+};
+
 export default function PurchaseEntry() {
   const [formData, setFormData] = useState({
     name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", billNumber: "", purchaseDate: ""
   });
+  const [purchaseDateInput, setPurchaseDateInput] = useState(getTodayInputString());
+  const [expiryDateInput, setExpiryDateInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedMed, setSavedMed] = useState(null);
   
@@ -35,12 +68,42 @@ export default function PurchaseEntry() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Parse purchaseDate (DD/MM/YY)
+    const purchaseParts = purchaseDateInput.split("/");
+    if (purchaseParts.length !== 3 || purchaseDateInput.length !== 8) {
+      toast.error("Please enter a valid Purchase Date in DD/MM/YY format!");
+      return;
+    }
+    const [pDay, pMonth, pYear] = purchaseParts.map(Number);
+    const fullPYear = 2000 + pYear;
+    const parsedPurchaseDate = `${fullPYear}-${String(pMonth).padStart(2, '0')}-${String(pDay).padStart(2, '0')}`;
+    const pDateObj = new Date(parsedPurchaseDate);
+    if (isNaN(pDateObj.getTime()) || pMonth < 1 || pMonth > 12 || pDay < 1 || pDay > 31) {
+      toast.error("Invalid Purchase Date!");
+      return;
+    }
+
+    // Parse expiryDate (MM/YY)
+    const expiryParts = expiryDateInput.split("/");
+    if (expiryParts.length !== 2 || expiryDateInput.length !== 5) {
+      toast.error("Please enter a valid Expiry Date in MM/YY format!");
+      return;
+    }
+    const [eMonth, eYear] = expiryParts.map(Number);
+    const fullEYear = 2000 + eYear;
+    const lastDay = new Date(fullEYear, eMonth, 0).getDate();
+    const parsedExpiryDate = `${fullEYear}-${String(eMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const eDateObj = new Date(parsedExpiryDate);
+    if (isNaN(eDateObj.getTime()) || eMonth < 1 || eMonth > 12) {
+      toast.error("Invalid Expiry Date!");
+      return;
+    }
+
     // Expiry Date Validation (Past date not allowed for Expiry)
-    const selectedExpiry = new Date(formData.expiryDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0); 
     
-    if (selectedExpiry <= today) {
+    if (eDateObj <= today) {
       toast.error("Expiry date cannot be today or in the past!");
       return;
     }
@@ -48,9 +111,15 @@ export default function PurchaseEntry() {
     setLoading(true);
     
     try {
+      const payload = {
+        ...formData,
+        purchaseDate: parsedPurchaseDate,
+        expiryDate: parsedExpiryDate
+      };
+
       const res = await fetch("/api/medicine", {
         method: "POST",
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" }
       });
       
@@ -64,6 +133,8 @@ export default function PurchaseEntry() {
         }
         
         setFormData({ name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", billNumber: "", purchaseDate: "" }); 
+        setPurchaseDateInput(getTodayInputString());
+        setExpiryDateInput("");
         
         nameInputRef.current?.focus();
       } else {
@@ -130,10 +201,10 @@ export default function PurchaseEntry() {
                   value={formData.billNumber} onChange={(e) => setFormData({...formData, billNumber: e.target.value})} />
               </div>
               <div>
-                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Purchase Date</label>
-                <input type="date" required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-[11px] md:text-base font-medium"
-                  value={formData.purchaseDate} onChange={(e) => setFormData({...formData, purchaseDate: e.target.value})} />
+                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Purchase Date (DD/MM/YY)</label>
+                <input type="text" required placeholder="DD/MM/YY"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
+                  value={purchaseDateInput} onChange={(e) => setPurchaseDateInput(formatPurchaseDateInput(e.target.value))} />
               </div>
             </div>
 
@@ -145,10 +216,10 @@ export default function PurchaseEntry() {
                   value={formData.mrp} onChange={(e) => setFormData({...formData, mrp: e.target.value})} />
               </div>
               <div>
-                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Expiry Date</label>
-                <input type="date" required
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-[11px] md:text-base font-medium"
-                  value={formData.expiryDate} onChange={(e) => setFormData({...formData, expiryDate: e.target.value})} />
+                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Expiry Date (MM/YY)</label>
+                <input type="text" required placeholder="MM/YY"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
+                  value={expiryDateInput} onChange={(e) => setExpiryDateInput(formatExpiryDateInput(e.target.value))} />
               </div>
             </div>
 

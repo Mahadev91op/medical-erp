@@ -3,14 +3,18 @@ import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
 
-export const revalidate = 60; // 🚀 SPEED OPTIMIZATION: Cache for 60 seconds 
+export const dynamic = 'force-dynamic'; 
 
-export async function GET() {
+export async function GET(req) {
   try {
     await connectToDatabase();
 
-    const sixtyDaysFromNow = new Date();
-    sixtyDaysFromNow.setDate(sixtyDaysFromNow.getDate() + 90);
+    const { searchParams } = new URL(req.url);
+    const expiryMonths = parseInt(searchParams.get("expiryMonths")) || 3;
+    const lowStockThreshold = parseInt(searchParams.get("lowStockThreshold")) || 10;
+
+    const expiryLimitDate = new Date();
+    expiryLimitDate.setMonth(expiryLimitDate.getMonth() + expiryMonths);
 
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
@@ -26,12 +30,12 @@ export async function GET() {
       todaysSales
     ] = await Promise.all([
       Medicine.find({
-        expiryDate: { $lte: sixtyDaysFromNow },
+        expiryDate: { $lte: expiryLimitDate },
         quantity: { $gt: 0 } 
       }).sort({ expiryDate: 1 }).lean(), 
 
       Medicine.find({
-        quantity: { $lt: 10, $gt: 0 }
+        quantity: { $lt: lowStockThreshold, $gt: 0 }
       }).sort({ quantity: 1 }).lean(), 
 
       Medicine.aggregate([

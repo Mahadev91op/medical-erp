@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw, Search, X, IndianRupee, ShoppingCart, PackageOpen, Award, Package, Receipt, TrendingUp } from "lucide-react";
-import { formatDate } from "@/lib/formatDate";
+import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 
 export default function Reports() {
   const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [], todayOverview: {} });
@@ -18,10 +18,14 @@ export default function Reports() {
   const [showAllBottomExpiring, setShowAllBottomExpiring] = useState(false);
   const [showAllBottomLowStock, setShowAllBottomLowStock] = useState(false);
 
-  const fetchReports = async (isSilent = false) => {
+  const [expiryMonths, setExpiryMonths] = useState(3);
+  const [lowStockThreshold, setLowStockThreshold] = useState(10);
+  const [initialLoaded, setInitialLoaded] = useState(false);
+
+  const fetchReports = async (isSilent = false, currentExpiryMonths = expiryMonths, currentLowStockThreshold = lowStockThreshold) => {
     if (!isSilent) setLoading(true);
     try {
-      const res = await fetch("/api/reports", { cache: "no-store" });
+      const res = await fetch(`/api/reports?expiryMonths=${currentExpiryMonths}&lowStockThreshold=${currentLowStockThreshold}`, { cache: "no-store" });
       const result = await res.json();
       if (result.success) {
         setData(result);
@@ -34,17 +38,32 @@ export default function Reports() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchReports(true);
+    await fetchReports(true, expiryMonths, lowStockThreshold);
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
   useEffect(() => {
-    fetchReports();
+    let active = true;
+    const load = async () => {
+      if (!initialLoaded) {
+        await fetchReports(false, expiryMonths, lowStockThreshold);
+        if (active) setInitialLoaded(true);
+      } else {
+        await fetchReports(true, expiryMonths, lowStockThreshold);
+      }
+    };
+    load();
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expiryMonths, lowStockThreshold]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
-      fetchReports(true);
+      fetchReports(true, expiryMonths, lowStockThreshold);
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expiryMonths, lowStockThreshold]);
 
   const filteredDistributors = data.distributorStock?.filter((dist) =>
     dist._id?.toLowerCase().includes(distributorSearch.toLowerCase())
@@ -256,13 +275,31 @@ export default function Reports() {
 
         {/* Urgent Expiry Report */}
         <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-100 overflow-hidden flex flex-col">
-          <div className="bg-rose-50/50 p-4 md:p-5 border-b border-rose-100 flex items-center justify-between">
-            <h2 className="text-sm md:text-lg font-bold text-rose-700 flex items-center">
-              <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">90 Days Expiry</span>
-            </h2>
-            <span className="bg-rose-200 text-rose-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
-              {data.expiringSoon?.length || 0}
-            </span>
+          <div className="bg-rose-50/50 p-4 md:p-5 border-b border-rose-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto">
+              <h2 className="text-sm md:text-lg font-bold text-rose-700 flex items-center">
+                <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> 
+                <span className="truncate">{expiryMonths} Month{expiryMonths > 1 ? 's' : ''} Expiry</span>
+              </h2>
+              <span className="bg-rose-200 text-rose-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
+                {data.expiringSoon?.length || 0}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <span className="text-[10px] md:text-xs font-semibold text-rose-600 uppercase tracking-wider">In:</span>
+              <select 
+                value={expiryMonths} 
+                onChange={(e) => setExpiryMonths(Number(e.target.value))}
+                className="bg-white border border-rose-200 text-rose-700 rounded-lg px-2 py-1 text-[10px] md:text-xs font-bold focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-rose-400 cursor-pointer"
+              >
+                <option value={1}>1 Month</option>
+                <option value={2}>2 Months</option>
+                <option value={3}>3 Months</option>
+                <option value={6}>6 Months</option>
+                <option value={9}>9 Months</option>
+                <option value={12}>12 Months</option>
+              </select>
+            </div>
           </div>
           
           <div className="p-2 md:p-3 flex-1 flex flex-col overflow-y-auto custom-scrollbar max-h-[300px] md:max-h-[350px]">
@@ -287,7 +324,7 @@ export default function Reports() {
                         <td className="p-1.5 md:p-2 flex justify-end md:justify-start">
                           <div className="flex items-center text-[9px] md:text-xs font-bold text-rose-600 bg-rose-50 px-2 py-1 md:py-1.5 rounded-lg w-fit whitespace-nowrap">
                             <CalendarClock className="w-3 h-3 mr-1 shrink-0" />
-                            {formatDate(med.expiryDate)}
+                            {formatExpiryDate(med.expiryDate)}
                           </div>
                         </td>
                       </tr>
@@ -313,13 +350,27 @@ export default function Reports() {
 
         {/* Low Stock Report */}
         <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-amber-100 overflow-hidden flex flex-col mt-4 md:mt-0 lg:mt-0">
-          <div className="bg-amber-50/50 p-4 md:p-5 border-b border-amber-100 flex items-center justify-between">
-            <h2 className="text-sm md:text-lg font-bold text-amber-700 flex items-center">
-              <TrendingDown className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">Low Stock</span>
-            </h2>
-            <span className="bg-amber-200 text-amber-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
-              {data.lowStock?.length || 0}
-            </span>
+          <div className="bg-amber-50/50 p-4 md:p-5 border-b border-amber-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto">
+              <h2 className="text-sm md:text-lg font-bold text-amber-700 flex items-center">
+                <TrendingDown className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> 
+                <span className="truncate">Low Stock</span>
+              </h2>
+              <span className="bg-amber-200 text-amber-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
+                {data.lowStock?.length || 0}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <span className="text-[10px] md:text-xs font-semibold text-amber-600 uppercase tracking-wider">Qty &lt;:</span>
+              <input 
+                type="number"
+                min="1"
+                max="1000"
+                value={lowStockThreshold}
+                onChange={(e) => setLowStockThreshold(Math.max(1, parseInt(e.target.value) || 10))}
+                className="bg-white border border-amber-200 text-amber-700 rounded-lg px-2 py-0.5 md:py-1 w-16 text-[10px] md:text-xs font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
+              />
+            </div>
           </div>
           
           <div className="p-2 md:p-3 flex-1 flex flex-col overflow-y-auto custom-scrollbar max-h-[300px] md:max-h-[350px]">

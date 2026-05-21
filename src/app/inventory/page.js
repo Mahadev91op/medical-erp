@@ -7,7 +7,7 @@ import {
 import Barcode from "react-barcode";
 import { useReactToPrint } from "react-to-print";
 import toast, { Toaster } from "react-hot-toast";
-import { formatDate } from "@/lib/formatDate";
+import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 
 export default function Inventory() {
   const [medicines, setMedicines] = useState([]);
@@ -318,7 +318,7 @@ export default function Inventory() {
                       Batch: <span className="text-slate-800 ml-1">{med.batch}</span>
                     </div>
                     <div className="flex items-center">
-                      Exp: <span className="text-slate-800 ml-1">{formatDate(med.expiryDate)}</span>
+                      Exp: <span className="text-slate-800 ml-1">{formatExpiryDate(med.expiryDate)}</span>
                     </div>
                   </div>
 
