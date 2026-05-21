@@ -18,9 +18,6 @@ export async function POST(req) {
 
     const { cartItems, paymentMethod = "Cash" } = await req.json();
 
-    const saleItems = [];
-    const savePromises = []; 
-
     // Saari medicines 1 hi baar me le aao
     const itemIds = cartItems.map(item => item._id);
     const medicinesInDb = await Medicine.find({ _id: { $in: itemIds } });
@@ -28,49 +25,70 @@ export async function POST(req) {
     const medMap = {};
     medicinesInDb.forEach(med => { medMap[med._id.toString()] = med; });
 
-    for (let item of cartItems) {
-      const med = medMap[item._id.toString()];
-      
-      if (!med) throw new Error(`${item.name} database me nahi mili!`);
-      if (med.quantity < item.sellQuantity) throw new Error(`${item.name} ka stock kam hai! Available: ${med.quantity}`);
+    const saleItems = [];
+    const decrementedItems = []; // Track updates to rollback if something fails
 
-      // Atomic stock update to prevent race conditions
-      const updatePromise = Medicine.updateOne(
-        { _id: med._id, quantity: { $gte: item.sellQuantity } },
-        { $inc: { quantity: -item.sellQuantity } }
-      ).then(res => {
-         if (res.modifiedCount === 0) {
-           throw new Error(`${item.name} ka stock kam hai ya update fail ho gaya!`);
-         }
-         return res;
+    try {
+      for (let item of cartItems) {
+        const med = medMap[item._id.toString()];
+        
+        if (!med) throw new Error(`${item.name} database me nahi mili!`);
+        if (med.quantity < item.sellQuantity) {
+          throw new Error(`${item.name} ka stock kam hai! Available: ${med.quantity}`);
+        }
+
+        // Atomic stock update to prevent race conditions
+        const res = await Medicine.updateOne(
+          { _id: med._id, quantity: { $gte: item.sellQuantity } },
+          { $inc: { quantity: -item.sellQuantity } }
+        );
+        
+        if (res.modifiedCount === 0) {
+          throw new Error(`${item.name} ka stock kam hai ya update fail ho gaya!`);
+        }
+
+        // Track for rollback
+        decrementedItems.push({
+          medicineId: med._id,
+          quantity: item.sellQuantity
+        });
+
+        const itemTotal = item.sellQuantity * (item.mrp || 0);
+        calculatedTotal += itemTotal;
+
+        saleItems.push({
+          medicineId: med._id,
+          name: med.name,
+          quantity: item.sellQuantity,
+          mrp: item.mrp || 0,
+          total: itemTotal
+        });
+      }
+
+      // Save the sale
+      const newSale = new Sale({
+        items: saleItems,
+        totalAmount: calculatedTotal,
+        paymentMethod
       });
       
-      // Stock update ko save array me daalo
-      savePromises.push(updatePromise);
+      await newSale.save();
+      newSaleId = newSale._id; 
 
-      const itemTotal = item.sellQuantity * (item.mrp || 0);
-      calculatedTotal += itemTotal;
-
-      saleItems.push({
-        medicineId: med._id,
-        name: med.name,
-        quantity: item.sellQuantity,
-        mrp: item.mrp || 0,
-        total: itemTotal
-      });
+    } catch (innerError) {
+      // Rollback any stock that was already decremented
+      for (let roll of decrementedItems) {
+        try {
+          await Medicine.updateOne(
+            { _id: roll.medicineId },
+            { $inc: { quantity: roll.quantity } }
+          );
+        } catch (rollbackErr) {
+          console.error("Rollback failed for medicine:", roll.medicineId, rollbackErr);
+        }
+      }
+      throw innerError; // Rethrow to outer try-catch block
     }
-
-    const newSale = new Sale({
-      items: saleItems,
-      totalAmount: calculatedTotal,
-      paymentMethod
-    });
-    
-    savePromises.push(newSale.save());
-
-    // Ek sath parallel database me update
-    await Promise.all(savePromises);
-    newSaleId = newSale._id; 
 
     return NextResponse.json({ 
       success: true, 
