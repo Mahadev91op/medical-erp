@@ -16,10 +16,29 @@ export async function GET(req) {
     const expiryLimitDate = new Date();
     expiryLimitDate.setMonth(expiryLimitDate.getMonth() + expiryMonths);
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    const selectedDateStr = searchParams.get("selectedDate");
+    const startDateStr = searchParams.get("startDate");
+    const endDateStr = searchParams.get("endDate");
 
+    const startOfToday = new Date();
     const endOfToday = new Date();
+
+    if (startDateStr && endDateStr) {
+      const pStart = new Date(startDateStr);
+      const pEnd = new Date(endDateStr);
+      if (!isNaN(pStart.getTime()) && !isNaN(pEnd.getTime())) {
+        startOfToday.setTime(pStart.getTime());
+        endOfToday.setTime(pEnd.getTime());
+      }
+    } else if (selectedDateStr) {
+      const parsedDate = new Date(selectedDateStr);
+      if (!isNaN(parsedDate.getTime())) {
+        startOfToday.setTime(parsedDate.getTime());
+        endOfToday.setTime(parsedDate.getTime());
+      }
+    }
+
+    startOfToday.setHours(0, 0, 0, 0);
     endOfToday.setHours(23, 59, 59, 999);
 
     const [
@@ -88,13 +107,14 @@ export async function GET(req) {
     let todayRevenue = 0;
     let todayItemsSold = 0;
     let soldItemsMap = {};
+    const transactions = [];
 
     todaysSales.forEach(sale => {
       todayRevenue += sale.totalAmount;
       sale.items.forEach(item => {
         todayItemsSold += item.quantity;
         
-        if(soldItemsMap[item.medicineId]) {
+        if (soldItemsMap[item.medicineId]) {
             soldItemsMap[item.medicineId].quantity += item.quantity;
             soldItemsMap[item.medicineId].total += item.total;
         } else {
@@ -104,8 +124,21 @@ export async function GET(req) {
                 total: item.total
             };
         }
+
+        transactions.push({
+          name: item.name,
+          quantity: item.quantity,
+          total: item.total,
+          mrp: item.mrp,
+          date: sale.date || sale.createdAt,
+          paymentMethod: sale.paymentMethod || "Cash",
+          billNumber: sale._id ? sale._id.toString().slice(-6).toUpperCase() : "N/A"
+        });
       });
     });
+
+    // Sort transactions by date descending (latest first)
+    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     const todaySoldItemsList = Object.values(soldItemsMap).sort((a, b) => b.quantity - a.quantity);
 
@@ -113,7 +146,8 @@ export async function GET(req) {
         revenue: todayRevenue,
         itemsSold: todayItemsSold,
         billsGenerated: todaysSales.length,
-        soldItems: todaySoldItemsList
+        soldItems: todaySoldItemsList,
+        transactions: transactions
     };
 
     return NextResponse.json({

@@ -4,6 +4,7 @@ import Barcode from "react-barcode";
 import { PackagePlus, Printer, CheckCircle2, Loader2 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast"; 
 import { formatDate } from "@/lib/formatDate";
+import { useReactToPrint } from "react-to-print";
 
 const getTodayInputString = () => {
   const today = new Date();
@@ -44,6 +45,12 @@ export default function PurchaseEntry() {
   const [expiryDateInput, setExpiryDateInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedMed, setSavedMed] = useState(null);
+  
+  const printRef = useRef(null);
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: "Barcode_Label",
+  });
   
   const [distributors, setDistributors] = useState([]);
   
@@ -132,8 +139,17 @@ export default function PurchaseEntry() {
           setDistributors([...distributors, formData.distributor]);
         }
         
-        setFormData({ name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", billNumber: "", purchaseDate: "" }); 
-        setPurchaseDateInput(getTodayInputString());
+        setFormData(prev => ({
+          name: "",
+          batch: "",
+          expiryDate: "",
+          quantity: "",
+          distributor: "",
+          mrp: "",
+          billNumber: prev.billNumber,
+          purchaseDate: ""
+        }));
+        // Keep the previous purchase date input value instead of resetting it
         setExpiryDateInput("");
         
         nameInputRef.current?.focus();
@@ -261,7 +277,7 @@ export default function PurchaseEntry() {
                 Entry Saved Successfully!
               </div>
               
-              <div className="bg-white shadow-xl shadow-slate-200 rounded-lg md:rounded-xl p-3 md:p-4 mb-4 md:mb-8 scale-[0.85] md:scale-100 origin-center">
+              <div className="bg-white shadow-xl shadow-slate-200 rounded-lg md:rounded-xl p-3 md:p-4 mb-4 md:mb-6 scale-[0.85] md:scale-100 origin-center">
                 <div className="bg-white flex flex-col items-center justify-center overflow-hidden" style={{ width: '50mm', height: '25mm', padding: '2mm' }}>
                   <Barcode value={savedMed.barcodeId} width={1.2} height={32} fontSize={10} margin={0} background="#ffffff" lineColor="#000000" displayValue={true} />
                   
@@ -273,9 +289,96 @@ export default function PurchaseEntry() {
                 </div>
               </div>
               
+              <button 
+                onClick={handlePrint}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs md:text-sm px-5 py-3 rounded-xl md:rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] w-full max-w-[200px]"
+              >
+                <Printer className="w-4 h-4 text-emerald-400" /> Print Label
+              </button>
             </div>
           )}
 
+        </div>
+      </div>
+
+      {/* Hidden printable container for barcode label */}
+      <div style={{ position: 'absolute', top: '-10000px', left: '-10000px', overflow: 'hidden' }}>
+        <div ref={printRef}>
+          <style type="text/css" media="print">
+            {`
+              @page { 
+                size: 50mm 25mm; 
+                margin: 0mm !important; 
+              }
+              body { 
+                margin: 0mm !important; 
+                padding: 0mm !important; 
+              }
+              .thermal-label {
+                width: 50mm !important; 
+                height: 25mm !important; 
+                page-break-after: always; 
+                page-break-inside: avoid;
+                display: flex;
+                flex-direction: column; 
+                justify-content: center; 
+                align-items: center;
+                box-sizing: border-box; 
+                background-color: white;
+                overflow: hidden !important; 
+                padding: 1mm 3mm; 
+              }
+              
+              .barcode-wrapper {
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+              }
+              
+              .barcode-wrapper svg {
+                max-width: 100% !important; 
+                max-height: 20mm !important; 
+                object-fit: contain;
+              }
+
+              .text-wrapper {
+                width: 100%;
+                text-align: center;
+                margin-top: 1px; 
+              }
+
+              .thermal-label:last-child { 
+                page-break-after: auto; 
+              }
+            `}
+          </style>
+
+          {savedMed && (
+            <div className="thermal-label">
+              <div className="barcode-wrapper">
+                <Barcode 
+                  value={savedMed.barcodeId} 
+                  format="CODE128"
+                  renderer="svg"     
+                  width={1.5}        
+                  height={40}        
+                  fontSize={10}      
+                  margin={0}         
+                  textMargin={1}     
+                  background="#ffffff" 
+                  lineColor="#000000" 
+                  displayValue={true} 
+                />
+              </div>
+
+              <div className="text-wrapper">
+                <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate" style={{ fontFamily: 'sans-serif' }}>
+                  BILL: {savedMed.billNumber} | PUR: {formatDate(savedMed.purchaseDate)}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

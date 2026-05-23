@@ -52,9 +52,9 @@ const Medicine = mongoose.models.Medicine || mongoose.model("Medicine", Medicine
 const Sale = mongoose.models.Sale || mongoose.model("Sale", SaleSchema);
 
 // Constants
-const TARGET_MEDICINES = 200000;
-const TARGET_SALES = 50000;
-const CHUNK_SIZE = 5000;
+const TARGET_MEDICINES = 2000;
+const TARGET_SALES = 500;
+const CHUNK_SIZE = 500;
 
 const medNames = ["Paracetamol", "Azithromycin", "Amoxicillin", "Cefixime", "Pantoprazole", "Rabeprazole", "Domperidone", "Diclofenac", "Levocetirizine", "Montelukast", "Telmisartan", "Metformin", "Amlodipine", "Atorvastatin", "Rosuvastatin", "Glimepiride", "Ibuprofen", "Vitamin C", "Zincovit", "Dolo", "Calpol", "Cheston Cold"];
 const distributors = ["Cipla", "Sun Pharma", "Mankind", "Macleods", "Lupin", "Alkem", "Intas", "Torrent", "Zydus", "Dr. Reddy's"];

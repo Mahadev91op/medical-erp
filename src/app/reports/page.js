@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
-import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw, Search, X, IndianRupee, ShoppingCart, PackageOpen, Award, Package, Receipt, TrendingUp } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useReactToPrint } from "react-to-print";
+import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw, Search, X, IndianRupee, ShoppingCart, PackageOpen, Award, Package, Receipt, TrendingUp, Printer } from "lucide-react";
 import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 
 export default function Reports() {
@@ -12,20 +13,114 @@ export default function Reports() {
   const [distributorSearch, setDistributorSearch] = useState("");
   
   const [showTodayItems, setShowTodayItems] = useState(false);
+  const [showSoldItemsModal, setShowSoldItemsModal] = useState(false);
+  const [showExpiryModal, setShowExpiryModal] = useState(false);
+  const [showLowStockModal, setShowLowStockModal] = useState(false);
 
-  // Naye States: Niche wale 3 boxes me "See All" toggle karne ke liye
-  const [showAllBottomSold, setShowAllBottomSold] = useState(false);
-  const [showAllBottomExpiring, setShowAllBottomExpiring] = useState(false);
-  const [showAllBottomLowStock, setShowAllBottomLowStock] = useState(false);
+  const [dateFilter, setDateFilter] = useState("today"); // today, yesterday, 7days, 15days, 30days, 60days, 90days, customDays, custom
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  });
+  const [customEndDate, setCustomEndDate] = useState(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  });
+  const [customDays, setCustomDays] = useState(10);
 
   const [expiryMonths, setExpiryMonths] = useState(3);
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const [initialLoaded, setInitialLoaded] = useState(false);
 
-  const fetchReports = async (isSilent = false, currentExpiryMonths = expiryMonths, currentLowStockThreshold = lowStockThreshold) => {
+  const getTodayDateString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getDateRangeForFilter = (filter) => {
+    const today = new Date();
+    let start = new Date();
+    let end = new Date();
+    
+    if (filter === "today") {
+      // default today
+    } else if (filter === "yesterday") {
+      start.setDate(today.getDate() - 1);
+      end.setDate(today.getDate() - 1);
+    } else if (filter === "7days") {
+      start.setDate(today.getDate() - 6);
+    } else if (filter === "15days") {
+      start.setDate(today.getDate() - 14);
+    } else if (filter === "30days") {
+      start.setDate(today.getDate() - 29);
+    } else if (filter === "60days") {
+      start.setDate(today.getDate() - 59);
+    } else if (filter === "90days") {
+      start.setDate(today.getDate() - 89);
+    } else if (filter === "customDays") {
+      const days = parseInt(customDays) || 1;
+      start.setDate(today.getDate() - (days - 1));
+    } else if (filter === "custom") {
+      return {
+        startDate: customStartDate || getTodayDateString(),
+        endDate: customEndDate || getTodayDateString()
+      };
+    }
+    
+    const formatDateStr = (d) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    return {
+      startDate: formatDateStr(start),
+      endDate: formatDateStr(end)
+    };
+  };
+
+  const getSelectedDateLabel = () => {
+    if (dateFilter === "today") return "Today";
+    if (dateFilter === "yesterday") return "Yesterday";
+    if (dateFilter === "7days") return "Last 7 Days";
+    if (dateFilter === "15days") return "Last 15 Days";
+    if (dateFilter === "30days") return "Last 30 Days";
+    if (dateFilter === "60days") return "Last 60 Days";
+    if (dateFilter === "90days") return "Last 90 Days";
+    if (dateFilter === "customDays") return `Last ${customDays} Days`;
+    
+    const formatLabel = (dateStr) => {
+      if (!dateStr) return "";
+      const [y, m, d] = dateStr.split("-");
+      return `${d}/${m}/${y.slice(-2)}`;
+    };
+    
+    const start = customStartDate ? formatLabel(customStartDate) : "Start";
+    const end = customEndDate ? formatLabel(customEndDate) : "End";
+    return `${start} to ${end}`;
+  };
+
+  const printRef = useRef(null);
+  const handleDownloadPDF = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Expiry_Report_${expiryMonths}_Months`,
+  });
+
+  const fetchReports = async (isSilent = false, currentExpiryMonths = expiryMonths, currentLowStockThreshold = lowStockThreshold, filter = dateFilter) => {
     if (!isSilent) setLoading(true);
     try {
-      const res = await fetch(`/api/reports?expiryMonths=${currentExpiryMonths}&lowStockThreshold=${currentLowStockThreshold}`, { cache: "no-store" });
+      const { startDate, endDate } = getDateRangeForFilter(filter);
+      const res = await fetch(`/api/reports?expiryMonths=${currentExpiryMonths}&lowStockThreshold=${currentLowStockThreshold}&startDate=${startDate}&endDate=${endDate}`, { cache: "no-store" });
       const result = await res.json();
       if (result.success) {
         setData(result);
@@ -38,7 +133,7 @@ export default function Reports() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchReports(true, expiryMonths, lowStockThreshold);
+    await fetchReports(true, expiryMonths, lowStockThreshold, dateFilter);
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
@@ -46,24 +141,24 @@ export default function Reports() {
     let active = true;
     const load = async () => {
       if (!initialLoaded) {
-        await fetchReports(false, expiryMonths, lowStockThreshold);
+        await fetchReports(false, expiryMonths, lowStockThreshold, dateFilter);
         if (active) setInitialLoaded(true);
       } else {
-        await fetchReports(true, expiryMonths, lowStockThreshold);
+        await fetchReports(true, expiryMonths, lowStockThreshold, dateFilter);
       }
     };
     load();
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expiryMonths, lowStockThreshold]);
+  }, [expiryMonths, lowStockThreshold, dateFilter, customStartDate, customEndDate, customDays]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchReports(true, expiryMonths, lowStockThreshold);
+      fetchReports(true, expiryMonths, lowStockThreshold, dateFilter);
     }, 30000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expiryMonths, lowStockThreshold]);
+  }, [expiryMonths, lowStockThreshold, dateFilter, customStartDate, customEndDate, customDays]);
 
   const filteredDistributors = data.distributorStock?.filter((dist) =>
     dist._id?.toLowerCase().includes(distributorSearch.toLowerCase())
@@ -107,7 +202,7 @@ export default function Reports() {
                 <IndianRupee className="w-6 h-6 text-white" />
             </div>
             <div>
-                <p className="text-emerald-100 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Today&apos;s Profit / Revenue</p>
+                <p className="text-emerald-100 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">{getSelectedDateLabel()}&apos;s Profit / Revenue</p>
                 <p className="text-xl md:text-2xl font-extrabold flex items-center">
                     ₹ {(data.todayOverview?.revenue || 0).toLocaleString('en-IN')}
                 </p>
@@ -116,7 +211,7 @@ export default function Reports() {
         
         {/* Items Sold */}
         <div 
-          onClick={() => setShowTodayItems(true)}
+          onClick={() => setShowSoldItemsModal(true)}
           className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex items-center cursor-pointer hover:border-indigo-100 hover:shadow-md transition-all group"
           title="Click to view details"
         >
@@ -125,7 +220,7 @@ export default function Reports() {
             </div>
             <div className="flex-1">
                 <div className="flex justify-between items-center">
-                  <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Items Sold Today</p>
+                  <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Items Sold ({getSelectedDateLabel()})</p>
                   <span className="text-[9px] font-bold text-indigo-400 bg-indigo-50 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">Click to View</span>
                 </div>
                 <p className="text-xl md:text-2xl font-extrabold text-slate-700">
@@ -135,12 +230,12 @@ export default function Reports() {
         </div>
 
         {/* Bills Generated */}
-        <div className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex items-center">
+        <div className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex items-center cursor-pointer hover:border-amber-100 hover:shadow-md transition-all" onClick={() => setShowSoldItemsModal(true)} title="Click to view details">
             <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mr-4 shrink-0">
                 <Receipt className="w-6 h-6 text-amber-500" />
             </div>
             <div>
-                <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Total Bills Generated</p>
+                <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Total Bills ({getSelectedDateLabel()})</p>
                 <p className="text-xl md:text-2xl font-extrabold text-slate-700">
                     {data.todayOverview?.billsGenerated || 0}
                 </p>
@@ -209,62 +304,136 @@ export default function Reports() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
-        
-        {/* Today's Sold Items List */}
+                {/* Sold Items Report Card */}
         <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-emerald-100 overflow-hidden flex flex-col">
-          <div className="bg-emerald-50/50 p-4 md:p-5 border-b border-emerald-100 flex items-center justify-between">
-            <h2 className="text-sm md:text-lg font-bold text-emerald-700 flex items-center">
-              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> <span className="truncate">Today&apos;s Sold Items</span>
-            </h2>
-            <span className="bg-emerald-200 text-emerald-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
-              {data.todayOverview?.soldItems?.length || 0} Items
-            </span>
+          <div className="bg-emerald-50/50 p-4 border-b border-emerald-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm md:text-base font-bold text-emerald-700 flex items-center min-w-0">
+                <TrendingUp className="w-4 h-4 mr-1.5 shrink-0" /> 
+                <span className="truncate">Sold Items Report</span>
+              </h2>
+              <span className="bg-emerald-200 text-emerald-800 text-[10px] md:text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0">
+                {data.todayOverview?.transactions?.length || 0} Items
+              </span>
+            </div>
+            
+            <div className="flex flex-col gap-2 pt-1 border-t border-emerald-100/50">
+              <div className="flex items-center gap-1.5 w-full">
+                <span className="text-[10px] md:text-xs font-bold text-emerald-600 uppercase tracking-wider whitespace-nowrap">Filter:</span>
+                <select 
+                  value={dateFilter} 
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="bg-white border border-emerald-200 text-emerald-700 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 cursor-pointer w-full h-8"
+                >
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="7days">Last 7 Days</option>
+                  <option value="15days">Last 15 Days</option>
+                  <option value="30days">Last 30 Days</option>
+                  <option value="60days">Last 60 Days</option>
+                  <option value="90days">Last 90 Days</option>
+                  <option value="customDays">Custom Days Count</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+              
+              {dateFilter === "customDays" && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[10px] md:text-xs font-bold text-emerald-600 uppercase tracking-wider whitespace-nowrap">Days:</span>
+                  <input 
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={customDays}
+                    onChange={(e) => setCustomDays(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="bg-white border border-emerald-200 text-emerald-700 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 w-full h-8"
+                  />
+                </div>
+              )}
+              
+              {dateFilter === "custom" && (
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-1 flex-1">
+                    <span className="text-[9px] font-bold text-emerald-600 uppercase">From:</span>
+                    <input 
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="bg-white border border-emerald-200 text-emerald-700 rounded-lg px-1.5 py-0.5 text-[10px] font-bold focus:outline-none w-full h-7"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 flex-1">
+                    <span className="text-[9px] font-bold text-emerald-600 uppercase">To:</span>
+                    <input 
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="bg-white border border-emerald-200 text-emerald-700 rounded-lg px-1.5 py-0.5 text-[10px] font-bold focus:outline-none w-full h-7"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           
-          <div className="p-2 md:p-3 flex-1 flex flex-col overflow-y-auto custom-scrollbar max-h-[300px] md:max-h-[350px]">
-            {(!data.todayOverview?.soldItems || data.todayOverview.soldItems.length === 0) ? (
-              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium m-auto">No sales yet today! 😴</p>
+          <div className="p-4 flex-1 flex flex-col justify-between min-h-[280px]">
+            {(!data.todayOverview?.transactions || data.todayOverview.transactions.length === 0) ? (
+              <p className="text-center text-slate-400 py-8 text-xs md:text-sm font-medium m-auto">No sales for this range! 😴</p>
             ) : (
               <>
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                      <th className="p-1.5 md:p-2 font-bold">Medicine</th>
-                      <th className="p-1.5 md:p-2 font-bold text-center">Qty</th>
-                      <th className="p-1.5 md:p-2 font-bold text-right">Revenue</th>
+                      <th className="pb-2 font-bold">Item & Details</th>
+                      <th className="pb-2 font-bold text-center">Qty</th>
+                      <th className="pb-2 font-bold text-right">Revenue</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {/* Yahan hum slice() function ka use kar rahe hain data ko limit karne ke liye */}
-                    {data.todayOverview.soldItems.slice(0, showAllBottomSold ? undefined : 5).map((item, index) => (
-                      <tr key={index} className="hover:bg-emerald-50/30 transition-colors">
-                        <td className="p-1.5 md:p-2 max-w-[120px]">
-                          <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight truncate" title={item.name}>{item.name}</p>
-                        </td>
-                        <td className="p-1.5 md:p-2 text-center">
-                          <span className="text-[10px] md:text-sm font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 md:py-1 rounded-lg inline-block">
-                            {item.quantity}
-                          </span>
-                        </td>
-                        <td className="p-1.5 md:p-2 flex justify-end">
-                          <div className="flex items-center text-[10px] md:text-sm font-bold text-slate-700">
-                            <IndianRupee className="w-3 h-3 mr-0.5 text-slate-400" />
-                            {item.total.toLocaleString('en-IN')}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {data.todayOverview.transactions.slice(0, 5).map((tx, index) => {
+                      const txDate = new Date(tx.date);
+                      const timeStr = txDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                      const dateStr = txDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                      return (
+                        <tr key={index} className="hover:bg-emerald-50/30 transition-colors">
+                          <td className="py-2.5 max-w-[140px] md:max-w-[160px]">
+                            <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight truncate" title={tx.name}>{tx.name}</p>
+                            <div className="flex items-center gap-1 mt-1 flex-wrap">
+                              <span className="text-[9px] bg-slate-100 text-slate-500 font-semibold px-1 rounded">
+                                {dateStr}
+                              </span>
+                              <span className="text-[9px] bg-slate-100 text-slate-500 font-semibold px-1 rounded">
+                                {timeStr}
+                              </span>
+                              <span className={`text-[9px] font-bold px-1 rounded ${tx.paymentMethod === 'UPI' ? 'bg-indigo-50 text-indigo-600' : tx.paymentMethod === 'Card' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                {tx.paymentMethod}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 text-center">
+                            <span className="text-[10px] md:text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg inline-block">
+                              {tx.quantity} pcs
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-right">
+                            <p className="text-xs md:text-sm font-bold text-slate-800">
+                              ₹{tx.total.toLocaleString('en-IN')}
+                            </p>
+                            <p className="text-[9px] text-slate-400">MRP: ₹{tx.mrp}</p>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 
-                {/* See All Button */}
-                {data.todayOverview.soldItems.length > 5 && (
-                  <div className="mt-auto pt-2 text-center">
+                {data.todayOverview.transactions.length > 5 && (
+                  <div className="pt-3 border-t border-slate-50 mt-auto">
                     <button
-                      onClick={() => setShowAllBottomSold(!showAllBottomSold)}
-                      className="text-[10px] md:text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-4 py-1.5 rounded-xl transition-colors w-full"
+                      onClick={() => setShowSoldItemsModal(true)}
+                      className="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 py-2 rounded-xl transition-colors w-full"
                     >
-                      {showAllBottomSold ? "Show Less" : `See All (${data.todayOverview.soldItems.length})`}
+                      See All ({data.todayOverview.transactions.length})
                     </button>
                   </div>
                 )}
@@ -275,55 +444,67 @@ export default function Reports() {
 
         {/* Urgent Expiry Report */}
         <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-100 overflow-hidden flex flex-col">
-          <div className="bg-rose-50/50 p-4 md:p-5 border-b border-rose-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto">
-              <h2 className="text-sm md:text-lg font-bold text-rose-700 flex items-center">
-                <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> 
-                <span className="truncate">{expiryMonths} Month{expiryMonths > 1 ? 's' : ''} Expiry</span>
+          <div className="bg-rose-50/50 p-4 border-b border-rose-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm md:text-base font-bold text-rose-700 flex items-center min-w-0">
+                <AlertTriangle className="w-4 h-4 mr-1.5 shrink-0" /> 
+                <span className="truncate">Expiry Alert</span>
               </h2>
-              <span className="bg-rose-200 text-rose-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
-                {data.expiringSoon?.length || 0}
+              <span className="bg-rose-200 text-rose-800 text-[10px] md:text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0">
+                {data.expiringSoon?.length || 0} Items
               </span>
             </div>
-            <div className="flex items-center gap-1.5 self-end sm:self-auto">
-              <span className="text-[10px] md:text-xs font-semibold text-rose-600 uppercase tracking-wider">In:</span>
-              <select 
-                value={expiryMonths} 
-                onChange={(e) => setExpiryMonths(Number(e.target.value))}
-                className="bg-white border border-rose-200 text-rose-700 rounded-lg px-2 py-1 text-[10px] md:text-xs font-bold focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-rose-400 cursor-pointer"
+            
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-rose-100/50">
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] md:text-xs font-bold text-rose-600 uppercase tracking-wider">In:</span>
+                <select 
+                  value={expiryMonths} 
+                  onChange={(e) => setExpiryMonths(Number(e.target.value))}
+                  className="bg-white border border-rose-200 text-rose-700 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-rose-400 cursor-pointer min-w-[95px] h-8"
+                >
+                  <option value={1}>1 Month</option>
+                  <option value={2}>2 Months</option>
+                  <option value={3}>3 Months</option>
+                  <option value={6}>6 Months</option>
+                  <option value={9}>9 Months</option>
+                  <option value={12}>12 Months</option>
+                </select>
+              </div>
+
+              <button
+                onClick={handleDownloadPDF}
+                disabled={!data.expiringSoon || data.expiringSoon.length === 0}
+                className="bg-slate-800 hover:bg-slate-900 text-white disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-xs font-bold px-3 py-1 h-8 rounded-lg flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+                title="Download Expiry Report as PDF"
               >
-                <option value={1}>1 Month</option>
-                <option value={2}>2 Months</option>
-                <option value={3}>3 Months</option>
-                <option value={6}>6 Months</option>
-                <option value={9}>9 Months</option>
-                <option value={12}>12 Months</option>
-              </select>
+                <Printer className="w-3.5 h-3.5 shrink-0" />
+                <span>PDF</span>
+              </button>
             </div>
           </div>
           
-          <div className="p-2 md:p-3 flex-1 flex flex-col overflow-y-auto custom-scrollbar max-h-[300px] md:max-h-[350px]">
+          <div className="p-4 flex-1 flex flex-col justify-between min-h-[280px]">
             {data.expiringSoon?.length === 0 ? (
-              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium m-auto">No medicines are expiring soon! 🎉</p>
+              <p className="text-center text-slate-400 py-8 text-xs md:text-sm font-medium m-auto">No medicines are expiring soon! 🎉</p>
             ) : (
               <>
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                      <th className="p-1.5 md:p-2 font-bold">Medicine</th>
-                      <th className="p-1.5 md:p-2 font-bold text-right md:text-left">Expiry</th>
+                      <th className="pb-2 font-bold">Medicine</th>
+                      <th className="pb-2 font-bold text-right">Expiry</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {data.expiringSoon?.slice(0, showAllBottomExpiring ? undefined : 5).map((med) => (
+                    {data.expiringSoon?.slice(0, 5).map((med) => (
                       <tr key={med._id} className="hover:bg-rose-50/30 transition-colors">
-                        <td className="p-1.5 md:p-2 max-w-[120px] md:max-w-none">
-                          <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight md:leading-normal truncate" title={med.name}>{med.name}</p>
+                        <td className="py-2 max-w-[120px]">
+                          <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight truncate" title={med.name}>{med.name}</p>
                           <p className="text-[9px] text-slate-400 mt-0.5">Qty: <span className="font-bold text-rose-500">{med.quantity}</span> | {med.batch}</p>
                         </td>
-                        <td className="p-1.5 md:p-2 flex justify-end md:justify-start">
-                          <div className="flex items-center text-[9px] md:text-xs font-bold text-rose-600 bg-rose-50 px-2 py-1 md:py-1.5 rounded-lg w-fit whitespace-nowrap">
-                            <CalendarClock className="w-3 h-3 mr-1 shrink-0" />
+                        <td className="py-2 text-right">
+                          <div className="inline-flex items-center text-[10px] md:text-xs font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-lg">
                             {formatExpiryDate(med.expiryDate)}
                           </div>
                         </td>
@@ -332,14 +513,13 @@ export default function Reports() {
                   </tbody>
                 </table>
 
-                {/* See All Button */}
                 {data.expiringSoon?.length > 5 && (
-                  <div className="mt-auto pt-2 text-center">
+                  <div className="pt-3 border-t border-slate-50 mt-auto">
                     <button
-                      onClick={() => setShowAllBottomExpiring(!showAllBottomExpiring)}
-                      className="text-[10px] md:text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-1.5 rounded-xl transition-colors w-full"
+                      onClick={() => setShowExpiryModal(true)}
+                      className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 py-2 rounded-xl transition-colors w-full"
                     >
-                      {showAllBottomExpiring ? "Show Less" : `See All (${data.expiringSoon.length})`}
+                      See All ({data.expiringSoon.length})
                     </button>
                   </div>
                 )}
@@ -350,49 +530,52 @@ export default function Reports() {
 
         {/* Low Stock Report */}
         <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-amber-100 overflow-hidden flex flex-col mt-4 md:mt-0 lg:mt-0">
-          <div className="bg-amber-50/50 p-4 md:p-5 border-b border-amber-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto">
-              <h2 className="text-sm md:text-lg font-bold text-amber-700 flex items-center">
-                <TrendingDown className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 shrink-0" /> 
-                <span className="truncate">Low Stock</span>
+          <div className="bg-amber-50/50 p-4 border-b border-amber-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm md:text-base font-bold text-amber-700 flex items-center min-w-0">
+                <TrendingDown className="w-4 h-4 mr-1.5 shrink-0" /> 
+                <span className="truncate">Low Stock Alert</span>
               </h2>
-              <span className="bg-amber-200 text-amber-800 text-[9px] md:text-xs font-bold px-2 py-1 md:px-3 md:py-1 rounded-full shrink-0 ml-2">
-                {data.lowStock?.length || 0}
+              <span className="bg-amber-200 text-amber-800 text-[10px] md:text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0">
+                {data.lowStock?.length || 0} Items
               </span>
             </div>
-            <div className="flex items-center gap-1.5 self-end sm:self-auto">
-              <span className="text-[10px] md:text-xs font-semibold text-amber-600 uppercase tracking-wider">Qty &lt;:</span>
-              <input 
-                type="number"
-                min="1"
-                max="1000"
-                value={lowStockThreshold}
-                onChange={(e) => setLowStockThreshold(Math.max(1, parseInt(e.target.value) || 10))}
-                className="bg-white border border-amber-200 text-amber-700 rounded-lg px-2 py-0.5 md:py-1 w-16 text-[10px] md:text-xs font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
-              />
+            
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-amber-100/50">
+              <div className="flex items-center gap-1.5 w-full">
+                <span className="text-[10px] md:text-xs font-bold text-amber-600 uppercase tracking-wider whitespace-nowrap">Qty &lt;:</span>
+                <input 
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={lowStockThreshold}
+                  onChange={(e) => setLowStockThreshold(Math.max(1, parseInt(e.target.value) || 10))}
+                  className="bg-white border border-amber-200 text-amber-700 rounded-lg px-2 py-1 w-full text-xs font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 h-8"
+                />
+              </div>
             </div>
           </div>
           
-          <div className="p-2 md:p-3 flex-1 flex flex-col overflow-y-auto custom-scrollbar max-h-[300px] md:max-h-[350px]">
+          <div className="p-4 flex-1 flex flex-col justify-between min-h-[280px]">
             {data.lowStock?.length === 0 ? (
-              <p className="text-center text-slate-400 py-6 md:py-8 text-xs md:text-base font-medium m-auto">All stock levels are optimal! 📦</p>
+              <p className="text-center text-slate-400 py-8 text-xs md:text-sm font-medium m-auto">All stock levels are optimal! 📦</p>
             ) : (
               <>
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="text-[9px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                      <th className="p-1.5 md:p-2 font-bold">Medicine</th>
-                      <th className="p-1.5 md:p-2 font-bold text-right">Left</th>
+                      <th className="pb-2 font-bold">Medicine</th>
+                      <th className="pb-2 font-bold text-right">Left</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {data.lowStock?.slice(0, showAllBottomLowStock ? undefined : 5).map((med) => (
+                    {data.lowStock?.slice(0, 5).map((med) => (
                       <tr key={med._id} className="hover:bg-amber-50/30 transition-colors">
-                        <td className="p-1.5 md:p-2 max-w-[120px] md:max-w-none">
-                          <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight md:leading-normal truncate" title={med.name}>{med.name}</p>
+                        <td className="py-2 max-w-[120px]">
+                          <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight truncate" title={med.name}>{med.name}</p>
                           <p className="text-[9px] text-slate-400 mt-0.5 truncate">Dist: {med.distributor}</p>
                         </td>
-                        <td className="p-1.5 md:p-2 text-right">
+                        <td className="py-2 text-right">
                           <span className="text-xs md:text-sm font-extrabold text-amber-500 bg-amber-50 px-2 py-1 rounded-xl inline-block">
                             {med.quantity}
                           </span>
@@ -402,14 +585,13 @@ export default function Reports() {
                   </tbody>
                 </table>
 
-                {/* See All Button */}
                 {data.lowStock?.length > 5 && (
-                  <div className="mt-auto pt-2 text-center">
+                  <div className="pt-3 border-t border-slate-50 mt-auto">
                     <button
-                      onClick={() => setShowAllBottomLowStock(!showAllBottomLowStock)}
-                      className="text-[10px] md:text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-4 py-1.5 rounded-xl transition-colors w-full"
+                      onClick={() => setShowLowStockModal(true)}
+                      className="text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 py-2 rounded-xl transition-colors w-full"
                     >
-                      {showAllBottomLowStock ? "Show Less" : `See All (${data.lowStock.length})`}
+                      See All ({data.lowStock.length})
                     </button>
                   </div>
                 )}
@@ -417,20 +599,19 @@ export default function Reports() {
             )}
           </div>
         </div>
-
       </div>
 
-      {/* MODAL 1: Today's Items Sold Full Details (Top box modal) */}
-      {showTodayItems && (
+      {/* MODAL 1: Items Sold Details (Top box & bottom card See All) */}
+      {showSoldItemsModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[24px] md:rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+          <div className="bg-white rounded-[24px] md:rounded-3xl w-full max-w-5xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
             <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h2 className="text-lg md:text-xl font-bold text-slate-800 flex items-center">
                 <Package className="w-5 h-5 mr-2 text-indigo-500" />
-                Items Sold Today
+                Sold Items Report ({getSelectedDateLabel()})
               </h2>
               <button 
-                onClick={() => setShowTodayItems(false)}
+                onClick={() => setShowSoldItemsModal(false)}
                 className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
@@ -438,30 +619,178 @@ export default function Reports() {
             </div>
             
             <div className="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50/30">
-              {(!data.todayOverview?.soldItems || data.todayOverview.soldItems.length === 0) ? (
+              {(!data.todayOverview?.transactions || data.todayOverview.transactions.length === 0) ? (
                 <div className="flex flex-col items-center justify-center py-12 text-slate-400">
                   <Package className="w-10 h-10 mb-3 text-slate-300" />
-                  <p className="text-sm md:text-base font-medium">No sales recorded today. 😴</p>
+                  <p className="text-sm md:text-base font-medium">No sales recorded for this range. 😴</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {data.todayOverview.soldItems.map((item, index) => (
-                    <div key={index} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover:shadow-md transition-all">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-slate-700 md:text-lg">{item.name}</span>
-                        <span className="text-xs font-medium text-slate-500 mt-0.5">Quantity Sold: <span className="font-bold text-indigo-500 text-sm">{item.quantity}</span></span>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Revenue</span>
-                        <span className="text-base md:text-lg font-extrabold text-emerald-600 flex items-center">
-                          <IndianRupee className="w-3 h-3 md:w-4 md:h-4 mr-0.5" />
-                          {item.total.toLocaleString('en-IN')}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <table className="w-full text-left border-collapse bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">
+                      <th className="p-3 md:p-4 font-bold">#</th>
+                      <th className="p-3 md:p-4 font-bold">Receipt</th>
+                      <th className="p-3 md:p-4 font-bold">Medicine</th>
+                      <th className="p-3 md:p-4 font-bold text-center">Qty</th>
+                      <th className="p-3 md:p-4 font-bold text-center">MRP</th>
+                      <th className="p-3 md:p-4 font-bold text-center">Pay Mode</th>
+                      <th className="p-3 md:p-4 font-bold text-right">Total Price</th>
+                      <th className="p-3 md:p-4 font-bold text-right">Date & Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
+                    {data.todayOverview.transactions.map((tx, index) => {
+                      const txDate = new Date(tx.date);
+                      const timeStr = txDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                      const dateStr = txDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                      return (
+                        <tr key={index} className="hover:bg-emerald-50/20 transition-colors">
+                          <td className="p-3 md:p-4 text-slate-400">{index + 1}</td>
+                          <td className="p-3 md:p-4 font-medium text-slate-500">#{tx.billNumber}</td>
+                          <td className="p-3 md:p-4">
+                            <p className="font-bold text-slate-800">{tx.name}</p>
+                          </td>
+                          <td className="p-3 md:p-4 text-center">
+                            <span className="font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                              {tx.quantity} pcs
+                            </span>
+                          </td>
+                          <td className="p-3 md:p-4 text-center font-medium text-slate-600">₹{tx.mrp}</td>
+                          <td className="p-3 md:p-4 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${tx.paymentMethod === 'UPI' ? 'bg-indigo-50 text-indigo-600' : tx.paymentMethod === 'Card' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                              {tx.paymentMethod}
+                            </span>
+                          </td>
+                          <td className="p-3 md:p-4 text-right font-extrabold text-slate-700">₹{tx.total.toLocaleString('en-IN')}</td>
+                          <td className="p-3 md:p-4 text-right whitespace-nowrap">
+                            <span className="font-bold text-slate-700 block">{dateStr}</span>
+                            <span className="text-[11px] text-slate-400 font-semibold">{timeStr}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: Expiry Alert Full Details */}
+      {showExpiryModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] md:rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+            <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-lg md:text-xl font-bold text-rose-800 flex items-center">
+                <AlertTriangle className="w-5 h-5 mr-2 text-rose-500" />
+                Medicines Expiring Within {expiryMonths} Month{expiryMonths > 1 ? 's' : ''}
+              </h2>
+              <div className="flex items-center gap-3">
+                {data.expiringSoon?.length > 0 && (
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+                  >
+                    <Printer className="w-4 h-4" /> Download PDF
+                  </button>
+                )}
+                <button 
+                  onClick={() => setShowExpiryModal(false)}
+                  className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
+                >
+                  <X className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50/30">
+              <table className="w-full text-left border-collapse bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">
+                    <th className="p-3 md:p-4 font-bold">#</th>
+                    <th className="p-3 md:p-4 font-bold">Medicine</th>
+                    <th className="p-3 md:p-4 font-bold">Batch No.</th>
+                    <th className="p-3 md:p-4 font-bold">Bill No.</th>
+                    <th className="p-3 md:p-4 font-bold text-center">Stock Qty</th>
+                    <th className="p-3 md:p-4 font-bold text-right">Expiry Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
+                  {data.expiringSoon?.map((med, index) => (
+                    <tr key={med._id} className="hover:bg-rose-50/20 transition-colors">
+                      <td className="p-3 md:p-4 text-slate-400">{index + 1}</td>
+                      <td className="p-3 md:p-4">
+                        <p className="font-bold text-slate-800">{med.name}</p>
+                        <p className="text-[10px] text-slate-400">Distributor: {med.distributor || 'N/A'}</p>
+                      </td>
+                      <td className="p-3 md:p-4 font-medium text-slate-600">{med.batch || 'N/A'}</td>
+                      <td className="p-3 md:p-4 font-medium text-slate-600">{med.billNumber || 'N/A'}</td>
+                      <td className="p-3 md:p-4 text-center">
+                        <span className="font-extrabold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-lg">
+                          {med.quantity}
+                        </span>
+                      </td>
+                      <td className="p-3 md:p-4 text-right">
+                        <span className="font-bold text-rose-600">
+                          {formatExpiryDate(med.expiryDate)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Low Stock Alert Full Details */}
+      {showLowStockModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] md:rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
+            <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-lg md:text-xl font-bold text-slate-800 flex items-center">
+                <TrendingDown className="w-5 h-5 mr-2 text-amber-500" />
+                Low Stock Alerts (Qty &lt; {lowStockThreshold})
+              </h2>
+              <button 
+                onClick={() => setShowLowStockModal(false)}
+                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
+              >
+                <X className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50/30">
+              <table className="w-full text-left border-collapse bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">
+                    <th className="p-3 md:p-4 font-bold">#</th>
+                    <th className="p-3 md:p-4 font-bold">Medicine</th>
+                    <th className="p-3 md:p-4 font-bold">Distributor</th>
+                    <th className="p-3 md:p-4 font-bold">Batch No.</th>
+                    <th className="p-3 md:p-4 font-bold text-right">Available Qty</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
+                  {data.lowStock?.map((med, index) => (
+                    <tr key={med._id} className="hover:bg-amber-50/20 transition-colors">
+                      <td className="p-3 md:p-4 text-slate-400">{index + 1}</td>
+                      <td className="p-3 md:p-4">
+                        <p className="font-bold text-slate-800">{med.name}</p>
+                      </td>
+                      <td className="p-3 md:p-4 font-medium text-slate-600">{med.distributor || 'N/A'}</td>
+                      <td className="p-3 md:p-4 font-medium text-slate-600">{med.batch || 'N/A'}</td>
+                      <td className="p-3 md:p-4 text-right">
+                        <span className="font-extrabold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-lg">
+                          {med.quantity}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -545,6 +874,129 @@ export default function Reports() {
           </div>
         </div>
       )}
+
+      {/* Hidden printable container for B&W PDF Expiry Report */}
+      <div style={{ position: 'absolute', top: '-10000px', left: '-10000px', overflow: 'hidden' }}>
+        <div ref={printRef} className="p-8 bg-white text-black font-sans w-[210mm]">
+          <style type="text/css" media="print">
+            {`
+              @page {
+                size: A4;
+                margin: 20mm 15mm 20mm 15mm;
+              }
+              body {
+                color: #000 !important;
+                background: #fff !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              }
+              .print-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+              }
+              .print-table th {
+                border-bottom: 2px solid #000;
+                padding: 10px 8px;
+                font-size: 11px;
+                font-weight: bold;
+                text-transform: uppercase;
+                text-align: left;
+              }
+              .print-table td {
+                border-bottom: 1px solid #ddd;
+                padding: 10px 8px;
+                font-size: 11px;
+                color: #000;
+              }
+              .print-header {
+                border-bottom: 3px solid #000;
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+              }
+              .print-title {
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: -0.5px;
+                text-transform: uppercase;
+                margin: 0;
+              }
+              .print-subtitle {
+                font-size: 11px;
+                color: #555;
+                margin-top: 4px;
+                font-weight: 500;
+              }
+              .print-meta {
+                font-size: 10px;
+                color: #333;
+                text-align: right;
+                font-weight: 500;
+                line-height: 1.4;
+              }
+              .print-summary-box {
+                background-color: #f8fafc;
+                border: 1px solid #000;
+                padding: 12px;
+                display: flex;
+                justify-content: space-between;
+                margin-top: 15px;
+                font-size: 11px;
+                font-weight: bold;
+              }
+            `}
+          </style>
+          
+          {/* Header */}
+          <div className="print-header">
+            <div>
+              <h1 className="print-title">Medicines Expiry Report</h1>
+              <p className="print-subtitle">Smart Inventory & Loss Prevention insights</p>
+            </div>
+            <div className="print-meta">
+              <p>Generated: {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+              <p>Filter: Expiring in {expiryMonths} Month{expiryMonths > 1 ? 's' : ''}</p>
+            </div>
+          </div>
+
+          {/* Quick Summary Banner */}
+          <div className="print-summary-box">
+            <span>TOTAL EXPIRING PRODUCTS: {data.expiringSoon?.length || 0}</span>
+            <span>STATUS: URGENT / ATTENTION REQUIRED</span>
+          </div>
+
+          {/* Data Table */}
+          <table className="print-table">
+            <thead>
+              <tr>
+                <th style={{ width: '6%' }}>#</th>
+                <th style={{ width: '40%' }}>Medicine Name</th>
+                <th style={{ width: '15%' }}>Batch No.</th>
+                <th style={{ width: '15%' }}>Bill Number</th>
+                <th style={{ width: '12%', textAlign: 'center' }}>Stock Qty</th>
+                <th style={{ width: '12%', textAlign: 'right' }}>Expiry Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.expiringSoon?.map((med, idx) => (
+                <tr key={med._id}>
+                  <td>{idx + 1}</td>
+                  <td>
+                    <div style={{ fontWeight: 'bold' }}>{med.name}</div>
+                    <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>Dist: {med.distributor || 'N/A'}</div>
+                  </td>
+                  <td>{med.batch || 'N/A'}</td>
+                  <td>{med.billNumber || 'N/A'}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{med.quantity}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{formatExpiryDate(med.expiryDate)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

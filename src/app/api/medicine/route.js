@@ -95,8 +95,16 @@ export async function DELETE(req) {
         await connectToDatabase();
         const { searchParams } = new URL(req.url);
         const id = searchParams.get("id");
-        await Medicine.findByIdAndDelete(id);
-        return NextResponse.json({ success: true, message: "Deleted" });
+        if (!id) {
+            return NextResponse.json({ success: false, error: "ID parameter is required" }, { status: 400 });
+        }
+        if (id.includes(",")) {
+            const ids = id.split(",").filter(Boolean);
+            await Medicine.deleteMany({ _id: { $in: ids } });
+        } else {
+            await Medicine.findByIdAndDelete(id);
+        }
+        return NextResponse.json({ success: true, message: "Deleted successfully" });
     } catch (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }

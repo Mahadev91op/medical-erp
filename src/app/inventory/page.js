@@ -123,6 +123,24 @@ export default function Inventory() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedMeds.length === 0) return;
+    if (!confirm(`Are you sure you want to delete all ${selectedMeds.length} selected medicines?`)) return;
+    try {
+      const idsStr = selectedMeds.join(",");
+      const res = await fetch(`/api/medicine?id=${idsStr}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Selected medicines deleted successfully!");
+        setSelectedMeds([]);
+        fetchMedicines(true, searchTerm);
+      } else {
+        toast.error("Failed to delete selected medicines!");
+      }
+    } catch (error) {
+      toast.error("Error deleting selected medicines!");
+    }
+  };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     setIsUpdating(true);
@@ -209,13 +227,23 @@ export default function Inventory() {
           </button>
 
           {selectedMeds.length > 0 && (
-            <button 
-              onClick={() => setShowBulkModal(true)}
-              className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-3 md:py-3.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold flex items-center justify-center transition-all shadow-md shrink-0 animate-in fade-in"
-            >
-              <Printer className="w-4 h-4 md:w-5 md:h-5 mr-2 text-emerald-400" />
-              Print ({selectedMeds.length})
-            </button>
+            <>
+              <button 
+                onClick={handleBulkDelete}
+                className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 md:py-3.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold flex items-center justify-center transition-all shadow-md shrink-0 animate-in fade-in"
+              >
+                <Trash2 className="w-4 h-4 md:w-5 md:h-5 mr-2 text-rose-200" />
+                Delete ({selectedMeds.length})
+              </button>
+              
+              <button 
+                onClick={() => setShowBulkModal(true)}
+                className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-3 md:py-3.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold flex items-center justify-center transition-all shadow-md shrink-0 animate-in fade-in"
+              >
+                <Printer className="w-4 h-4 md:w-5 md:h-5 mr-2 text-emerald-400" />
+                Print ({selectedMeds.length})
+              </button>
+            </>
           )}
 
           <div className="relative w-full sm:w-80 group">
@@ -247,16 +275,16 @@ export default function Inventory() {
                 className={`bg-white rounded-2xl md:rounded-3xl border shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 overflow-hidden group ${isSelected ? 'border-emerald-400 ring-2 ring-emerald-50' : 'border-slate-100'}`}
               >
                 <div className="p-4 md:p-6">
-                  <div className="flex justify-between items-start mb-3 md:mb-4">
-                    <div className="flex items-start gap-2.5 md:gap-3">
+                  <div className="flex justify-between items-start gap-4 mb-3 md:mb-4">
+                    <div className="flex items-start gap-2.5 md:gap-3 flex-1 min-w-0">
                       <button onClick={() => toggleSelection(med._id)} className="mt-0.5 md:mt-1 focus:outline-none shrink-0">
                         {isSelected ? 
                           <CheckSquare className="w-4 h-4 md:w-5 md:h-5 text-emerald-500" /> : 
                           <Square className="w-4 h-4 md:w-5 md:h-5 text-slate-300 hover:text-emerald-400 transition-colors" />
                         }
                       </button>
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-sm md:text-lg text-slate-800 group-hover:text-emerald-600 transition-colors leading-tight truncate">{med.name}</h3>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-sm md:text-lg text-slate-800 group-hover:text-emerald-600 transition-colors leading-tight truncate" title={med.name}>{med.name}</h3>
                         <span className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5 md:mt-1">ID: {med.barcodeId}</span>
                       </div>
                     </div>
