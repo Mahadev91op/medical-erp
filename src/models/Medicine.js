@@ -6,6 +6,7 @@ const MedicineSchema = new mongoose.Schema({
     expiryDate: { type: Date, required: [true, "Expiry date is required"] },
     quantity: { type: Number, required: [true, "Quantity is required"], min: [0, "Quantity cannot be less than 0"] },
     mrp: { type: Number, required: [true, "MRP is required"] },
+    purchasePrice: { type: Number, required: [true, "Purchase Price is required"], default: 0 },
     distributor: { type: String, required: true, trim: true },
 
     billNumber: { type: String, required: [true, "Bill number is required"], trim: true },

@@ -68,6 +68,7 @@ export async function POST(req) {
           name: med.name,
           quantity: item.sellQuantity,
           mrp: item.mrp || 0,
+          purchasePrice: med.purchasePrice || 0,
           total: itemTotal
         });
       }

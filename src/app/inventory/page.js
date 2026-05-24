@@ -305,16 +305,22 @@ export default function Inventory() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-5 pl-7 md:pl-8">
-                    <div className="bg-slate-50 p-2 md:p-3 rounded-xl md:rounded-2xl">
-                      <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase mb-0.5 md:mb-1 tracking-wider">Stock Qty</p>
-                      <p className={`text-base md:text-lg font-extrabold ${med.quantity < 10 ? 'text-rose-500' : 'text-slate-700'}`}>
-                        {med.quantity} <span className="text-[8px] md:text-[10px] font-medium text-slate-400">Units</span>
+                  <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4 md:mb-5 pl-7 md:pl-8">
+                    <div className="bg-slate-50 p-2 rounded-xl">
+                      <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5 tracking-wider">Stock Qty</p>
+                      <p className={`text-sm md:text-base font-extrabold ${med.quantity < 10 ? 'text-rose-500' : 'text-slate-700'}`}>
+                        {med.quantity} <span className="text-[8px] font-medium text-slate-400">Pcs</span>
                       </p>
                     </div>
-                    <div className="bg-slate-50 p-2 md:p-3 rounded-xl md:rounded-2xl">
-                      <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase mb-0.5 md:mb-1 tracking-wider">MRP ₹</p>
-                      <p className="text-base md:text-lg font-extrabold text-emerald-600">
+                    <div className="bg-slate-50 p-2 rounded-xl">
+                      <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5 tracking-wider">Cost Price</p>
+                      <p className="text-sm md:text-base font-extrabold text-slate-700">
+                        ₹{med.purchasePrice || 0}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 p-2 rounded-xl">
+                      <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5 tracking-wider">MRP</p>
+                      <p className="text-sm md:text-base font-extrabold text-emerald-600">
                         ₹{med.mrp}
                       </p>
                     </div>
@@ -447,21 +453,30 @@ export default function Inventory() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4 md:gap-5">
+              <div className="grid grid-cols-3 gap-3 md:gap-4">
                 <div>
-                  <label className="block text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 md:mb-2 text-rose-500">Edit Stock</label>
+                  <label className="block text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 text-rose-500">Edit Stock</label>
                   <input 
                     type="number" required
-                    className="w-full bg-slate-50 border border-slate-200 p-3 md:p-4 rounded-xl md:rounded-2xl text-sm md:text-base focus:ring-4 focus:ring-emerald-50 outline-none font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 p-2.5 md:p-3.5 rounded-xl text-xs md:text-sm focus:ring-4 focus:ring-emerald-50 outline-none font-bold"
                     value={editMed.quantity} 
                     onChange={(e) => setEditMed({...editMed, quantity: e.target.value})}
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 md:mb-2">Price ₹</label>
+                  <label className="block text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Cost Price</label>
                   <input 
                     type="number" required
-                    className="w-full bg-slate-50 border border-slate-200 p-3 md:p-4 rounded-xl md:rounded-2xl text-sm md:text-base focus:ring-4 focus:ring-emerald-50 outline-none font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 p-2.5 md:p-3.5 rounded-xl text-xs md:text-sm focus:ring-4 focus:ring-emerald-50 outline-none font-bold"
+                    value={editMed.purchasePrice || ""} 
+                    onChange={(e) => setEditMed({...editMed, purchasePrice: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">MRP Price</label>
+                  <input 
+                    type="number" required
+                    className="w-full bg-slate-50 border border-slate-200 p-2.5 md:p-3.5 rounded-xl text-xs md:text-sm focus:ring-4 focus:ring-emerald-50 outline-none font-bold"
                     value={editMed.mrp} 
                     onChange={(e) => setEditMed({...editMed, mrp: e.target.value})}
                   />

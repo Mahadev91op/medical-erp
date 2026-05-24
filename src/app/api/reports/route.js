@@ -62,7 +62,8 @@ export async function GET(req) {
       distributorStock,
       distributorPerformance,
       todaysSales,
-      salesTrend
+      salesTrend,
+      stockValuationQuery
     ] = await Promise.all([
       Medicine.find({
         userId,
@@ -121,6 +122,16 @@ export async function GET(req) {
           }
         },
         { $sort: { _id: 1 } }
+      ]),
+
+      Medicine.aggregate([
+        { $match: { userId: userObjectId, quantity: { $gt: 0 } } },
+        {
+          $group: {
+            _id: null,
+            totalValuation: { $sum: { $multiply: [ "$quantity", { $ifNull: [ "$purchasePrice", 0 ] } ] } }
+          }
+        }
       ])
     ]);
 
@@ -136,6 +147,7 @@ export async function GET(req) {
     }).sort((a, b) => b.revenueGenerated - a.revenueGenerated);
 
     let todayRevenue = 0;
+    let todayCogs = 0;
     let todayItemsSold = 0;
     let soldItemsMap = {};
     const transactions = [];
@@ -145,6 +157,10 @@ export async function GET(req) {
       sale.items.forEach(item => {
         todayItemsSold += item.quantity;
         
+        // COGS calculation: fallback to 70% of MRP if purchasePrice is missing
+        const itemCost = item.purchasePrice || (item.mrp * 0.7);
+        todayCogs += item.quantity * itemCost;
+
         if (soldItemsMap[item.medicineId]) {
             soldItemsMap[item.medicineId].quantity += item.quantity;
             soldItemsMap[item.medicineId].total += item.total;
@@ -157,6 +173,7 @@ export async function GET(req) {
         }
 
         transactions.push({
+          saleId: sale._id.toString(),
           name: item.name,
           quantity: item.quantity,
           total: item.total,
@@ -168,6 +185,9 @@ export async function GET(req) {
       });
     });
 
+    const todayProfit = todayRevenue - todayCogs;
+    const profitMargin = todayRevenue > 0 ? (todayProfit / todayRevenue) * 100 : 0;
+
     // Sort transactions by date descending (latest first)
     transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -175,8 +195,12 @@ export async function GET(req) {
 
     const todayOverview = {
         revenue: todayRevenue,
+        profit: todayProfit,
+        margin: profitMargin,
+        cogs: todayCogs,
         itemsSold: todayItemsSold,
         billsGenerated: todaysSales.length,
+        sales: todaysSales,
         soldItems: todaySoldItemsList,
         transactions: transactions
     };
@@ -192,13 +216,16 @@ export async function GET(req) {
       };
     });
 
+    const stockVal = stockValuationQuery[0]?.totalValuation || 0;
+
     return NextResponse.json({
       success: true,
       expiringSoon,
       lowStock,
       distributorStock: completeDistributorData,
       todayOverview,
-      salesChartData
+      salesChartData,
+      stockValuation: stockVal
     });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

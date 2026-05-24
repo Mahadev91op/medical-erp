@@ -9,6 +9,21 @@ export default function Reports() {
   const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [], todayOverview: {} });
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeReportTab, setActiveReportTab] = useState("items");
+  const [printingInvoice, setPrintingInvoice] = useState(null);
+  
+  const invoicePrintRef = useRef(null);
+  const handlePrintInvoice = useReactToPrint({
+    contentRef: invoicePrintRef,
+    documentTitle: printingInvoice ? `Invoice_${printingInvoice.billNumber}` : 'Invoice',
+  });
+
+  useEffect(() => {
+    if (printingInvoice) {
+      handlePrintInvoice();
+      setPrintingInvoice(null);
+    }
+  }, [printingInvoice, handlePrintInvoice]);
   
   const [showAllDistributors, setShowAllDistributors] = useState(false);
   const [distributorSearch, setDistributorSearch] = useState("");
@@ -195,17 +210,48 @@ export default function Reports() {
       </div>
 
       {/* Today's Flash Report (Daily Insights) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-5">
         
         {/* Revenue */}
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-lg text-white flex items-center hover:shadow-emerald-500/30 transition-shadow">
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mr-4 shrink-0">
-                <IndianRupee className="w-6 h-6 text-white" />
+        <div className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center hover:shadow-md transition-all">
+            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mr-3 shrink-0 text-emerald-500">
+                <IndianRupee className="w-5 h-5" />
             </div>
             <div>
-                <p className="text-emerald-100 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">{getSelectedDateLabel()}&apos;s Profit / Revenue</p>
-                <p className="text-xl md:text-2xl font-extrabold flex items-center">
-                    ₹ {(data.todayOverview?.revenue || 0).toLocaleString('en-IN')}
+                <p className="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase tracking-wider mb-0.5">Sales Revenue</p>
+                <p className="text-base md:text-lg font-extrabold text-slate-700">
+                    ₹{(data.todayOverview?.revenue || 0).toLocaleString('en-IN')}
+                </p>
+            </div>
+        </div>
+
+        {/* Net Profit & Margin */}
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-lg text-white flex items-center hover:shadow-emerald-500/30 transition-shadow col-span-2 sm:col-span-1">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mr-3 shrink-0">
+                <TrendingUp className="w-5 h-5 text-white animate-pulse" />
+            </div>
+            <div>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-emerald-100 text-[9px] md:text-[10px] font-bold uppercase tracking-wider">Net Profit</p>
+                  <span className="px-1.5 py-0.5 text-[8px] font-extrabold bg-white/20 text-white rounded leading-none">
+                    {data.todayOverview?.margin?.toFixed(1) || 0}%
+                  </span>
+                </div>
+                <p className="text-base md:text-xl font-extrabold">
+                    ₹{(data.todayOverview?.profit || 0).toLocaleString('en-IN')}
+                </p>
+            </div>
+        </div>
+
+        {/* Stock Valuation */}
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-lg text-white flex items-center hover:shadow-slate-800/30 transition-shadow">
+            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center mr-3 shrink-0">
+                <Package className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+                <p className="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase tracking-wider mb-0.5">Stock Valuation</p>
+                <p className="text-base md:text-lg font-extrabold text-white">
+                    ₹{(data.stockValuation || 0).toLocaleString('en-IN')}
                 </p>
             </div>
         </div>
@@ -213,32 +259,33 @@ export default function Reports() {
         {/* Items Sold */}
         <div 
           onClick={() => setShowSoldItemsModal(true)}
-          className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex items-center cursor-pointer hover:border-indigo-100 hover:shadow-md transition-all group"
+          className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center cursor-pointer hover:border-indigo-100 hover:shadow-md transition-all group"
           title="Click to view details"
         >
-            <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mr-4 shrink-0 group-hover:bg-indigo-500 group-hover:text-white transition-colors text-indigo-500">
-                <Package className="w-6 h-6" />
+            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center mr-3 shrink-0 group-hover:bg-indigo-500 group-hover:text-white transition-colors text-indigo-500">
+                <Package className="w-5 h-5" />
             </div>
-            <div className="flex-1">
-                <div className="flex justify-between items-center">
-                  <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Items Sold ({getSelectedDateLabel()})</p>
-                  <span className="text-[9px] font-bold text-indigo-400 bg-indigo-50 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">Click to View</span>
-                </div>
-                <p className="text-xl md:text-2xl font-extrabold text-slate-700">
-                    {data.todayOverview?.itemsSold || 0}
+            <div className="flex-1 min-w-0">
+                <p className="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase tracking-wider mb-0.5 truncate">Items Sold</p>
+                <p className="text-base md:text-lg font-extrabold text-slate-700">
+                    {data.todayOverview?.itemsSold || 0} pcs
                 </p>
             </div>
         </div>
 
         {/* Bills Generated */}
-        <div className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex items-center cursor-pointer hover:border-amber-100 hover:shadow-md transition-all" onClick={() => setShowSoldItemsModal(true)} title="Click to view details">
-            <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mr-4 shrink-0">
-                <Receipt className="w-6 h-6 text-amber-500" />
+        <div 
+          className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center cursor-pointer hover:border-amber-100 hover:shadow-md transition-all" 
+          onClick={() => setShowSoldItemsModal(true)} 
+          title="Click to view details"
+        >
+            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mr-3 shrink-0 text-amber-500">
+                <Receipt className="w-5 h-5" />
             </div>
             <div>
-                <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Total Bills ({getSelectedDateLabel()})</p>
-                <p className="text-xl md:text-2xl font-extrabold text-slate-700">
-                    {data.todayOverview?.billsGenerated || 0}
+                <p className="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase tracking-wider mb-0.5">Total Bills</p>
+                <p className="text-base md:text-lg font-extrabold text-slate-700">
+                    {data.todayOverview?.billsGenerated || 0} Bills
                 </p>
             </div>
         </div>
@@ -638,13 +685,29 @@ export default function Reports() {
             <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h2 className="text-lg md:text-xl font-bold text-slate-800 flex items-center">
                 <Package className="w-5 h-5 mr-2 text-indigo-500" />
-                Sold Items Report ({getSelectedDateLabel()})
+                Sales Report ({getSelectedDateLabel()})
               </h2>
               <button 
                 onClick={() => setShowSoldItemsModal(false)}
                 className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            </div>
+
+            {/* Tab Selector */}
+            <div className="flex border-b border-slate-100 px-4 md:px-6 bg-slate-50/50">
+              <button
+                onClick={() => setActiveReportTab("items")}
+                className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "items" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-755"}`}
+              >
+                Sold Medicines
+              </button>
+              <button
+                onClick={() => setActiveReportTab("bills")}
+                className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "bills" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-755"}`}
+              >
+                Receipt Invoices
               </button>
             </div>
             
@@ -654,7 +717,7 @@ export default function Reports() {
                   <Package className="w-10 h-10 mb-3 text-slate-300" />
                   <p className="text-sm md:text-base font-medium">No sales recorded for this range. 😴</p>
                 </div>
-              ) : (
+              ) : activeReportTab === "items" ? (
                 <table className="w-full text-left border-collapse bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
                   <thead>
                     <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">
@@ -676,7 +739,7 @@ export default function Reports() {
                       return (
                         <tr key={index} className="hover:bg-emerald-50/20 transition-colors">
                           <td className="p-3 md:p-4 text-slate-400">{index + 1}</td>
-                          <td className="p-3 md:p-4 font-medium text-slate-500">#{tx.billNumber}</td>
+                          <td className="p-3 md:p-4 font-medium text-slate-505">#{tx.billNumber}</td>
                           <td className="p-3 md:p-4">
                             <p className="font-bold text-slate-800">{tx.name}</p>
                           </td>
@@ -685,7 +748,7 @@ export default function Reports() {
                               {tx.quantity} pcs
                             </span>
                           </td>
-                          <td className="p-3 md:p-4 text-center font-medium text-slate-600">₹{tx.mrp}</td>
+                          <td className="p-3 md:p-4 text-center font-medium text-slate-650">₹{tx.mrp}</td>
                           <td className="p-3 md:p-4 text-center">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${tx.paymentMethod === 'UPI' ? 'bg-indigo-50 text-indigo-600' : tx.paymentMethod === 'Card' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
                               {tx.paymentMethod}
@@ -695,6 +758,67 @@ export default function Reports() {
                           <td className="p-3 md:p-4 text-right whitespace-nowrap">
                             <span className="font-bold text-slate-700 block">{dateStr}</span>
                             <span className="text-[11px] text-slate-400 font-semibold">{timeStr}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full text-left border-collapse bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">
+                      <th className="p-3 md:p-4 font-bold">#</th>
+                      <th className="p-3 md:p-4 font-bold">Bill Receipt</th>
+                      <th className="p-3 md:p-4 font-bold">Medicines (Items)</th>
+                      <th className="p-3 md:p-4 font-bold text-center">Payment Mode</th>
+                      <th className="p-3 md:p-4 font-bold text-right">Grand Total</th>
+                      <th className="p-3 md:p-4 font-bold text-right">Date & Time</th>
+                      <th className="p-3 md:p-4 font-bold text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
+                    {(data.todayOverview.sales || []).map((sale, index) => {
+                      const txDate = new Date(sale.date || sale.createdAt);
+                      const timeStr = txDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                      const dateStr = txDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                      const billNo = sale._id ? sale._id.toString().slice(-6).toUpperCase() : "N/A";
+                      return (
+                        <tr key={sale._id || index} className="hover:bg-slate-50/20 transition-colors">
+                          <td className="p-3 md:p-4 text-slate-400">{index + 1}</td>
+                          <td className="p-3 md:p-4 font-extrabold text-slate-800">#{billNo}</td>
+                          <td className="p-3 md:p-4 max-w-[200px] truncate" title={sale.items.map(item => `${item.name} (${item.quantity})`).join(", ")}>
+                            <p className="font-bold text-slate-700 leading-tight truncate">
+                              {sale.items.map(item => `${item.name} (${item.quantity})`).join(", ")}
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-0.5 font-bold uppercase">{sale.items.length} items</p>
+                          </td>
+                          <td className="p-3 md:p-4 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${sale.paymentMethod === 'UPI' ? 'bg-indigo-50 text-indigo-600' : sale.paymentMethod === 'Card' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                              {sale.paymentMethod || "Cash"}
+                            </span>
+                          </td>
+                          <td className="p-3 md:p-4 text-right font-extrabold text-slate-800">₹{(sale.totalAmount || 0).toLocaleString('en-IN')}</td>
+                          <td className="p-3 md:p-4 text-right whitespace-nowrap">
+                            <span className="font-bold text-slate-700 block">{dateStr}</span>
+                            <span className="text-[11px] text-slate-400 font-semibold">{timeStr}</span>
+                          </td>
+                          <td className="p-3 md:p-4 text-center">
+                            <button
+                              onClick={() => {
+                                setPrintingInvoice({
+                                  billNumber: billNo,
+                                  date: sale.date || sale.createdAt,
+                                  items: sale.items,
+                                  totalAmount: sale.totalAmount,
+                                  paymentMethod: sale.paymentMethod || "Cash"
+                                });
+                              }}
+                              className="p-1.5 md:p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-sm"
+                              title="Print Receipt"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
                           </td>
                         </tr>
                       );
@@ -1025,6 +1149,126 @@ export default function Reports() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Hidden printable receipt wrapper for reprint */}
+      <div style={{ position: 'absolute', top: '-10000px', left: '-10000px', overflow: 'hidden' }}>
+        <div ref={invoicePrintRef}>
+          <style type="text/css" media="print">
+            {`
+              @page { 
+                size: 58mm auto; 
+                margin: 0mm !important; 
+              }
+              body { 
+                margin: 0mm !important; 
+                padding: 0mm !important; 
+                font-family: monospace !important;
+                background-color: white;
+                color: black;
+              }
+              .thermal-invoice {
+                width: 58mm !important; 
+                box-sizing: border-box; 
+                padding: 4mm 2mm; 
+                font-size: 10px;
+                line-height: 1.2;
+              }
+              .header {
+                text-align: center;
+                border-bottom: 1px dashed black;
+                padding-bottom: 4px;
+                margin-bottom: 6px;
+              }
+              .header h3 {
+                margin: 0;
+                font-size: 12px;
+                text-transform: uppercase;
+                font-weight: bold;
+              }
+              .header p {
+                margin: 2px 0 0 0;
+                font-size: 8px;
+              }
+              .info {
+                border-bottom: 1px dashed black;
+                padding-bottom: 4px;
+                margin-bottom: 6px;
+                font-size: 9px;
+              }
+              .info p {
+                margin: 1px 0;
+              }
+              .items-table {
+                width: 100%;
+                border-bottom: 1px dashed black;
+                padding-bottom: 4px;
+                margin-bottom: 6px;
+              }
+              .items-table .row {
+                display: flex;
+                justify-content: space-between;
+                margin: 2px 0;
+                font-size: 9px;
+              }
+              .items-table .row.head {
+                font-weight: bold;
+                font-size: 8px;
+                border-bottom: 0.5px solid black;
+                padding-bottom: 2px;
+                margin-bottom: 2px;
+              }
+              .total-row {
+                display: flex;
+                justify-content: space-between;
+                font-weight: bold;
+                font-size: 11px;
+                margin-top: 4px;
+              }
+              .footer {
+                text-align: center;
+                font-size: 8px;
+                margin-top: 15px;
+                border-top: 0.5px solid black;
+                padding-top: 4px;
+              }
+            `}
+          </style>
+
+          {printingInvoice && (
+            <div className="thermal-invoice">
+              <div className="header">
+                <h3>MedERP Pharmacy</h3>
+                <p>Smart Medical Shop ERP</p>
+                <p>Date: {new Date(printingInvoice.date).toLocaleString('en-IN')}</p>
+              </div>
+              <div className="info">
+                <p>Invoice No: #{printingInvoice.billNumber}</p>
+                <p>Payment Mode: {printingInvoice.paymentMethod}</p>
+              </div>
+              <div className="items-table">
+                <div className="row head">
+                  <span>Item Name</span>
+                  <span>Qty x Price</span>
+                </div>
+                {printingInvoice.items.map((item, i) => (
+                  <div key={i} className="row">
+                    <span style={{ maxWidth: '32mm', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                    <span>{(item.quantity || item.sellQuantity)} x ₹{item.mrp}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="total-row">
+                <span>Grand Total:</span>
+                <span>₹{printingInvoice.totalAmount}</span>
+              </div>
+              <div className="footer">
+                Thank you! Get well soon.<br/>
+                *Medicines once sold cannot be returned.*
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

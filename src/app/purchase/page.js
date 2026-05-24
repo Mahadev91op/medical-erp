@@ -39,7 +39,7 @@ const formatExpiryDateInput = (value) => {
 
 export default function PurchaseEntry() {
   const [formData, setFormData] = useState({
-    name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", billNumber: "", purchaseDate: ""
+    name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", purchasePrice: "", billNumber: "", purchaseDate: ""
   });
   const [purchaseDateInput, setPurchaseDateInput] = useState(getTodayInputString());
   const [expiryDateInput, setExpiryDateInput] = useState("");
@@ -146,6 +146,7 @@ export default function PurchaseEntry() {
           quantity: "",
           distributor: "",
           mrp: "",
+          purchasePrice: "",
           billNumber: prev.billNumber,
           purchaseDate: ""
         }));
@@ -224,15 +225,21 @@ export default function PurchaseEntry() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 md:gap-5">
+            <div className="grid grid-cols-3 gap-3 md:gap-4">
               <div>
-                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">MRP ₹</label>
+                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Cost Price ₹</label>
+                <input type="number" required placeholder="0.00" min="0" step="0.01"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
+                  value={formData.purchasePrice} onChange={(e) => setFormData({...formData, purchasePrice: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">MRP Price ₹</label>
                 <input type="number" required placeholder="0.00" min="0" step="0.01"
                   className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
                   value={formData.mrp} onChange={(e) => setFormData({...formData, mrp: e.target.value})} />
               </div>
               <div>
-                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Expiry Date (MM/YY)</label>
+                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Expiry (MM/YY)</label>
                 <input type="text" required placeholder="MM/YY"
                   className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
                   value={expiryDateInput} onChange={(e) => setExpiryDateInput(formatExpiryDateInput(e.target.value))} />
