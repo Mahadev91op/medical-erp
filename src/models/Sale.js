@@ -12,13 +12,15 @@ const SaleSchema = new mongoose.Schema({
   items: [SaleItemSchema],
   totalAmount: { type: Number, required: true },
   paymentMethod: { type: String, enum: ['Cash', 'UPI', 'Card'], default: 'Cash' },
-  date: { type: Date, default: Date.now }
+  date: { type: Date, default: Date.now },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 }, { 
     timestamps: true, 
     versionKey: false 
 });
 
 // 🚀 SPEED OPTIMIZATION FOR REPORTS
+SaleSchema.index({ userId: 1 });
 SaleSchema.index({ date: -1 });
 SaleSchema.index({ "items.medicineId": 1 });
 

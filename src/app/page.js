@@ -52,11 +52,21 @@ export default function Dashboard() {
       const data = await res.json();
       
       if (data.success) {
-        toast.success(data.message, { id: toastId, duration: 5000 });
-        console.log("✅ Backup Logs:", data.debug); 
+        // Trigger browser-level JSON download to user's device
+        const blob = new Blob([JSON.stringify(data.backupData, null, 2)], { type: "application/json" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = data.filename || `backup_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        toast.success("🎉 Backup saved to device successfully!", { id: toastId, duration: 5000 });
       } else {
-        toast.error("❌ Backup failed! Press F12 to check console.", { id: toastId, duration: 6000 });
-        alert(`BACKUP FAILED!\n\nReason:\n${data.stderr || data.details}`);
+        toast.error("❌ Backup failed!", { id: toastId, duration: 6000 });
+        alert(`BACKUP FAILED!\n\nReason:\n${data.error || data.details}`);
       }
     } catch (error) {
       toast.error("Network or Server error occurred!", { id: toastId });
@@ -118,13 +128,13 @@ export default function Dashboard() {
         </button>
 
         {/* 📦 BACKUP BUTTON */}
-        {/* <button 
+        <button 
           onClick={handleBackup}
           className="flex items-center text-xs md:text-sm font-bold bg-slate-800 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl shadow-sm hover:bg-slate-700 transition-all focus:outline-none z-10"
         >
           <Database className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2" />
           Save Backup
-        </button> */}
+        </button>
 
         {/* 🔄 REFRESH BUTTON */}
         <button 

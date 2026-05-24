@@ -1,12 +1,27 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { verifyUser } from "@/lib/verifyUser";
 
 export const dynamic = 'force-dynamic'; 
 
 export async function GET(req) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = session.user.id;
+    const verification = await verifyUser(userId, session.user.role);
+    if (!verification.success) {
+      return NextResponse.json({ error: verification.error }, { status: 403 });
+    }
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
     await connectToDatabase();
 
     const { searchParams } = new URL(req.url);
@@ -46,18 +61,22 @@ export async function GET(req) {
       lowStock,
       distributorStock,
       distributorPerformance,
-      todaysSales
+      todaysSales,
+      salesTrend
     ] = await Promise.all([
       Medicine.find({
+        userId,
         expiryDate: { $lte: expiryLimitDate },
         quantity: { $gt: 0 } 
       }).sort({ expiryDate: 1 }).lean(), 
 
       Medicine.find({
+        userId,
         quantity: { $lt: lowStockThreshold, $gt: 0 }
       }).sort({ quantity: 1 }).lean(), 
 
       Medicine.aggregate([
+        { $match: { userId: userObjectId } },
         {
           $group: {
             _id: "$distributor", 
@@ -68,7 +87,7 @@ export async function GET(req) {
       ]),
 
       Sale.aggregate([
-        { $match: { date: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) } } }, // 🚀 SPEED OPTIMIZATION: Limit to 30 days
+        { $match: { userId: userObjectId, date: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) } } }, // 🚀 SPEED OPTIMIZATION: Limit to 30 days
         { $unwind: "$items" },
         {
           $lookup: {
@@ -89,8 +108,20 @@ export async function GET(req) {
       ]),
 
       Sale.find({
+        userId,
         date: { $gte: startOfToday, $lte: endOfToday }
-      }).lean() 
+      }).lean(),
+
+      Sale.aggregate([
+        { $match: { userId: userObjectId, date: { $gte: startOfToday, $lte: endOfToday } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+            revenue: { $sum: "$totalAmount" }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ])
     ]);
 
     const completeDistributorData = distributorStock.map(stock => {
@@ -150,12 +181,24 @@ export async function GET(req) {
         transactions: transactions
     };
 
+    // Format daily sales trend for Charting
+    const salesChartData = salesTrend.map(item => {
+      const parts = item._id.split("-"); // YYYY-MM-DD
+      const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+      const formattedDate = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      return {
+        date: formattedDate,
+        Revenue: item.revenue
+      };
+    });
+
     return NextResponse.json({
       success: true,
       expiringSoon,
       lowStock,
       distributorStock: completeDistributorData,
-      todayOverview 
+      todayOverview,
+      salesChartData
     });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

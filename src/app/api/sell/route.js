@@ -2,13 +2,20 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
-
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { verifyUser } from "@/lib/verifyUser";
 
 export async function POST(req) {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const userId = session.user.id;
+  const verification = await verifyUser(userId, session.user.role);
+  if (!verification.success) {
+    return NextResponse.json({ error: verification.error }, { status: 403 });
+  }
 
   try {
     await connectToDatabase();
@@ -20,7 +27,7 @@ export async function POST(req) {
 
     // Saari medicines 1 hi baar me le aao
     const itemIds = cartItems.map(item => item._id);
-    const medicinesInDb = await Medicine.find({ _id: { $in: itemIds } });
+    const medicinesInDb = await Medicine.find({ _id: { $in: itemIds }, userId });
 
     const medMap = {};
     medicinesInDb.forEach(med => { medMap[med._id.toString()] = med; });
@@ -39,7 +46,7 @@ export async function POST(req) {
 
         // Atomic stock update to prevent race conditions
         const res = await Medicine.updateOne(
-          { _id: med._id, quantity: { $gte: item.sellQuantity } },
+          { _id: med._id, userId, quantity: { $gte: item.sellQuantity } },
           { $inc: { quantity: -item.sellQuantity } }
         );
         
@@ -69,7 +76,8 @@ export async function POST(req) {
       const newSale = new Sale({
         items: saleItems,
         totalAmount: calculatedTotal,
-        paymentMethod
+        paymentMethod,
+        userId
       });
       
       await newSale.save();
@@ -80,7 +88,7 @@ export async function POST(req) {
       for (let roll of decrementedItems) {
         try {
           await Medicine.updateOne(
-            { _id: roll.medicineId },
+            { _id: roll.medicineId, userId },
             { $inc: { quantity: roll.quantity } }
           );
         } catch (rollbackErr) {

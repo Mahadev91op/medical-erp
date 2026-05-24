@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw, Search, X, IndianRupee, ShoppingCart, PackageOpen, Award, Package, Receipt, TrendingUp, Printer } from "lucide-react";
 import { formatDate, formatExpiryDate } from "@/lib/formatDate";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function Reports() {
   const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [], todayOverview: {} });
@@ -242,6 +243,35 @@ export default function Reports() {
             </div>
         </div>
       </div>
+
+      {/* Interactive Sales Chart */}
+      {data.salesChartData && data.salesChartData.length > 0 && (
+        <div className="bg-white p-4 md:p-6 rounded-[20px] md:rounded-3xl border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] space-y-3 md:space-y-4">
+          <div>
+            <h2 className="text-sm md:text-base font-bold text-slate-700">Sales Trend Chart ({getSelectedDateLabel()})</h2>
+            <p className="text-[10px] md:text-xs text-slate-400">Graphical visualization of pharmacy daily earnings over this date range.</p>
+          </div>
+          <div className="h-64 md:h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data.salesChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                  formatter={(value) => [`₹${value}`, 'Revenue']}
+                />
+                <Area type="monotone" dataKey="Revenue" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Top Performing Distributors Section */}
       <div className="space-y-3 md:space-y-4 pt-2">
@@ -618,7 +648,7 @@ export default function Reports() {
               </button>
             </div>
             
-            <div className="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50/30">
+            <div className="p-4 md:p-6 overflow-x-auto overflow-y-auto flex-1 bg-slate-50/30">
               {(!data.todayOverview?.transactions || data.todayOverview.transactions.length === 0) ? (
                 <div className="flex flex-col items-center justify-center py-12 text-slate-400">
                   <Package className="w-10 h-10 mb-3 text-slate-300" />
@@ -704,7 +734,7 @@ export default function Reports() {
               </div>
             </div>
             
-            <div className="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50/30">
+            <div className="p-4 md:p-6 overflow-x-auto overflow-y-auto flex-1 bg-slate-50/30">
               <table className="w-full text-left border-collapse bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
                 <thead>
                   <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">
@@ -762,7 +792,7 @@ export default function Reports() {
               </button>
             </div>
             
-            <div className="p-4 md:p-6 overflow-y-auto flex-1 bg-slate-50/30">
+            <div className="p-4 md:p-6 overflow-x-auto overflow-y-auto flex-1 bg-slate-50/30">
               <table className="w-full text-left border-collapse bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
                 <thead>
                   <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">

@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
-
-export const dynamic = 'force-dynamic'; 
-
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { verifyUser } from "@/lib/verifyUser";
 
-async function isAdmin() {
-    const session = await getServerSession(authOptions);
-    return session?.user?.role === "admin";
-}
+export const dynamic = 'force-dynamic'; 
 
 const escapeRegex = (string) => {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -18,11 +13,21 @@ const escapeRegex = (string) => {
 
 export async function GET(req) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userId = session.user.id;
+        const verification = await verifyUser(userId, session.user.role);
+        if (!verification.success) {
+            return NextResponse.json({ error: verification.error }, { status: 403 });
+        }
+
         await connectToDatabase();
         const { searchParams } = new URL(req.url);
 
         if (searchParams.get("getDistributors") === "true") {
-            const distributors = await Medicine.distinct("distributor");
+            const distributors = await Medicine.distinct("distributor", { userId });
             return NextResponse.json({ success: true, distributors });
         }
 
@@ -31,7 +36,11 @@ export async function GET(req) {
         const search = searchParams.get("search") || "";
         const skip = (page - 1) * limit;
 
-        const query = { quantity: { $gt: 0 } };
+        const includeAll = searchParams.get("all") === "true";
+        const query = { userId };
+        if (!includeAll) {
+            query.quantity = { $gt: 0 };
+        }
         
         if (search) {
             const escapedSearch = escapeRegex(search);
@@ -59,13 +68,23 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-    if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userId = session.user.id;
+        const verification = await verifyUser(userId, session.user.role);
+        if (!verification.success) {
+            return NextResponse.json({ error: verification.error }, { status: 403 });
+        }
+
         await connectToDatabase();
         const data = await req.json();
         const uniqueBarcode = `MED-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
         const newMedicine = new Medicine({
             ...data,
+            userId,
             barcodeId: uniqueBarcode,
             quantity: Number(data.quantity),
             mrp: Number(data.mrp)
@@ -78,11 +97,23 @@ export async function POST(req) {
 }
 
 export async function PUT(req) {
-    if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userId = session.user.id;
+        const verification = await verifyUser(userId, session.user.role);
+        if (!verification.success) {
+            return NextResponse.json({ error: verification.error }, { status: 403 });
+        }
+
         await connectToDatabase();
         const { id, ...updateData } = await req.json();
-        const updated = await Medicine.findByIdAndUpdate(id, updateData, { new: true }).lean();
+        const updated = await Medicine.findOneAndUpdate({ _id: id, userId }, updateData, { new: true }).lean();
+        if (!updated) {
+            return NextResponse.json({ success: false, error: "Medicine not found or unauthorized" }, { status: 404 });
+        }
         return NextResponse.json({ success: true, medicine: updated });
     } catch (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -90,8 +121,17 @@ export async function PUT(req) {
 }
 
 export async function DELETE(req) {
-    if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     try {
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userId = session.user.id;
+        const verification = await verifyUser(userId, session.user.role);
+        if (!verification.success) {
+            return NextResponse.json({ error: verification.error }, { status: 403 });
+        }
+
         await connectToDatabase();
         const { searchParams } = new URL(req.url);
         const id = searchParams.get("id");
@@ -100,9 +140,12 @@ export async function DELETE(req) {
         }
         if (id.includes(",")) {
             const ids = id.split(",").filter(Boolean);
-            await Medicine.deleteMany({ _id: { $in: ids } });
+            await Medicine.deleteMany({ _id: { $in: ids }, userId });
         } else {
-            await Medicine.findByIdAndDelete(id);
+            const deleted = await Medicine.findOneAndDelete({ _id: id, userId });
+            if (!deleted) {
+                return NextResponse.json({ success: false, error: "Medicine not found or unauthorized" }, { status: 404 });
+            }
         }
         return NextResponse.json({ success: true, message: "Deleted successfully" });
     } catch (error) {

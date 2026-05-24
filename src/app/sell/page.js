@@ -1,9 +1,10 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { ScanBarcode, ShoppingCart, Trash2, CheckCircle, Loader2, Camera, IndianRupee, Search } from "lucide-react";
+import { ScanBarcode, ShoppingCart, Trash2, CheckCircle, Loader2, Camera, IndianRupee, Search, Printer, X } from "lucide-react";
 import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 import CameraScanner from "@/components/sell/CameraScanner"; 
 import toast, { Toaster } from "react-hot-toast";
+import { useReactToPrint } from "react-to-print";
 
 export default function QuickSell() {
   const [barcode, setBarcode] = useState("");
@@ -16,6 +17,14 @@ export default function QuickSell() {
   const [paymentMethod, setPaymentMethod] = useState("Cash"); 
   const [showCamera, setShowCamera] = useState(false);
   const inputRef = useRef(null);
+
+  const [completedInvoice, setCompletedInvoice] = useState(null);
+  const invoicePrintRef = useRef(null);
+  
+  const handlePrintInvoice = useReactToPrint({
+    contentRef: invoicePrintRef,
+    documentTitle: completedInvoice ? `Invoice_${completedInvoice.billNumber}` : 'Invoice',
+  });
 
   useEffect(() => {
     if (!showCamera) {
@@ -68,6 +77,12 @@ export default function QuickSell() {
   };
 
   const addToCart = (med) => {
+    // Expired Medicine Block
+    if (med.expiryDate && new Date(med.expiryDate) < new Date()) {
+      toast.error(`Cannot sell ${med.name}! This medicine batch has EXPIRED (${formatExpiryDate(med.expiryDate)}).`);
+      return;
+    }
+
     if (med.quantity <= 0) {
       toast.error(`${med.name} is out of stock!`);
       return; 
@@ -110,6 +125,13 @@ export default function QuickSell() {
       const data = await res.json();
       if (data.success) {
         toast.success(`✅ Sale Complete! Bill: ₹${data.totalAmount}`);
+        setCompletedInvoice({
+          billNumber: data.saleId ? data.saleId.toString().slice(-6).toUpperCase() : "N/A",
+          date: new Date().toISOString(),
+          items: [...cart],
+          totalAmount: data.totalAmount,
+          paymentMethod
+        });
         setCart([]); 
         setPaymentMethod("Cash");
       } else {
@@ -304,6 +326,203 @@ export default function QuickSell() {
           >
             {checkoutLoading ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : "Complete Sale"}
           </button>
+        </div>
+      </div>
+
+      {/* 5. Thermal Receipt Print Modal */}
+      {completedInvoice && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-slate-800 p-4 flex justify-between items-center text-white">
+              <div className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-emerald-400" />
+                <h2 className="text-sm md:text-base font-bold">Billing Completed</h2>
+              </div>
+              <button 
+                onClick={() => setCompletedInvoice(null)} 
+                className="bg-white/10 hover:bg-white/20 p-1.5 rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            {/* Scrollable Receipt Preview */}
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-50 flex flex-col items-center">
+              <p className="text-xs text-slate-500 font-medium mb-4">Receipt generated. You can print a thermal ticket below.</p>
+              
+              {/* Receipt Ticket Box */}
+              <div className="bg-white shadow-md border border-slate-200 rounded-xl p-4 w-[280px] text-slate-800 text-xs font-mono">
+                <div className="text-center border-b border-dashed border-slate-300 pb-3 mb-3">
+                  <h3 className="font-extrabold text-sm uppercase">MedERP Pharmacy</h3>
+                  <p className="text-[10px] text-slate-500 mt-1">Smart Medical Shop ERP</p>
+                  <p className="text-[9px] text-slate-400">Date: {new Date(completedInvoice.date).toLocaleString('en-IN')}</p>
+                </div>
+                
+                <div className="space-y-1 pb-3 mb-3 border-b border-dashed border-slate-300">
+                  <p className="text-[10px]"><span className="text-slate-400">Invoice:</span> #{completedInvoice.billNumber}</p>
+                  <p className="text-[10px]"><span className="text-slate-400">Pay Mode:</span> {completedInvoice.paymentMethod}</p>
+                </div>
+                
+                <div className="space-y-2 pb-3 mb-3 border-b border-dashed border-slate-300">
+                  <div className="flex justify-between font-bold text-[9px] text-slate-400">
+                    <span>Item Name</span>
+                    <span>Qty x Price</span>
+                  </div>
+                  {completedInvoice.items.map((item, i) => (
+                    <div key={i} className="flex justify-between text-[10px] leading-tight">
+                      <span className="truncate max-w-[150px]">{item.name}</span>
+                      <span>{item.sellQuantity} x ₹{item.mrp}</span>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="flex justify-between font-extrabold text-xs">
+                  <span>Grand Total:</span>
+                  <span>₹{completedInvoice.totalAmount}</span>
+                </div>
+                
+                <div className="text-center text-[8px] text-slate-450 mt-5 border-t border-slate-100 pt-3">
+                  Thank you! Get well soon.<br/>
+                  *Medicines once sold cannot be returned.*
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-white border-t border-slate-100 flex gap-3">
+              <button 
+                onClick={() => setCompletedInvoice(null)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold transition-all"
+              >
+                Close
+              </button>
+              <button 
+                onClick={handlePrintInvoice}
+                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-1.5"
+              >
+                <Printer className="w-4 h-4 text-emerald-100" /> Print Receipt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden printable receipt wrapper */}
+      <div style={{ position: 'absolute', top: '-10000px', left: '-10000px', overflow: 'hidden' }}>
+        <div ref={invoicePrintRef}>
+          <style type="text/css" media="print">
+            {`
+              @page { 
+                size: 58mm auto; 
+                margin: 0mm !important; 
+              }
+              body { 
+                margin: 0mm !important; 
+                padding: 0mm !important; 
+                font-family: monospace !important;
+                background-color: white;
+                color: black;
+              }
+              .thermal-invoice {
+                width: 58mm !important; 
+                box-sizing: border-box; 
+                padding: 4mm 2mm; 
+                font-size: 10px;
+                line-height: 1.2;
+              }
+              .header {
+                text-align: center;
+                border-bottom: 1px dashed black;
+                padding-bottom: 4px;
+                margin-bottom: 6px;
+              }
+              .header h3 {
+                margin: 0;
+                font-size: 12px;
+                text-transform: uppercase;
+                font-weight: bold;
+              }
+              .header p {
+                margin: 2px 0 0 0;
+                font-size: 8px;
+              }
+              .info {
+                border-bottom: 1px dashed black;
+                padding-bottom: 4px;
+                margin-bottom: 6px;
+                font-size: 9px;
+              }
+              .info p {
+                margin: 1px 0;
+              }
+              .items-table {
+                width: 100%;
+                border-bottom: 1px dashed black;
+                padding-bottom: 4px;
+                margin-bottom: 6px;
+              }
+              .items-table .row {
+                display: flex;
+                justify-content: space-between;
+                margin: 2px 0;
+                font-size: 9px;
+              }
+              .items-table .row.head {
+                font-weight: bold;
+                font-size: 8px;
+                border-bottom: 0.5px solid black;
+                padding-bottom: 2px;
+                margin-bottom: 2px;
+              }
+              .total-row {
+                display: flex;
+                justify-content: space-between;
+                font-weight: bold;
+                font-size: 11px;
+                margin-top: 4px;
+              }
+              .footer {
+                text-align: center;
+                font-size: 8px;
+                margin-top: 15px;
+                border-top: 0.5px solid black;
+                padding-top: 4px;
+              }
+            `}
+          </style>
+
+          {completedInvoice && (
+            <div className="thermal-invoice">
+              <div className="header">
+                <h3>MedERP Pharmacy</h3>
+                <p>Smart Medical Shop ERP</p>
+                <p>Date: {new Date(completedInvoice.date).toLocaleString('en-IN')}</p>
+              </div>
+              <div className="info">
+                <p>Invoice No: #{completedInvoice.billNumber}</p>
+                <p>Payment Mode: {completedInvoice.paymentMethod}</p>
+              </div>
+              <div className="items-table">
+                <div className="row head">
+                  <span>Item Name</span>
+                  <span>Qty x Price</span>
+                </div>
+                {completedInvoice.items.map((item, i) => (
+                  <div key={i} className="row">
+                    <span style={{ maxWidth: '32mm', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                    <span>{item.sellQuantity} x ₹{item.mrp}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="total-row">
+                <span>Grand Total:</span>
+                <span>₹{completedInvoice.totalAmount}</span>
+              </div>
+              <div className="footer">
+                Thank you! Get well soon.<br/>
+                *Medicines once sold cannot be returned.*
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

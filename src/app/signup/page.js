@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Activity, Lock, User, Loader2, ArrowRight } from "lucide-react";
+import toast from "react-hot-toast";
 
-export default function Login() {
+export default function Signup() {
     const router = useRouter();
-    const [formData, setFormData] = useState({ username: "", password: "" });
+    const [formData, setFormData] = useState({ username: "", password: "", confirmPassword: "" });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -16,18 +16,34 @@ export default function Login() {
         setLoading(true);
         setError("");
 
-        const res = await signIn("credentials", {
-            redirect: false,
-            username: formData.username,
-            password: formData.password,
-        });
-
-        if (res?.error) {
-            setError(res.error);
+        if (formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match!");
             setLoading(false);
-        } else {
-            router.push("/"); // Login success par Dashboard bhej do
-            router.refresh();
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/auth/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username: formData.username,
+                    password: formData.password
+                })
+            });
+
+            const data = await res.json();
+
+            if (!data.success) {
+                setError(data.error || "Something went wrong.");
+                setLoading(false);
+            } else {
+                toast.success("Account created successfully! Please login.");
+                router.push("/login");
+            }
+        } catch (err) {
+            setError("Failed to connect to the server.");
+            setLoading(false);
         }
     };
 
@@ -41,7 +57,7 @@ export default function Login() {
                         <Activity className="text-white w-7 h-7" />
                     </div>
                     <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Pharma<span className="text-emerald-500">ERP</span></h1>
-                    <p className="text-slate-500 text-sm font-medium mt-1">Staff & Admin Login Portal</p>
+                    <p className="text-slate-500 text-sm font-medium mt-1">Create your ERP Account</p>
                 </div>
 
                 {error && (
@@ -57,7 +73,7 @@ export default function Login() {
                             <input
                                 type="text"
                                 required
-                                placeholder="Enter username"
+                                placeholder="Choose a username"
                                 className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium"
                                 value={formData.username}
                                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
@@ -72,10 +88,25 @@ export default function Login() {
                             <input
                                 type="password"
                                 required
-                                placeholder="Enter password"
+                                placeholder="Create a password"
                                 className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium"
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            />
+                            <Lock className="absolute left-4 top-3.5 text-slate-400 w-5 h-5" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Confirm Password</label>
+                        <div className="relative">
+                            <input
+                                type="password"
+                                required
+                                placeholder="Repeat your password"
+                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium"
+                                value={formData.confirmPassword}
+                                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                             />
                             <Lock className="absolute left-4 top-3.5 text-slate-400 w-5 h-5" />
                         </div>
@@ -86,19 +117,15 @@ export default function Login() {
                         disabled={loading}
                         className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base px-4 py-4 rounded-xl transition-all shadow-lg shadow-emerald-200 flex items-center justify-center mt-2 disabled:opacity-70"
                     >
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Secure Login"}
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Register Account"}
                     </button>
                 </form>
 
                 <div className="mt-6 text-center text-sm text-slate-500 font-medium">
-                    Don&apos;t have an account?{" "}
-                    <Link href="/signup" className="text-emerald-500 hover:text-emerald-600 font-bold inline-flex items-center">
-                        Register here <ArrowRight className="w-4 h-4 ml-1" />
+                    Already have an account?{" "}
+                    <Link href="/login" className="text-emerald-500 hover:text-emerald-600 font-bold inline-flex items-center">
+                        Login here <ArrowRight className="w-4 h-4 ml-1" />
                     </Link>
-                </div>
-
-                <div className="mt-8 text-center text-xs text-slate-400 font-medium flex items-center justify-center">
-                    <Lock className="w-3 h-3 mr-1" /> Secure & Encrypted Login
                 </div>
             </div>
         </div>

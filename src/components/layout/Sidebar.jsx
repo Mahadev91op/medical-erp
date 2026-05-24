@@ -1,13 +1,17 @@
 "use client";
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  LayoutDashboard, 
   PackagePlus, 
   ScanBarcode, 
   BarChart3, 
   LogOut,
-  Package 
+  Package,
+  ShieldCheck,
+  UserCog,
+  Truck,
+  Search
 } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 
@@ -15,13 +19,22 @@ const Sidebar = () => {
   const pathname = usePathname();
   const { data: session } = useSession();
 
+  useEffect(() => {
+    if (session?.error === "disabled") {
+      signOut({ callbackUrl: "/login" });
+    }
+  }, [session]);
+
   // Navigation Links definition
   const navLinks = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/', roles: ['admin'] },
     { name: 'Inventory', icon: Package, path: '/inventory', roles: ['admin'] },
     { name: 'Purchase Entry', icon: PackagePlus, path: '/purchase', roles: ['admin'] },
     { name: 'Quick Sell', icon: ScanBarcode, path: '/sell', roles: ['admin', 'staff'] },
+    { name: 'Medicine Lookup', icon: Search, path: '/lookup', roles: ['admin', 'staff'] },
     { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin'] },
+    { name: 'Distributors', icon: Truck, path: '/distributors', roles: ['admin'] },
+    { name: 'Super Admin', icon: ShieldCheck, path: '/superadmin', roles: ['superadmin'] },
+    { name: 'Profile Settings', icon: UserCog, path: '/profile', roles: ['superadmin', 'admin', 'staff'] },
   ];
 
   // Filter links based on user role
@@ -72,7 +85,10 @@ const Sidebar = () => {
         </div>
 
         <button 
-          onClick={() => signOut()}
+          onClick={async () => {
+            await signOut({ redirect: false });
+            window.location.href = "/login";
+          }}
           className="flex items-center space-x-3 px-4 py-3 w-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all duration-200 font-medium"
         >
           <LogOut className="w-5 h-5" />

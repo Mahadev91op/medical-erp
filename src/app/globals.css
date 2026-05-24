@@ -19,3 +19,8 @@ input, textarea {
   -webkit-user-select: auto;
   user-select: auto;
 }
+
+/* Notch aur Home-indicator phones ke liye safe area padding utility */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 12px);
+}

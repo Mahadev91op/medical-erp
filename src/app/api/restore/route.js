@@ -1,67 +1,82 @@
 import { NextResponse } from "next/server";
-import { exec } from "child_process";
-import util from "util";
 import fs from "fs";
 import path from "path";
-
-const execPromise = util.promisify(exec);
+import Medicine from "@/models/Medicine";
+import Sale from "@/models/Sale";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { connectToDatabase } from "@/lib/mongodb";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/medicalshop";
-        const backupBaseDir = process.env.BACKUP_DIR || path.join(process.cwd(), "public", "backups");
-        
-        let dbName = "medicalshop";
-        try {
-            const url = new URL(mongoUri);
-            dbName = url.pathname.substring(1) || "medicalshop"; 
-        } catch(e) {
-             const parts = mongoUri.split('/');
-             dbName = parts[parts.length - 1].split('?')[0];
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+        const userId = session.user.id;
+        const username = session.user.name;
 
-        const backupFolder = path.join(backupBaseDir, dbName);
+        const backupBaseDir = process.env.BACKUP_DIR || path.join(process.cwd(), "backups");
+        const filePath = path.join(backupBaseDir, `backup_${username.toLowerCase()}.json`);
 
-        if (!fs.existsSync(backupFolder)) {
+        if (!fs.existsSync(filePath)) {
              return NextResponse.json({ 
                  success: false, 
-                 error: "Backup folder nahi mila! Pehle backup save kijiye." 
-             }, { status: 400 });
+                 error: `Backup file not found at ${filePath}! Please save a backup first.` 
+             }, { status: 404 });
         }
 
-        // 🚀 SMART LOGIC: '--drop' ka matlab hai pehle current data ko saaf karo, phir backup dalo
-        const command = `mongorestore --uri="${mongoUri}" --drop "${backupFolder}"`;
-        
-        try {
-            const { stdout, stderr } = await execPromise(command);
+        // Read and parse backup file
+        const fileContent = fs.readFileSync(filePath, "utf8");
+        const backupData = JSON.parse(fileContent);
+
+        // Security check: Make sure this backup belongs to this user
+        if (backupData.username?.toLowerCase() !== username.toLowerCase()) {
             return NextResponse.json({ 
-                success: true, 
-                message: `🎉 JADU! Purana Data successfully wapas aa gaya hai!`,
-                debug: stderr
-            });
-        } catch (err) {
-            // Agar normal command fail ho toh path wali command chalayega
-            const defaultMongoRestore = `"C:\\Program Files\\MongoDB\\Tools\\100\\bin\\mongorestore.exe"`;
-            const mongorestoreExe = process.env.MONGORESTORE_PATH ? `"${process.env.MONGORESTORE_PATH}"` : defaultMongoRestore;
-            
-            const fallbackCommand = `${mongorestoreExe} --uri="${mongoUri}" --drop "${backupFolder}"`;
-            
-            const { stdout, stderr } = await execPromise(fallbackCommand);
-            return NextResponse.json({ 
-                success: true, 
-                message: `🎉 JADU! Purana Data successfully wapas aa gaya hai!`,
-                debug: stderr
-            });
+                success: false, 
+                error: "Backup file username mismatch! Cannot restore data from another user."
+            }, { status: 403 });
         }
+
+        await connectToDatabase();
+
+        // Wiping only this user's current data
+        await Promise.all([
+            Medicine.deleteMany({ userId }),
+            Sale.deleteMany({ userId })
+        ]);
+
+        // Restoring medicines
+        if (backupData.medicines && backupData.medicines.length > 0) {
+            const medicinesToInsert = backupData.medicines.map(med => ({
+                ...med,
+                userId: userId // Enforce current userId in case it changed
+            }));
+            await Medicine.insertMany(medicinesToInsert);
+        }
+
+        // Restoring sales
+        if (backupData.sales && backupData.sales.length > 0) {
+            const salesToInsert = backupData.sales.map(sale => ({
+                ...sale,
+                userId: userId // Enforce current userId
+            }));
+            await Sale.insertMany(salesToInsert);
+        }
+
+        return NextResponse.json({ 
+            success: true, 
+            message: `🎉 Success! Only your data has been restored from ${path.basename(filePath)}.`
+        });
 
     } catch (error) {
+        console.error("Restore API Error:", error);
         return NextResponse.json({ 
             success: false, 
-            error: "Restore fail ho gaya! Server error.",
-            details: error.message,
-            stderr: error.stderr || "Koi output nahi"
+            error: "Restore failed! Server error.",
+            details: error.message
         }, { status: 500 });
     }
 }

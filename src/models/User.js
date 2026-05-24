@@ -12,9 +12,28 @@ const UserSchema = new mongoose.Schema({
   },
   role: { 
     type: String, 
-    enum: ['admin', 'staff'], 
-    default: 'staff' 
-  }
+    enum: ['superadmin', 'admin', 'staff'], 
+    default: 'admin' 
+  },
+  status: {
+    type: String,
+    enum: ['active', 'disabled'],
+    default: 'active'
+  },
+  subscriptionEnd: {
+    type: Date,
+    default: () => {
+      // Default to 1 month from registration
+      const d = new Date();
+      d.setMonth(d.getMonth() + 1);
+      return d;
+    }
+  },
+  subscriptionHistory: [{
+    addedMonths: { type: Number, required: true },
+    addedAt: { type: Date, default: Date.now },
+    newExpirationDate: { type: Date, required: true }
+  }]
 }, { timestamps: true });
 
 export default mongoose.models.User || mongoose.model("User", UserSchema);

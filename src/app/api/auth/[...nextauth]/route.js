@@ -24,16 +24,27 @@ export const authOptions = {
           throw new Error("Server Error: .env file me ADMIN_USERNAME ya ADMIN_PASSWORD set nahi hai!");
         }
 
-        // 2. Pehle check karo ki kya ye Admin hai (Seedha .env se)
+        // 2. Pehle check karo ki kya ye Super Admin hai (Seedha .env se)
         if (credentials.username === envAdminUser && credentials.password === envAdminPass) {
-          return { id: "admin_id_env", name: envAdminUser, role: "admin" };
+          return { 
+            id: "000000000000000000000000", 
+            name: envAdminUser, 
+            role: "superadmin",
+            status: "active",
+            subscriptionEnd: new Date("9999-12-31").toISOString()
+          };
         }
 
         // 3. Agar admin nahi hai, toh database me doosre users dhundo (Staff ke liye)
-        const user = await User.findOne({ username: credentials.username });
+        const user = await User.findOne({ username: credentials.username.toLowerCase().trim() });
         
         if (!user) {
           throw new Error("User nahi mila ya password galat hai.");
+        }
+
+        // 3b. Check if account is disabled
+        if (user.status === "disabled") {
+          throw new Error("Your account has been disabled. Please contact the administrator.");
         }
 
         // 4. Agar user database me mil gaya, toh password match karo
@@ -43,7 +54,13 @@ export const authOptions = {
         }
 
         // Sab sahi hai toh user details return karo
-        return { id: user._id.toString(), name: user.username, role: user.role };
+        return { 
+          id: user._id.toString(), 
+          name: user.username, 
+          role: user.role,
+          status: user.status,
+          subscriptionEnd: user.subscriptionEnd ? user.subscriptionEnd.toISOString() : null
+        };
       }
     })
   ],
@@ -52,12 +69,48 @@ export const authOptions = {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        token.status = user.status;
+        token.subscriptionEnd = user.subscriptionEnd;
+      } else if (token?.id && token.id !== "000000000000000000000000") {
+        try {
+          await connectToDatabase();
+          const dbUser = await User.findById(token.id).select("status role subscriptionEnd").lean();
+          if (dbUser) {
+            token.role = dbUser.role;
+            token.status = dbUser.status;
+            token.subscriptionEnd = dbUser.subscriptionEnd ? dbUser.subscriptionEnd.toISOString() : null;
+          }
+        } catch (error) {
+          console.error("JWT Sync Error:", error);
+        }
       }
       return token;
     },
     async session({ session, token }) {
-      session.user.role = token.role;
-      session.user.id = token.id;
+      if (session?.user && token) {
+        await connectToDatabase();
+        
+        // Skip DB check for env superadmin
+        if (token.id === "000000000000000000000000") {
+          session.user.role = "superadmin";
+          session.user.id = token.id;
+          session.user.status = "active";
+          session.user.subscriptionEnd = new Date("9999-12-31").toISOString();
+          return session;
+        }
+
+        const dbUser = await User.findById(token.id).select("status role subscriptionEnd").lean();
+        if (!dbUser || dbUser.status === "disabled") {
+          session.user = null;
+          session.error = "disabled";
+          return session;
+        }
+
+        session.user.role = dbUser.role;
+        session.user.id = token.id;
+        session.user.status = dbUser.status;
+        session.user.subscriptionEnd = dbUser.subscriptionEnd ? dbUser.subscriptionEnd.toISOString() : null;
+      }
       return session;
     }
   },

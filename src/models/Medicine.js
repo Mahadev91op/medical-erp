@@ -12,12 +12,14 @@ const MedicineSchema = new mongoose.Schema({
     purchaseDate: { type: Date, required: [true, "Purchase date is required"] },
 
     barcodeId: { type: String, unique: true, required: true, trim: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 }, { 
     timestamps: true, 
     versionKey: false 
 });
 
 // 🚀 ENTERPRISE SPEED OPTIMIZATION FOR LAKHS OF DATA
+MedicineSchema.index({ userId: 1 });
 MedicineSchema.index({ name: 1 }); 
 MedicineSchema.index({ barcodeId: 1 });
 MedicineSchema.index({ distributor: 1 });

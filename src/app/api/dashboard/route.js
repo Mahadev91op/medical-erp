@@ -1,12 +1,28 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export const revalidate = 60; // 🚀 SPEED OPTIMIZATION: Cache for 60 seconds
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (session.user.role !== "superadmin") {
+      const expiry = session.user.subscriptionEnd ? new Date(session.user.subscriptionEnd) : null;
+      if (expiry && expiry < new Date()) {
+        return NextResponse.json({ error: "Subscription expired" }, { status: 403 });
+      }
+    }
+    const userId = session.user.id;
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
     await connectToDatabase();
 
     const today = new Date();
@@ -30,26 +46,26 @@ export async function GET() {
       rawSalesData,
       todaysSales
     ] = await Promise.all([
-      Medicine.countDocuments({ quantity: { $gt: 0 } }),
+      Medicine.countDocuments({ userId, quantity: { $gt: 0 } }),
       
       Medicine.aggregate([
-        { $match: { quantity: { $gt: 0 } } },
+        { $match: { userId: userObjectId, quantity: { $gt: 0 } } },
         { $project: { totalValue: { $multiply: ["$quantity", "$mrp"] }, quantity: 1 } },
         { $group: { _id: null, totalStockValue: { $sum: "$totalValue" }, totalUnits: { $sum: "$quantity" } } }
       ]),
       
-      Medicine.countDocuments({ quantity: { $lt: 10, $gt: 0 } }),
+      Medicine.countDocuments({ userId, quantity: { $lt: 10, $gt: 0 } }),
       
-      Medicine.countDocuments({ expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } }),
+      Medicine.countDocuments({ userId, expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } }),
       
-      Medicine.find({ expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } })
+      Medicine.find({ userId, expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } })
               .sort({ expiryDate: 1 })
               .limit(6)
               .lean(), 
               
       // 🚀 BUG FIX: Timezone hata diya gaya hai. Ab date "YYYY-MM-DD" format me aayegi jo kabhi fail nahi hogi
       Sale.aggregate([
-        { $match: { date: { $gte: sevenDaysAgo } } },
+        { $match: { userId: userObjectId, date: { $gte: sevenDaysAgo } } },
         {
           $group: {
             _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } }, 
@@ -60,7 +76,7 @@ export async function GET() {
       ]),
 
       Sale.aggregate([
-        { $match: { date: { $gte: startOfToday } } },
+        { $match: { userId: userObjectId, date: { $gte: startOfToday } } },
         { $group: { _id: null, todayRevenue: { $sum: "$totalAmount" } } }
       ])
     ]);

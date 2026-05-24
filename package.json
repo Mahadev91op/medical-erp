@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:fresh": "powershell -Command \"Stop-Process -Name node -Force -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force .next/dev/lock -ErrorAction SilentlyContinue; npm run dev\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

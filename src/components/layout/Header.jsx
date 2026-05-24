@@ -1,12 +1,111 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Search, UserCircle, LogOut, Package, IndianRupee, X } from "lucide-react";
+import { Search, UserCircle, LogOut, Package, IndianRupee, X, AlertTriangle, TrendingDown } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 export default function Header() {
   const { data: session } = useSession();
   const router = useRouter();
+
+  // Live Indian Time State and Effect
+  const [indianTime, setIndianTime] = useState("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      const options = {
+        timeZone: "Asia/Kolkata",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      };
+      const dateOptions = {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      };
+      const now = new Date();
+      const timeFormatter = new Intl.DateTimeFormat("en-IN", options);
+      const dateFormatter = new Intl.DateTimeFormat("en-IN", dateOptions);
+      setIndianTime(`${dateFormatter.format(now)} | ${timeFormatter.format(now)}`);
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Real-time account check (disable and subscription expiry watchdog)
+  useEffect(() => {
+    if (session?.error === "disabled") {
+      signOut({ callbackUrl: "/login" });
+      return;
+    }
+
+    if (!session || session.user.role === "superadmin") return;
+
+    const checkSubscriptionLive = async () => {
+      try {
+        const res = await fetch("/api/user/subscription");
+        const data = await res.json();
+        if (data.success) {
+          if (data.status === "disabled") {
+            signOut({ callbackUrl: "/login" });
+            return;
+          }
+          if (data.subscriptionEnd) {
+            const expiry = new Date(data.subscriptionEnd);
+            if (expiry < new Date()) {
+              const currentPath = window.location.pathname;
+              const isAllowedPath = 
+                currentPath === "/paused" || 
+                currentPath === "/profile" ||
+                currentPath.startsWith("/api/auth");
+              
+              if (!isAllowedPath) {
+                router.push("/paused");
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Subscription watchdog error:", error);
+      }
+    };
+
+    checkSubscriptionLive();
+    const interval = setInterval(checkSubscriptionLive, 4000); // Poll every 4 seconds
+    return () => clearInterval(interval);
+  }, [session, router]);
+  
+  // Real-time Expiry & Low Stock warnings in Header
+  const [alerts, setAlerts] = useState({ lowStock: 0, expiring: 0 });
+
+  useEffect(() => {
+    if (!session || session.user.role === "superadmin") return;
+
+    const fetchAlerts = async () => {
+      try {
+        const res = await fetch("/api/reports?expiryMonths=3&lowStockThreshold=10");
+        const data = await res.json();
+        if (data.success) {
+          setAlerts({
+            lowStock: data.lowStock?.length || 0,
+            expiring: data.expiringSoon?.length || 0
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch header alerts:", err);
+      }
+    };
+
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 60000); 
+    return () => clearInterval(interval);
+  }, [session]);
   
   // Search State
   const [searchTerm, setSearchTerm] = useState("");
@@ -118,10 +217,49 @@ export default function Header() {
       {/* 2. Quick Actions & Profile */}
       <div className="flex items-center space-x-3 md:space-x-6 shrink-0">
         
+        {/* Live IST Clock */}
+        <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200/60 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs font-bold shadow-sm shrink-0">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="text-slate-400 font-semibold">IST:</span>
+          <span className="font-extrabold font-mono text-slate-700 tracking-tight">{indianTime || "Loading..."}</span>
+        </div>
+
+        {/* Live Warnings/Badges */}
+        {session?.user?.role !== "superadmin" && (alerts.lowStock > 0 || alerts.expiring > 0) && (
+          <div className="hidden sm:flex items-center gap-2">
+            {/* Expiring Soon */}
+            {alerts.expiring > 0 && (
+              <button 
+                onClick={() => router.push('/reports')}
+                className="flex items-center bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-xl text-xs font-bold gap-1 shadow-sm transition-all cursor-pointer"
+                title={`${alerts.expiring} items expiring soon`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+                <span>{alerts.expiring} Expiring</span>
+              </button>
+            )}
+            
+            {/* Low Stock */}
+            {alerts.lowStock > 0 && (
+              <button 
+                onClick={() => router.push('/reports')}
+                className="flex items-center bg-amber-50 border border-amber-100 hover:bg-amber-100 text-amber-700 px-2.5 py-1.5 rounded-xl text-xs font-bold gap-1 shadow-sm transition-all cursor-pointer"
+                title={`${alerts.lowStock} items low in stock`}
+              >
+                <TrendingDown className="w-3.5 h-3.5 text-amber-500" />
+                <span>{alerts.lowStock} Low Stock</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* New Sale Quick Button (Useful addition) */}
         <button 
           onClick={() => router.push('/sell')} 
-          className="hidden md:flex items-center bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-slate-200"
+          className="hidden lg:flex items-center bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-slate-200"
         >
           <Package className="w-4 h-4 mr-2 text-emerald-400" /> New Sale
         </button>
@@ -139,7 +277,10 @@ export default function Header() {
           
           {/* Logout Button */}
           <button 
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.href = "/login";
+            }}
             className="ml-2 p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm"
             title="Logout"
           >

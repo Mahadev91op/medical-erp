@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import Medicine from "@/models/Medicine";
+import Sale from "@/models/Sale";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -27,9 +29,17 @@ export async function connectToDatabase() {
     console.log("⏳ MongoDB se connect ho raha hai...");
     
     cached.promise = mongoose.connect(MONGODB_URI, opts)
-      .then((mongoose) => {
+      .then(async (m) => {
         console.log("✅ MongoDB Connected Successfully!");
-        return mongoose;
+        try {
+          await Promise.all([
+            Medicine.updateMany({ userId: { $exists: false } }, { $set: { userId: new m.Types.ObjectId("000000000000000000000000") } }),
+            Sale.updateMany({ userId: { $exists: false } }, { $set: { userId: new m.Types.ObjectId("000000000000000000000000") } })
+          ]);
+        } catch (migErr) {
+          console.error("⚠️ Legacy migration warning:", migErr.message);
+        }
+        return m;
       })
       .catch((err) => {
         console.error("❌ MongoDB Connection Error:", err.message);
