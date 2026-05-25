@@ -20,7 +20,15 @@ export async function GET(req) {
     if (!verification.success) {
       return NextResponse.json({ error: verification.error }, { status: 403 });
     }
-    const userObjectId = new mongoose.Types.ObjectId(userId);
+    
+    let userObjectId = null;
+    try {
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        userObjectId = new mongoose.Types.ObjectId(userId);
+      }
+    } catch (e) {
+      console.error("Invalid ObjectId format:", userId);
+    }
 
     await connectToDatabase();
 
@@ -56,6 +64,8 @@ export async function GET(req) {
     startOfToday.setHours(0, 0, 0, 0);
     endOfToday.setHours(23, 59, 59, 999);
 
+    const matchUserQuery = { $in: [userObjectId, userId].filter(Boolean) };
+
     const [
       expiringSoon,
       lowStock,
@@ -66,29 +76,29 @@ export async function GET(req) {
       stockValuationQuery
     ] = await Promise.all([
       Medicine.find({
-        userId,
+        userId: matchUserQuery,
         expiryDate: { $lte: expiryLimitDate },
         quantity: { $gt: 0 } 
       }).sort({ expiryDate: 1 }).lean(), 
 
       Medicine.find({
-        userId,
+        userId: matchUserQuery,
         quantity: { $lt: lowStockThreshold, $gt: 0 }
       }).sort({ quantity: 1 }).lean(), 
 
       Medicine.aggregate([
-        { $match: { userId: userObjectId } },
+        { $match: { userId: matchUserQuery } },
         {
           $group: {
             _id: "$distributor", 
-            totalQuantity: { $sum: "$quantity" },
+            totalQuantity: { $sum: { $toDouble: { $ifNull: [ "$quantity", 0 ] } } },
             totalItems: { $sum: 1 } 
           }
         }
       ]),
 
       Sale.aggregate([
-        { $match: { userId: userObjectId, date: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) } } }, // 🚀 SPEED OPTIMIZATION: Limit to 30 days
+        { $match: { userId: matchUserQuery, date: { $gte: new Date(new Date().setDate(new Date().getDate() - 30)) } } }, // 🚀 SPEED OPTIMIZATION: Limit to 30 days
         { $unwind: "$items" },
         {
           $lookup: {
@@ -102,34 +112,41 @@ export async function GET(req) {
         {
           $group: {
             _id: "$medicineDetails.distributor",
-            soldQuantity: { $sum: "$items.quantity" }, 
-            revenueGenerated: { $sum: "$items.total" } 
+            soldQuantity: { $sum: { $toDouble: { $ifNull: [ "$items.quantity", 0 ] } } }, 
+            revenueGenerated: { $sum: { $toDouble: { $ifNull: [ "$items.total", 0 ] } } } 
           }
         }
       ]),
 
       Sale.find({
-        userId,
+        userId: matchUserQuery,
         date: { $gte: startOfToday, $lte: endOfToday }
       }).lean(),
 
       Sale.aggregate([
-        { $match: { userId: userObjectId, date: { $gte: startOfToday, $lte: endOfToday } } },
+        { $match: { userId: matchUserQuery, date: { $gte: startOfToday, $lte: endOfToday } } },
         {
           $group: {
             _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
-            revenue: { $sum: "$totalAmount" }
+            revenue: { $sum: { $toDouble: { $ifNull: [ "$totalAmount", 0 ] } } }
           }
         },
         { $sort: { _id: 1 } }
       ]),
 
       Medicine.aggregate([
-        { $match: { userId: userObjectId, quantity: { $gt: 0 } } },
+        { $match: { userId: matchUserQuery, quantity: { $gt: 0 } } },
         {
           $group: {
             _id: null,
-            totalValuation: { $sum: { $multiply: [ "$quantity", { $ifNull: [ "$purchasePrice", 0 ] } ] } }
+            totalValuation: { 
+              $sum: { 
+                $multiply: [ 
+                  { $toDouble: { $ifNull: [ "$quantity", 0 ] } }, 
+                  { $toDouble: { $ifNull: [ "$purchasePrice", 0 ] } } 
+                ] 
+              } 
+            }
           }
         }
       ])

@@ -18,7 +18,12 @@ import {
   Sparkles,
   ShieldCheck,
   History,
-  CalendarX
+  CalendarX,
+  Edit,
+  Store,
+  MapPin,
+  Phone,
+  Mail
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -43,6 +48,7 @@ export default function SuperAdmin() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showEndSubModal, setShowEndSubModal] = useState(false);
+  const [showEditDetailsModal, setShowEditDetailsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
   // Form inputs
@@ -50,6 +56,14 @@ export default function SuperAdmin() {
   const [subMonths, setSubMonths] = useState(1);
   const [customMonths, setCustomMonths] = useState("");
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [editDetails, setEditDetails] = useState({
+    username: "",
+    name: "",
+    shopName: "",
+    address: "",
+    phoneNumber: "",
+    email: ""
+  });
 
   const fetchUsers = async (currentPage = page, search = searchTerm, filter = filterStatus) => {
     setLoading(true);
@@ -235,6 +249,42 @@ export default function SuperAdmin() {
         fetchUsers();
       } else {
         toast.error(data.error || "Failed to delete user", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Server error", { id: toastId });
+    }
+  };
+
+  const handleEditDetailsSubmit = async (e) => {
+    e.preventDefault();
+    if (!editDetails.username || !editDetails.email) {
+      toast.error("Username and Email are required!");
+      return;
+    }
+
+    const toastId = toast.loading("Updating client details...");
+    try {
+      const res = await fetch("/api/superadmin/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedUser._id,
+          action: "updateDetails",
+          username: editDetails.username,
+          name: editDetails.name,
+          shopName: editDetails.shopName,
+          address: editDetails.address,
+          phoneNumber: editDetails.phoneNumber,
+          email: editDetails.email
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || "Client details updated successfully!", { id: toastId });
+        setShowEditDetailsModal(false);
+        fetchUsers();
+      } else {
+        toast.error(data.error || "Failed to update details", { id: toastId });
       }
     } catch (err) {
       toast.error("Server error", { id: toastId });
@@ -483,6 +533,35 @@ export default function SuperAdmin() {
                             <CalendarClock className="w-4 h-4" />
                           </button>
 
+                          {/* Edit Details */}
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setEditDetails({
+                                username: user.username || "",
+                                name: user.name || "",
+                                shopName: user.shopName || "",
+                                address: user.address || "",
+                                phoneNumber: user.phoneNumber || "",
+                                email: user.email || ""
+                              });
+                              setShowEditDetailsModal(true);
+                            }}
+                            className="p-2 bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-800 hover:text-white hover:border-slate-800 rounded-xl transition-all"
+                            title="Edit Client Details"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+
+                          {/* Change Password */}
+                          <button
+                            onClick={() => { setSelectedUser(user); setShowPasswordModal(true); }}
+                            className="p-2 bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-800 hover:text-white hover:border-slate-800 rounded-xl transition-all"
+                            title="Reset Password"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+
                           {/* Terminate/End Subscription */}
                           {!isExpired && (
                             <button
@@ -501,15 +580,6 @@ export default function SuperAdmin() {
                             title="View Plan History"
                           >
                             <History className="w-4 h-4" />
-                          </button>
-
-                          {/* Change Password */}
-                          <button
-                            onClick={() => { setSelectedUser(user); setShowPasswordModal(true); }}
-                            className="p-2 bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-800 hover:text-white hover:border-slate-800 rounded-xl transition-all"
-                            title="Reset Password"
-                          >
-                            <KeyRound className="w-4 h-4" />
                           </button>
 
                           {/* Download Backup */}
@@ -865,6 +935,127 @@ export default function SuperAdmin() {
                   <CalendarX className="w-3.5 h-3.5" /> Confirm End Plan
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 6: Edit Client Details */}
+      {showEditDetailsModal && selectedUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-base md:text-lg font-bold text-slate-800 flex items-center">
+                <Edit className="w-5 h-5 mr-2 text-emerald-500" />
+                Edit Client Details: <span className="capitalize ml-1 text-emerald-605">{selectedUser.username}</span>
+              </h2>
+              <button 
+                onClick={() => setShowEditDetailsModal(false)}
+                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleEditDetailsSubmit} className="p-6 space-y-4">
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Username</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Username"
+                    value={editDetails.username}
+                    onChange={(e) => setEditDetails({ ...editDetails, username: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                  />
+                  <User className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Owner Full Name</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Owner Name"
+                      value={editDetails.name}
+                      onChange={(e) => setEditDetails({ ...editDetails, name: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                    />
+                    <User className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Shop Name</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Pharmacy/Shop Name"
+                      value={editDetails.shopName}
+                      onChange={(e) => setEditDetails({ ...editDetails, shopName: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                    />
+                    <Store className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Address</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Pharmacy Address"
+                    value={editDetails.address}
+                    onChange={(e) => setEditDetails({ ...editDetails, address: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                  />
+                  <MapPin className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Phone Number</label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      placeholder="Phone Number"
+                      value={editDetails.phoneNumber}
+                      onChange={(e) => setEditDetails({ ...editDetails, phoneNumber: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                    />
+                    <Phone className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email Address</label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      required
+                      placeholder="Email Address"
+                      value={editDetails.email}
+                      onChange={(e) => setEditDetails({ ...editDetails, email: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                    />
+                    <Mail className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-1.5 mt-2"
+              >
+                Save Details (No OTP)
+              </button>
             </form>
           </div>
         </div>

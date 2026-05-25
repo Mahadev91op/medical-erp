@@ -182,6 +182,34 @@ export async function PUT(req) {
       });
     }
 
+    if (action === "updateDetails") {
+      const { username, name, shopName, address, phoneNumber, email } = await req.json();
+
+      if (username && username.toLowerCase().trim() !== user.username) {
+        const existing = await User.findOne({ username: username.toLowerCase().trim() });
+        if (existing) {
+          return NextResponse.json({ success: false, error: "Username is already taken" }, { status: 400 });
+        }
+        user.username = username.toLowerCase().trim();
+      }
+
+      if (email && email.toLowerCase().trim() !== (user.email || "")) {
+        const existingEmail = await User.findOne({ email: email.toLowerCase().trim() });
+        if (existingEmail) {
+          return NextResponse.json({ success: false, error: "Email address is already registered to another user" }, { status: 400 });
+        }
+        user.email = email.toLowerCase().trim();
+      }
+
+      if (name !== undefined) user.name = name.trim();
+      if (shopName !== undefined) user.shopName = shopName.trim();
+      if (address !== undefined) user.address = address.trim();
+      if (phoneNumber !== undefined) user.phoneNumber = phoneNumber.trim();
+
+      await user.save();
+      return NextResponse.json({ success: true, message: "Client details updated successfully!" });
+    }
+
     return NextResponse.json({ success: false, error: "Invalid action specified" }, { status: 400 });
 
   } catch (error) {

@@ -14,16 +14,56 @@ import {
   CheckCircle2,
   Clock,
   Award,
-  ShieldCheck
+  ShieldCheck,
+  Store,
+  MapPin,
+  Phone,
+  Mail,
+  X,
+  BadgeHelp
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function Profile() {
   const { data: session } = useSession();
+  const [profileData, setProfileData] = useState({
+    name: "",
+    shopName: "",
+    address: "",
+    phoneNumber: "",
+    email: ""
+  });
   const [passwords, setPasswords] = useState({ newPassword: "", confirmPassword: "" });
   const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [subDetails, setSubDetails] = useState({ subscriptionEnd: null, subscriptionHistory: [] });
   const [subLoading, setSubLoading] = useState(true);
+
+  // OTP modal state
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [debugOtp, setDebugOtp] = useState(null);
+
+  const fetchProfileDetails = async () => {
+    try {
+      const res = await fetch("/api/user/profile");
+      const data = await res.json();
+      if (data.success && data.user) {
+        setProfileData({
+          name: data.user.name || "",
+          shopName: data.user.shopName || "",
+          address: data.user.address || "",
+          phoneNumber: data.user.phoneNumber || "",
+          email: data.user.email || ""
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load profile details:", error);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   const fetchSubscriptionDetails = async () => {
     try {
@@ -40,13 +80,54 @@ export default function Profile() {
   };
 
   useEffect(() => {
+    fetchProfileDetails();
     fetchSubscriptionDetails();
   }, []);
 
-  const handlePasswordChange = async (e) => {
+  // Triggers OTP request and opens the verification modal
+  const handleRequestProfileUpdate = async (e) => {
     e.preventDefault();
-    if (passwords.newPassword !== passwords.confirmPassword) {
-      toast.error("New passwords do not match!");
+
+    if (passwords.newPassword && passwords.newPassword !== passwords.confirmPassword) {
+      toast.error("Passwords do not match!");
+      return;
+    }
+
+    setSendingOtp(true);
+    setDebugOtp(null);
+    setOtpCode("");
+
+    try {
+      const res = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "profile"
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Security verification OTP sent to your registered email!");
+        setShowOtpModal(true);
+        if (data.debug) {
+          setDebugOtp(data.debug);
+        }
+      } else {
+        toast.error(data.error || "Failed to send OTP code.");
+      }
+    } catch (error) {
+      toast.error("Server communication error.");
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  // Submits the updates with the entered OTP code
+  const handleSaveProfileChanges = async (e) => {
+    e.preventDefault();
+    if (!otpCode) {
+      toast.error("Please enter the verification OTP code!");
       return;
     }
 
@@ -56,16 +137,26 @@ export default function Profile() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          newPassword: passwords.newPassword,
+          name: profileData.name,
+          shopName: profileData.shopName,
+          address: profileData.address,
+          phoneNumber: profileData.phoneNumber,
+          email: profileData.email,
+          newPassword: passwords.newPassword || undefined,
+          otp: otpCode
         }),
       });
 
       const data = await res.json();
       if (data.success) {
-        toast.success(data.message || "Password updated successfully!");
+        toast.success("Profile details updated successfully!");
+        setShowOtpModal(false);
         setPasswords({ newPassword: "", confirmPassword: "" });
+        setOtpCode("");
+        setDebugOtp(null);
+        fetchProfileDetails(); // Refresh details
       } else {
-        toast.error(data.error || "Failed to update password.");
+        toast.error(data.error || "Failed to update profile.");
       }
     } catch (error) {
       toast.error("Server or Network error occurred.");
@@ -154,6 +245,15 @@ export default function Profile() {
 
   const subInfo = getSubscriptionInfo();
 
+  if (profileLoading) {
+    return (
+      <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
+        <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
+        <p className="font-medium">Loading Profile Settings Panel...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       
@@ -196,66 +296,154 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Password Reset */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)]">
-            <h3 className="text-sm md:text-base font-bold text-slate-800 flex items-center mb-5">
-              <KeyRound className="w-4 h-4 text-emerald-500 mr-2 shrink-0" />
-              Reset Account Password
-            </h3>
+          {/* Superadmin notification */}
+          {session?.user?.id === "000000000000000000000000" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 text-amber-700 text-xs font-semibold flex gap-2">
+              <ShieldAlert className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
+              <p>Default env-based admin credentials cannot be changed from the UI. Please update your <code>.env</code> file directly.</p>
+            </div>
+          )}
 
-            {session?.user?.id === "000000000000000000000000" ? (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-700 text-xs font-semibold flex gap-2">
-                <ShieldAlert className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
-                <p>Default env-based admin credentials cannot be changed from the UI. Please update your <code>.env</code> file directly.</p>
-              </div>
-            ) : (
-              <form onSubmit={handlePasswordChange} className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">New Password</label>
-                  <div className="relative">
-                    <input
-                      type="password"
-                      required
-                      placeholder="Enter new password"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold text-sm"
-                      value={passwords.newPassword}
-                      onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
-                    />
-                    <Lock className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+        </div>
+
+        {/* Right Column: Profile Edit Form & Detailed Subscription */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* Profile Edit Panel (For standard users) */}
+          {session?.user?.id !== "000000000000000000000000" && (
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)]">
+              <h3 className="text-base font-bold text-slate-800 flex items-center mb-6">
+                <Store className="w-5 h-5 text-emerald-500 mr-2.5 shrink-0" />
+                Manage Profile Settings
+              </h3>
+
+              <form onSubmit={handleRequestProfileUpdate} className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Owner Full Name</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Owner Name"
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold text-sm"
+                        value={profileData.name}
+                        onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                      />
+                      <User className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Shop/Pharmacy Name</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Pharmacy Name"
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold text-sm"
+                        value={profileData.shopName}
+                        onChange={(e) => setProfileData({ ...profileData, shopName: e.target.value })}
+                      />
+                      <Store className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                    </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Confirm Password</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Shop Address</label>
                   <div className="relative">
                     <input
-                      type="password"
+                      type="text"
                       required
-                      placeholder="Repeat new password"
+                      placeholder="Pharmacy Address"
                       className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold text-sm"
-                      value={passwords.confirmPassword}
-                      onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                      value={profileData.address}
+                      onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
                     />
-                    <Lock className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                    <MapPin className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number</label>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        required
+                        placeholder="Phone Number"
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold text-sm"
+                        value={profileData.phoneNumber}
+                        onChange={(e) => setProfileData({ ...profileData, phoneNumber: e.target.value })}
+                      />
+                      <Phone className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        required
+                        placeholder="Email Address"
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold text-sm"
+                        value={profileData.email}
+                        onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                      />
+                      <Mail className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-5 space-y-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <KeyRound className="w-4 h-4 text-slate-400" />
+                    Update Password (Optional)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">New Password</label>
+                      <div className="relative">
+                        <input
+                          type="password"
+                          placeholder="Enter new password"
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold text-sm"
+                          value={passwords.newPassword}
+                          onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                        />
+                        <Lock className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Confirm Password</label>
+                      <div className="relative">
+                        <input
+                          type="password"
+                          placeholder="Repeat new password"
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-semibold text-sm"
+                          value={passwords.confirmPassword}
+                          onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                        />
+                        <Lock className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={sendingOtp}
                   className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-emerald-100 flex items-center justify-center gap-2 disabled:opacity-75 text-xs uppercase tracking-wider"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save New Password"}
+                  {sendingOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Profile Details (Sends OTP)"}
                 </button>
               </form>
-            )}
-          </div>
+            </div>
+          )}
 
-        </div>
-
-        {/* Right Column: Detailed Subscription & Billing History */}
-        <div className="lg:col-span-2 space-y-6">
-          
           {/* Detailed Subscription Card */}
           <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)]">
             <div className="flex items-center justify-between border-b border-slate-100 pb-5">
@@ -377,6 +565,65 @@ export default function Profile() {
         </div>
 
       </div>
+
+      {/* Profile OTP Verification Dialog */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-base md:text-lg font-bold text-slate-800 flex items-center">
+                <ShieldCheck className="w-5 h-5 mr-2 text-emerald-500" />
+                Profile Authorization Code
+              </h2>
+              <button 
+                onClick={() => { setShowOtpModal(false); setDebugOtp(null); }}
+                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveProfileChanges} className="p-6 space-y-5">
+              <p className="text-xs text-slate-500 font-medium">To authorize updates to your profile details, enter the 6-digit security code sent to your registered email address (<strong className="text-slate-700">{profileData.email}</strong>).</p>
+              
+              {/* Developer debug notification */}
+              {debugOtp && (
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-800 space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <BadgeHelp className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Developer Notice (Mock OTP Delivery):</span>
+                  </div>
+                  <p className="font-semibold">
+                    SMTP details are not configured in your <code>.env</code>. To help you test for free locally, use this code:
+                  </p>
+                  <p className="font-extrabold text-sm underline text-slate-800">OTP Code: {debugOtp.emailOtp}</p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">Authorization OTP</label>
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  placeholder="Enter 6-digit code"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-250 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-emerald-400 font-bold text-lg tracking-widest"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify & Save Changes"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
