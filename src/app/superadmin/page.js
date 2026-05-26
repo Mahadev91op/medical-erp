@@ -702,7 +702,7 @@ export default function SuperAdmin() {
 
                       {/* Actions */}
                       <td className="p-5 text-right">
-                        <div className="inline-flex gap-2">
+                        <div className="flex items-center justify-end gap-2 flex-wrap min-w-[280px]">
                           
                           {/* Toggle Status */}
                           <button
@@ -1349,7 +1349,7 @@ export default function SuperAdmin() {
             </div>
             
             <div className="p-6 space-y-4">
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex items-center justify-between">
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Status</p>
                   <div className="flex items-center gap-2 mt-1">
@@ -1381,7 +1381,7 @@ export default function SuperAdmin() {
               ) : (
                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                   {selectedUser.activeSessions.map((sess, idx) => (
-                    <div key={idx} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3.5 text-xs flex justify-between items-center gap-3">
+                    <div key={idx} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3.5 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
                           <Smartphone className="w-4 h-4" />
@@ -1395,7 +1395,7 @@ export default function SuperAdmin() {
                           </p>
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
+                      <div className="text-left sm:text-right shrink-0">
                         <p className="text-[10px] font-bold text-slate-500">
                           Last Active
                         </p>
