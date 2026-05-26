@@ -636,14 +636,14 @@ export default function SuperAdmin() {
                                 </>
                               ) : (
                                 <>
-                                  <span className="h-2 w-2 rounded-full bg-slate-350 shrink-0"></span>
+                                  <span className="h-2 w-2 rounded-full bg-slate-300 shrink-0"></span>
                                   <span className="text-[10px] text-slate-400 font-extrabold uppercase">Offline</span>
                                   {user.activeSessions?.length > 0 && (
                                     <>
                                       <span className="text-[10px] text-slate-400 font-semibold">•</span>
                                       <button 
                                         onClick={() => { setSelectedUser(user); setShowDevicesModal(true); }}
-                                        className="text-[10px] text-slate-450 hover:text-slate-650 font-bold hover:underline transition-colors"
+                                        className="text-[10px] text-slate-400 hover:text-slate-600 font-bold hover:underline transition-colors"
                                       >
                                         {user.activeSessions.length} {user.activeSessions.length === 1 ? 'device' : 'devices'}
                                       </button>
@@ -1133,7 +1133,7 @@ export default function SuperAdmin() {
                 <button
                   type="button"
                   onClick={() => setShowEndSubModal(false)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold py-3 rounded-xl transition-all text-xs"
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition-all text-xs"
                 >
                   Cancel
                 </button>
@@ -1156,7 +1156,7 @@ export default function SuperAdmin() {
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h2 className="text-base md:text-lg font-bold text-slate-800 flex items-center">
                 <Edit className="w-5 h-5 mr-2 text-emerald-500" />
-                Edit Client Details: <span className="capitalize ml-1 text-emerald-605">{selectedUser.username}</span>
+                Edit Client Details: <span className="capitalize ml-1 text-emerald-600">{selectedUser.username}</span>
               </h2>
               <button 
                 onClick={() => setShowEditDetailsModal(false)}
@@ -1292,7 +1292,7 @@ export default function SuperAdmin() {
               <div>
                 <h3 className="text-lg font-bold text-slate-800">Dangerous Action: Full System Restore</h3>
                 <p className="text-xs text-slate-500 font-semibold mt-1">
-                  You are about to restore the system from backup file: <span className="font-bold text-slate-700 block mt-0.5 break-all">"{systemRestoreFile.name}"</span>
+                  You are about to restore the system from backup file: <span className="font-bold text-slate-700 block mt-0.5 break-all">&quot;{systemRestoreFile.name}&quot;</span>
                 </p>
                 <div className="mt-3 p-3 bg-rose-50 border border-rose-100 rounded-2xl text-[11px] text-rose-600 font-semibold text-left space-y-1">
                   <p>⚠️ Warning:</p>
@@ -1353,7 +1353,7 @@ export default function SuperAdmin() {
           <div className="bg-white rounded-[24px] w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h2 className="text-base md:text-lg font-bold text-slate-800 flex items-center">
-                <Smartphone className="w-5 h-5 mr-2 text-indigo-505" />
+                <Smartphone className="w-5 h-5 mr-2 text-indigo-500" />
                 Connected Devices for {selectedUser.username}
               </h2>
               <button 
@@ -1375,23 +1375,23 @@ export default function SuperAdmin() {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </span>
-                        <span className="text-xs font-bold text-emerald-605">Currently Online</span>
+                        <span className="text-xs font-bold text-emerald-600">Currently Online</span>
                       </>
                     ) : (
                       <>
-                        <span className="h-2 w-2 rounded-full bg-slate-450"></span>
-                        <span className="text-xs font-bold text-slate-505">Offline</span>
+                        <span className="h-2 w-2 rounded-full bg-slate-400"></span>
+                        <span className="text-xs font-bold text-slate-500">Offline</span>
                       </>
                     )}
                   </div>
                 </div>
-                <span className="text-xs font-extrabold uppercase px-2.5 py-1 rounded-full border bg-indigo-50 text-indigo-650 border-indigo-100">
+                <span className="text-xs font-extrabold uppercase px-2.5 py-1 rounded-full border bg-indigo-50 text-indigo-600 border-indigo-100">
                   {selectedUser.activeSessions?.length || 0} active {selectedUser.activeSessions?.length === 1 ? 'session' : 'sessions'}
                 </span>
               </div>
 
               {!selectedUser.activeSessions || selectedUser.activeSessions.length === 0 ? (
-                <div className="py-8 text-center text-slate-450 text-sm font-semibold bg-slate-50 rounded-2xl border border-slate-100/50">
+                <div className="py-8 text-center text-slate-400 text-sm font-semibold bg-slate-50 rounded-2xl border border-slate-100/50">
                   No active sessions or logged-in devices found.
                 </div>
               ) : (

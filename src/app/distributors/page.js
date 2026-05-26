@@ -133,7 +133,7 @@ export default function Distributors() {
         <button 
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="flex items-center justify-center bg-white border border-slate-200 text-slate-650 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-sm hover:bg-slate-50 hover:text-emerald-600 hover:border-emerald-250 transition-all shrink-0 w-full md:w-auto"
+          className="flex items-center justify-center bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold shadow-sm hover:bg-slate-50 hover:text-emerald-600 hover:border-emerald-200 transition-all shrink-0 w-full md:w-auto"
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin text-emerald-500' : ''}`} />
           {isRefreshing ? 'Refreshing...' : 'Refresh'}

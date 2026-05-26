@@ -258,7 +258,7 @@ export default function Dashboard() {
                       <span className={`px-2 py-0.5 font-extrabold rounded-md ${med.quantity <= 0 ? 'bg-rose-100 text-rose-700' : med.quantity < 10 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
                         {med.quantity} in stock
                       </span>
-                      {med.rackNumber && <p className="text-[9px] text-slate-505 font-medium mt-0.5">Rack: {med.rackNumber}</p>}
+                      {med.rackNumber && <p className="text-[9px] text-slate-500 font-medium mt-0.5">Rack: {med.rackNumber}</p>}
                     </div>
                   </div>
                 ))}
@@ -287,17 +287,17 @@ export default function Dashboard() {
             <div className="bg-slate-50/50 p-2.5 rounded-xl text-center border border-slate-100">
               <Banknote className="w-5 h-5 mx-auto text-emerald-600 mb-1" />
               <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase">Cash Sales</p>
-              <p className="text-xs md:text-sm font-extrabold text-slate-750 mt-0.5">₹{(dashboardData?.stats?.todayPaymentBreakdown?.Cash || 0).toLocaleString('en-IN')}</p>
+              <p className="text-xs md:text-sm font-extrabold text-slate-700 mt-0.5">₹{(dashboardData?.stats?.todayPaymentBreakdown?.Cash || 0).toLocaleString('en-IN')}</p>
             </div>
             <div className="bg-slate-50/50 p-2.5 rounded-xl text-center border border-slate-100">
               <Smartphone className="w-5 h-5 mx-auto text-indigo-500 mb-1" />
               <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase">UPI Sales</p>
-              <p className="text-xs md:text-sm font-extrabold text-slate-750 mt-0.5">₹{(dashboardData?.stats?.todayPaymentBreakdown?.UPI || 0).toLocaleString('en-IN')}</p>
+              <p className="text-xs md:text-sm font-extrabold text-slate-700 mt-0.5">₹{(dashboardData?.stats?.todayPaymentBreakdown?.UPI || 0).toLocaleString('en-IN')}</p>
             </div>
             <div className="bg-slate-50/50 p-2.5 rounded-xl text-center border border-slate-100">
               <CreditCard className="w-5 h-5 mx-auto text-amber-500 mb-1" />
               <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase">Card Sales</p>
-              <p className="text-xs md:text-sm font-extrabold text-slate-750 mt-0.5">₹{(dashboardData?.stats?.todayPaymentBreakdown?.Card || 0).toLocaleString('en-IN')}</p>
+              <p className="text-xs md:text-sm font-extrabold text-slate-700 mt-0.5">₹{(dashboardData?.stats?.todayPaymentBreakdown?.Card || 0).toLocaleString('en-IN')}</p>
             </div>
           </div>
 
@@ -314,7 +314,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex gap-2.5 items-center shrink-0">
                       <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-extrabold">{item.quantity} pcs</span>
-                      <span className="text-slate-750 font-extrabold text-[11px] md:text-xs">₹{item.revenue}</span>
+                      <span className="text-slate-700 font-extrabold text-[11px] md:text-xs">₹{item.revenue}</span>
                     </div>
                   </div>
                 ))}
@@ -338,7 +338,7 @@ export default function Dashboard() {
 
             <div className="mt-3">
               {(!dashboardData?.reorderList || dashboardData.reorderList.length === 0) ? (
-                <div className="text-center py-12 text-slate-450">
+                <div className="text-center py-12 text-slate-400">
                   <p className="font-semibold text-emerald-600 bg-emerald-50 px-4 py-3 rounded-2xl border border-emerald-100 inline-block text-xs md:text-sm">
                     Perfect! No out-of-stock items. 📦
                   </p>
@@ -349,7 +349,7 @@ export default function Dashboard() {
                     <div key={med._id} className="flex justify-between items-center p-3 bg-rose-50/50 border border-rose-100/50 rounded-2xl hover:bg-rose-50 transition-colors">
                       <div>
                         <p className="font-bold text-slate-800 text-xs md:text-sm">{med.name}</p>
-                        <p className="text-[9px] md:text-[10px] text-slate-450 mt-0.5">Distributor: <span className="font-bold text-slate-605">{med.distributor}</span></p>
+                        <p className="text-[9px] md:text-[10px] text-slate-400 mt-0.5">Distributor: <span className="font-bold text-slate-600">{med.distributor}</span></p>
                       </div>
                       <div className="text-right shrink-0">
                         <span className="text-[10px] md:text-xs font-bold bg-rose-100 text-rose-700 px-2.5 py-1 rounded-lg">
@@ -364,7 +364,7 @@ export default function Dashboard() {
           </div>
           
           {dashboardData?.stats?.outOfStockCount > 5 && (
-            <a href="/reports" className="block text-center text-xs font-bold text-indigo-655 hover:text-indigo-755 hover:underline pt-2 border-t border-slate-100 mt-2">
+            <a href="/reports" className="block text-center text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline pt-2 border-t border-slate-100 mt-2">
               View all {dashboardData.stats.outOfStockCount} out of stock products in reports
             </a>
           )}
@@ -393,9 +393,9 @@ export default function Dashboard() {
                       <div className="min-w-0">
                         <p className="font-bold text-slate-800 text-[11px] md:text-xs flex items-center gap-1.5 truncate">
                           <span className="truncate">{sess.os} ({sess.browser})</span>
-                          {isThisDevice && <span className="bg-emerald-200 text-emerald-805 text-[8px] font-extrabold px-1.5 py-0.5 rounded-sm shrink-0">THIS DEVICE</span>}
+                          {isThisDevice && <span className="bg-emerald-200 text-emerald-800 text-[8px] font-extrabold px-1.5 py-0.5 rounded-sm shrink-0">THIS DEVICE</span>}
                         </p>
-                        <p className="text-[9px] text-slate-450 mt-0.5 truncate">IP: {sess.ipAddress} | {sess.isOnline ? '🟢 Live' : '⚫ Offline'}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5 truncate">IP: {sess.ipAddress} | {sess.isOnline ? '🟢 Live' : '⚫ Offline'}</p>
                       </div>
                     </div>
                     {sess.isOnline ? (

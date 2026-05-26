@@ -280,7 +280,7 @@ export default function Signup() {
                                             required
                                             maxLength={6}
                                             placeholder="6-digit code"
-                                            className="w-full bg-slate-50 border border-slate-250 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-emerald-400 font-bold text-base tracking-wider"
+                                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-emerald-400 font-bold text-base tracking-wider"
                                             value={formData.emailOtp}
                                             onChange={(e) => setFormData({ ...formData, emailOtp: e.target.value })}
                                         />
@@ -292,7 +292,7 @@ export default function Signup() {
                                             required
                                             maxLength={6}
                                             placeholder="6-digit code"
-                                            className="w-full bg-slate-50 border border-slate-250 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-emerald-400 font-bold text-base tracking-wider"
+                                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-emerald-400 font-bold text-base tracking-wider"
                                             value={formData.phoneOtp}
                                             onChange={(e) => setFormData({ ...formData, phoneOtp: e.target.value })}
                                         />

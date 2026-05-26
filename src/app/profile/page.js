@@ -573,7 +573,7 @@ export default function Profile() {
                 </button>
 
                 {/* Upload / Restore */}
-                <label className="flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-250 text-emerald-600 font-bold py-3 px-4 rounded-xl transition-all shadow-sm text-xs uppercase tracking-wider cursor-pointer text-center select-none">
+                <label className="flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-600 font-bold py-3 px-4 rounded-xl transition-all shadow-sm text-xs uppercase tracking-wider cursor-pointer text-center select-none">
                   <Upload className="w-4 h-4" />
                   Upload & Restore
                   <input
@@ -611,7 +611,7 @@ export default function Profile() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-xs font-bold text-slate-500">
                   <span>Cycle Duration Remaining</span>
-                  <span className="text-slate-850 font-extrabold">{subInfo.daysLeft} {typeof subInfo.daysLeft === "number" ? "Days" : ""}</span>
+                  <span className="text-slate-800 font-extrabold">{subInfo.daysLeft} {typeof subInfo.daysLeft === "number" ? "Days" : ""}</span>
                 </div>
                 <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
                   <div 
@@ -753,7 +753,7 @@ export default function Profile() {
                   placeholder="Enter 6-digit code"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-250 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-emerald-400 font-bold text-lg tracking-widest"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-emerald-400 font-bold text-lg tracking-widest"
                 />
               </div>
 
@@ -799,7 +799,7 @@ export default function Profile() {
                   placeholder="Type RESTORE"
                   value={restoreConfirmText}
                   onChange={(e) => setRestoreConfirmText(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-250 text-slate-700 rounded-xl px-3.5 py-3 focus:outline-none focus:border-rose-400 font-bold text-center"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3.5 py-3 focus:outline-none focus:border-rose-400 font-bold text-center"
                 />
               </div>
 

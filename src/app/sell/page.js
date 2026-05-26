@@ -399,7 +399,7 @@ export default function QuickSell() {
                   <span>₹{completedInvoice.totalAmount}</span>
                 </div>
                 
-                <div className="text-center text-[8px] text-slate-450 mt-5 border-t border-slate-100 pt-3">
+                <div className="text-center text-[8px] text-slate-400 mt-5 border-t border-slate-100 pt-3">
                   Thank you! Get well soon.<br/>
                   *Medicines once sold cannot be returned.*
                 </div>

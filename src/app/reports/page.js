@@ -714,7 +714,7 @@ export default function Reports() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6 pt-4">
         
         {/* Already Expired Stock Tracker */}
-        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-250 overflow-hidden flex flex-col min-h-[350px]">
+        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-200 overflow-hidden flex flex-col min-h-[350px]">
           <div className="bg-rose-50/50 p-4 md:p-5 border-b border-rose-100 flex items-center justify-between">
             <h2 className="text-sm md:text-base font-bold text-rose-800 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-rose-500 animate-pulse" />
@@ -727,7 +727,7 @@ export default function Reports() {
 
           <div className="p-4 md:p-5 flex-1 flex flex-col justify-between overflow-x-auto">
             {(!data.alreadyExpired || data.alreadyExpired.length === 0) ? (
-              <div className="text-center text-slate-450 my-auto py-8">
+              <div className="text-center text-slate-400 my-auto py-8">
                 <p className="font-semibold text-emerald-600 bg-emerald-50 px-4 py-3 rounded-2xl border border-emerald-100 inline-block text-xs md:text-sm">
                   Excellent! No expired medicines in stock. 🎉
                 </p>
@@ -795,7 +795,7 @@ export default function Reports() {
 
           <div className="p-4 md:p-5 flex-1 flex flex-col justify-between overflow-x-auto">
             {(!data.outOfStock || data.outOfStock.length === 0) ? (
-              <div className="text-center text-slate-450 my-auto py-8">
+              <div className="text-center text-slate-400 my-auto py-8">
                 <p className="font-semibold text-slate-600 bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100 inline-block text-xs md:text-sm">
                   All medicines are currently in stock! 📦
                 </p>
@@ -857,13 +857,13 @@ export default function Reports() {
             <div className="flex border-b border-slate-100 px-4 md:px-6 bg-slate-50/50">
               <button
                 onClick={() => setActiveReportTab("items")}
-                className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "items" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-755"}`}
+                className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "items" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
               >
                 Sold Medicines
               </button>
               <button
                 onClick={() => setActiveReportTab("bills")}
-                className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "bills" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-755"}`}
+                className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "bills" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
               >
                 Receipt Invoices
               </button>
@@ -897,7 +897,7 @@ export default function Reports() {
                       return (
                         <tr key={index} className="hover:bg-emerald-50/20 transition-colors">
                           <td className="p-3 md:p-4 text-slate-400">{index + 1}</td>
-                          <td className="p-3 md:p-4 font-medium text-slate-505">#{tx.billNumber}</td>
+                          <td className="p-3 md:p-4 font-medium text-slate-500">#{tx.billNumber}</td>
                           <td className="p-3 md:p-4">
                             <p className="font-bold text-slate-800">{tx.name}</p>
                           </td>
@@ -906,7 +906,7 @@ export default function Reports() {
                               {tx.quantity} pcs
                             </span>
                           </td>
-                          <td className="p-3 md:p-4 text-center font-medium text-slate-650">₹{tx.mrp}</td>
+                          <td className="p-3 md:p-4 text-center font-medium text-slate-600">₹{tx.mrp}</td>
                           <td className="p-3 md:p-4 text-center">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${tx.paymentMethod === 'UPI' ? 'bg-indigo-50 text-indigo-600' : tx.paymentMethod === 'Card' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
                               {tx.paymentMethod}

@@ -204,7 +204,7 @@ export default function Header() {
                       <p className={`text-sm font-extrabold ${med.quantity < 10 ? 'text-rose-500' : 'text-emerald-500'}`}>
                         {med.quantity} <span className="text-[10px] font-semibold opacity-70">in stock</span>
                       </p>
-                      <p className="text-xs font-bold text-slate-505 flex items-center justify-end mt-0.5">
+                      <p className="text-xs font-bold text-slate-500 flex items-center justify-end mt-0.5">
                         <IndianRupee className="w-3 h-3 mr-0.5"/> {med.mrp}
                       </p>
                     </div>
@@ -243,7 +243,7 @@ export default function Header() {
                 className="flex items-center bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-xl text-xs font-bold gap-1 shadow-sm transition-all cursor-pointer"
                 title={`${alerts.expiring} items expiring soon`}
               >
-                <AlertTriangle className="w-3.5 h-3.5 text-rose-505 animate-pulse" />
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
                 <span>{alerts.expiring} Expiring</span>
               </button>
             )}

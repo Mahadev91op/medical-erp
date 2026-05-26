@@ -109,7 +109,7 @@ const MobileNav = () => {
                     key={link.path} 
                     href={link.path}
                     onClick={() => setShowMore(false)}
-                    className={`flex items-center space-x-3 p-3.5 rounded-2xl border transition-all ${isActive ? 'bg-emerald-500 border-emerald-500 text-white font-bold shadow-md shadow-emerald-100' : 'bg-slate-50 border-slate-100 text-slate-650 hover:bg-slate-100'}`}
+                    className={`flex items-center space-x-3 p-3.5 rounded-2xl border transition-all ${isActive ? 'bg-emerald-500 border-emerald-500 text-white font-bold shadow-md shadow-emerald-100' : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'}`}
                   >
                     <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                     <span className="text-xs font-bold">{link.name}</span>

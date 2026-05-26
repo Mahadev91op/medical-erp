@@ -176,9 +176,9 @@ export default function MedicineLookup() {
 
       {/* Main Details & History Grid */}
       {!selectedMed ? (
-        <div className="bg-slate-50 border border-dashed border-slate-350 p-12 md:p-24 rounded-[24px] md:rounded-3xl text-center">
+        <div className="bg-slate-50 border border-dashed border-slate-300 p-12 md:p-24 rounded-[24px] md:rounded-3xl text-center">
           <ScanBarcode className="w-12 h-12 md:w-16 md:h-16 text-slate-300 mx-auto mb-3 opacity-60" />
-          <h3 className="text-base md:text-lg font-bold text-slate-650">No Medicine Traced</h3>
+          <h3 className="text-base md:text-lg font-bold text-slate-600">No Medicine Traced</h3>
           <p className="text-xs md:text-sm text-slate-400 mt-1 max-w-sm mx-auto">Use the search bar above or scan the medicine&apos;s barcode using the camera to look up details and sales history logs.</p>
         </div>
       ) : (
@@ -284,7 +284,7 @@ export default function MedicineLookup() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm">
                     <thead>
-                      <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-505 uppercase tracking-wider border-b border-slate-150">
+                      <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">
                         <th className="p-3 font-bold">Receipt</th>
                         <th className="p-3 font-bold text-center">Sold Qty</th>
                         <th className="p-3 font-bold text-center">Pay Mode</th>
@@ -299,9 +299,9 @@ export default function MedicineLookup() {
                         const timeStr = txDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
                         return (
                           <tr key={i} className="hover:bg-slate-50/20 transition-colors">
-                            <td className="p-3 font-bold text-indigo-650">#{item.billNumber}</td>
+                            <td className="p-3 font-bold text-indigo-600">#{item.billNumber}</td>
                             <td className="p-3 text-center">
-                              <span className="bg-indigo-50 text-indigo-650 px-2 py-0.5 rounded-lg font-bold">
+                              <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-lg font-bold">
                                 {item.quantity} pcs
                               </span>
                             </td>
@@ -318,7 +318,7 @@ export default function MedicineLookup() {
                             </td>
                             <td className="p-3 text-right font-bold text-slate-700">₹{item.total.toLocaleString("en-IN")}</td>
                             <td className="p-3 text-right whitespace-nowrap">
-                              <span className="font-bold block text-slate-750">{dateStr}</span>
+                              <span className="font-bold block text-slate-700">{dateStr}</span>
                               <span className="text-[10px] text-slate-400 font-bold">{timeStr}</span>
                             </td>
                           </tr>
