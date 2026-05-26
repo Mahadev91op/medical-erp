@@ -6,7 +6,7 @@ import Sale from "@/models/Sale";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-export const revalidate = 60; // 🚀 SPEED OPTIMIZATION: Cache for 60 seconds
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -46,7 +46,7 @@ export async function GET() {
       rawSalesData,
       todaysSales
     ] = await Promise.all([
-      Medicine.countDocuments({ userId, quantity: { $gt: 0 } }),
+      Medicine.countDocuments({ userId: userObjectId, quantity: { $gt: 0 } }),
       
       Medicine.aggregate([
         { $match: { userId: userObjectId, quantity: { $gt: 0 } } },
@@ -54,11 +54,11 @@ export async function GET() {
         { $group: { _id: null, totalStockValue: { $sum: "$totalValue" }, totalUnits: { $sum: "$quantity" } } }
       ]),
       
-      Medicine.countDocuments({ userId, quantity: { $lt: 10, $gt: 0 } }),
+      Medicine.countDocuments({ userId: userObjectId, quantity: { $lt: 10, $gt: 0 } }),
       
-      Medicine.countDocuments({ userId, expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } }),
+      Medicine.countDocuments({ userId: userObjectId, expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } }),
       
-      Medicine.find({ userId, expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } })
+      Medicine.find({ userId: userObjectId, expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } })
               .sort({ expiryDate: 1 })
               .limit(6)
               .lean(), 

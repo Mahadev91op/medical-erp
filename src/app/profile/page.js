@@ -20,7 +20,10 @@ import {
   Phone,
   Mail,
   X,
-  BadgeHelp
+  BadgeHelp,
+  Download,
+  Upload,
+  Database
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -44,6 +47,13 @@ export default function Profile() {
   const [otpCode, setOtpCode] = useState("");
   const [sendingOtp, setSendingOtp] = useState(false);
   const [debugOtp, setDebugOtp] = useState(null);
+
+  // Backup & Restore state
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [restoreFile, setRestoreFile] = useState(null);
+  const [restoreConfirmText, setRestoreConfirmText] = useState("");
 
   const fetchProfileDetails = async () => {
     try {
@@ -162,6 +172,101 @@ export default function Profile() {
       toast.error("Server or Network error occurred.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadBackup = async () => {
+    setBackupLoading(true);
+    const toastId = toast.loading("Generating your database backup file...");
+    try {
+      const res = await fetch("/api/backup");
+      const data = await res.json();
+      if (data.success && data.backupData) {
+        // Trigger browser level download of local JSON file
+        const blob = new Blob([JSON.stringify(data.backupData, null, 2)], { type: "application/json" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = data.filename || `backup_${session?.user?.name?.toLowerCase()}_data.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        toast.success(data.message || "🎉 Backup downloaded successfully!", { id: toastId });
+      } else {
+        toast.error(data.error || "Failed to download backup.", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Network or server error during backup generation.", { id: toastId });
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/json" && !file.name.endsWith(".json")) {
+      toast.error("Please upload a valid JSON backup file!");
+      e.target.value = "";
+      return;
+    }
+
+    setRestoreFile(file);
+    setRestoreConfirmText("");
+    setShowRestoreModal(true);
+    e.target.value = "";
+  };
+
+  const handleRestoreSubmit = async (e) => {
+    e.preventDefault();
+    if (restoreConfirmText !== "RESTORE") {
+      toast.error("Please type RESTORE to confirm!");
+      return;
+    }
+
+    setRestoreLoading(true);
+    const toastId = toast.loading("Uploading and restoring your database records...");
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const backupData = JSON.parse(event.target.result);
+
+          const res = await fetch("/api/restore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ backupData })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            toast.success(data.message || "🎉 Data restored successfully!", { id: toastId });
+            setShowRestoreModal(false);
+            setRestoreFile(null);
+            setRestoreConfirmText("");
+          } else {
+            toast.error(data.error || "Failed to restore data.", { id: toastId });
+          }
+        } catch (parseError) {
+          toast.error("Invalid file structure. Make sure this is a valid backup JSON.", { id: toastId });
+        } finally {
+          setRestoreLoading(false);
+        }
+      };
+
+      reader.onerror = () => {
+        toast.error("Failed to read file.", { id: toastId });
+        setRestoreLoading(false);
+      };
+
+      reader.readAsText(restoreFile);
+
+    } catch (err) {
+      toast.error("Failed to initiate restore flow.", { id: toastId });
+      setRestoreLoading(false);
     }
   };
 
@@ -444,6 +549,45 @@ export default function Profile() {
             </div>
           )}
 
+          {/* Backup & Recovery Center */}
+          {session?.user?.id !== "000000000000000000000000" && (
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)]">
+              <h3 className="text-base font-bold text-slate-800 flex items-center mb-4">
+                <Database className="w-5 h-5 text-emerald-500 mr-2.5 shrink-0" />
+                Data Backup & Recovery
+              </h3>
+              <p className="text-slate-500 text-xs font-semibold mb-6">
+                Apne database ka safe backup local JSON file me save karke rakhein. Kisi bhi problem ke samay, us backup file ko upload karke apna inventory aur bills data wapas restore kar sakte hain.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Download Backup */}
+                <button
+                  onClick={handleDownloadBackup}
+                  disabled={backupLoading}
+                  className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-sm text-xs uppercase tracking-wider disabled:opacity-50"
+                >
+                  {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Download Backup (.json)
+                </button>
+
+                {/* Upload / Restore */}
+                <label className="flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-250 text-emerald-600 font-bold py-3 px-4 rounded-xl transition-all shadow-sm text-xs uppercase tracking-wider cursor-pointer text-center select-none">
+                  <Upload className="w-4 h-4" />
+                  Upload & Restore
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+
+              </div>
+            </div>
+          )}
+
           {/* Detailed Subscription Card */}
           <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)]">
             <div className="flex items-center justify-between border-b border-slate-100 pb-5">
@@ -620,6 +764,61 @@ export default function Profile() {
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify & Save Changes"}
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Local Data Restore Confirmation Dialog */}
+      {showRestoreModal && restoreFile && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
+            <div className="p-5 border-b border-rose-100 flex items-center justify-between bg-rose-50/50">
+              <h2 className="text-base md:text-lg font-bold text-rose-800 flex items-center">
+                <ShieldAlert className="w-5 h-5 mr-2 text-rose-500" />
+                Restore Database: {restoreFile.name}
+              </h2>
+              <button 
+                onClick={() => { setShowRestoreModal(false); setRestoreFile(null); }}
+                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleRestoreSubmit} className="p-6 space-y-5">
+              <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold p-4 rounded-xl leading-relaxed">
+                ⚠️ DANGER: Custom backup file restore karne se aapka **current local medicines aur sales records permanently delete** (wipe) ho jayenge aur is backup file ke contents load honge. Ye action undo nahi ho sakta!
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Type <strong className="text-rose-600">RESTORE</strong> to confirm</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Type RESTORE"
+                  value={restoreConfirmText}
+                  onChange={(e) => setRestoreConfirmText(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-250 text-slate-700 rounded-xl px-3.5 py-3 focus:outline-none focus:border-rose-400 font-bold text-center"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowRestoreModal(false); setRestoreFile(null); }}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-all text-xs uppercase"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={restoreConfirmText !== "RESTORE" || restoreLoading}
+                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-rose-100 text-xs uppercase flex items-center justify-center gap-1 disabled:opacity-50"
+                >
+                  {restoreLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm Restore"}
+                </button>
+              </div>
             </form>
           </div>
         </div>

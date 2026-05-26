@@ -21,11 +21,31 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("id");
 
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "User ID parameter is required" }, { status: 400 });
-    }
-
     await connectToDatabase();
+
+    if (!userId) {
+      // 🚀 Full System Backup (except env superadmin)
+      const [users, medicines, sales] = await Promise.all([
+        User.find({ role: { $ne: "superadmin" } }).lean(),
+        Medicine.find({}).lean(),
+        Sale.find({}).lean()
+      ]);
+
+      const backupData = {
+        isFullSystemBackup: true,
+        users,
+        medicines,
+        sales,
+        exportedAt: new Date().toISOString(),
+        exportedBy: "SuperAdmin"
+      };
+
+      return NextResponse.json({
+        success: true,
+        filename: `backup_full_system_${Date.now()}.json`,
+        backupData
+      });
+    }
 
     const user = await User.findById(userId);
     if (!user) {

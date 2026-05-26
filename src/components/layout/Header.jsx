@@ -45,7 +45,7 @@ export default function Header() {
       return;
     }
 
-    if (!session || session.user.role === "superadmin") return;
+    if (!session || session?.user?.role === "superadmin") return;
 
     const checkSubscriptionLive = async () => {
       try {
@@ -68,6 +68,12 @@ export default function Header() {
               if (!isAllowedPath) {
                 router.push("/paused");
               }
+            } else {
+              // Redirect back to home if they are active but currently stuck on the pause screen
+              const currentPath = window.location.pathname;
+              if (currentPath === "/paused") {
+                router.push("/");
+              }
             }
           }
         }
@@ -85,7 +91,7 @@ export default function Header() {
   const [alerts, setAlerts] = useState({ lowStock: 0, expiring: 0 });
 
   useEffect(() => {
-    if (!session || session.user.role === "superadmin") return;
+    if (!session || session?.user?.role === "superadmin") return;
 
     const fetchAlerts = async () => {
       try {
@@ -155,8 +161,8 @@ export default function Header() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Agar login nahi hai, toh Header mat dikhao
-  if (!session) return null;
+  // Agar login nahi hai ya role superadmin hai, toh Header mat dikhao
+  if (!session || session?.user?.role === "superadmin") return null;
 
   return (
     <header className="h-16 md:h-20 bg-white/90 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50">

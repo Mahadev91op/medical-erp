@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { 
   Users, 
+  User,
   UserCheck, 
   UserX, 
   CalendarClock, 
@@ -23,7 +24,10 @@ import {
   Store,
   MapPin,
   Phone,
-  Mail
+  Mail,
+  Download,
+  Upload,
+  Database
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -64,6 +68,13 @@ export default function SuperAdmin() {
     phoneNumber: "",
     email: ""
   });
+
+  // Full System Backup & Restore state
+  const [systemBackupLoading, setSystemBackupLoading] = useState(false);
+  const [systemRestoreLoading, setSystemRestoreLoading] = useState(false);
+  const [showSystemRestoreModal, setShowSystemRestoreModal] = useState(false);
+  const [systemRestoreFile, setSystemRestoreFile] = useState(null);
+  const [systemRestoreConfirmText, setSystemRestoreConfirmText] = useState("");
 
   const fetchUsers = async (currentPage = page, search = searchTerm, filter = filterStatus) => {
     setLoading(true);
@@ -316,6 +327,101 @@ export default function SuperAdmin() {
     }
   };
 
+  const handleDownloadSystemBackup = async () => {
+    setSystemBackupLoading(true);
+    const toastId = toast.loading("Generating full system database backup...");
+    try {
+      const res = await fetch("/api/superadmin/backup");
+      const data = await res.json();
+      if (data.success && data.backupData) {
+        const blob = new Blob([JSON.stringify(data.backupData, null, 2)], { type: "application/json" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = data.filename || `backup_full_system_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        toast.success("🎉 Full system backup exported successfully!", { id: toastId });
+      } else {
+        toast.error(data.error || "Failed to export system backup", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Network or server error during backup generation.", { id: toastId });
+    } finally {
+      setSystemBackupLoading(false);
+    }
+  };
+
+  const handleSystemFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/json" && !file.name.endsWith(".json")) {
+      toast.error("Please upload a valid JSON backup file!");
+      e.target.value = "";
+      return;
+    }
+
+    setSystemRestoreFile(file);
+    setSystemRestoreConfirmText("");
+    setShowSystemRestoreModal(true);
+    e.target.value = "";
+  };
+
+  const handleSystemRestoreSubmit = async (e) => {
+    e.preventDefault();
+    if (systemRestoreConfirmText !== "SYSTEM RESTORE") {
+      toast.error("Please type SYSTEM RESTORE to confirm!");
+      return;
+    }
+
+    setSystemRestoreLoading(true);
+    const toastId = toast.loading("Executing full system restore...");
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const backupData = JSON.parse(event.target.result);
+
+          const res = await fetch("/api/restore", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ backupData })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            toast.success(data.message || "🎉 System successfully restored!", { id: toastId });
+            setShowSystemRestoreModal(false);
+            setSystemRestoreFile(null);
+            setSystemRestoreConfirmText("");
+            fetchUsers();
+          } else {
+            toast.error(data.error || "Failed to restore system.", { id: toastId });
+          }
+        } catch (parseError) {
+          toast.error("Invalid file structure. Make sure this is a valid full system backup.", { id: toastId });
+        } finally {
+          setSystemRestoreLoading(false);
+        }
+      };
+
+      reader.onerror = () => {
+        toast.error("Failed to read file.", { id: toastId });
+        setSystemRestoreLoading(false);
+      };
+
+      reader.readAsText(systemRestoreFile);
+
+    } catch (err) {
+      toast.error("Failed to read the backup file.", { id: toastId });
+      setSystemRestoreLoading(false);
+    }
+  };
+
   if (loading && users.length === 0) {
     return (
       <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
@@ -326,19 +432,7 @@ export default function SuperAdmin() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 relative">
-      
-      {/* Premium Header */}
-      <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-6 md:p-8 rounded-[32px] text-white shadow-xl overflow-hidden">
-        <div className="absolute right-0 bottom-0 top-0 w-1/3 opacity-10 bg-[radial-gradient(circle_at_right,rgba(16,185,129,0.4),transparent)] pointer-events-none" />
-        <div className="relative z-10 space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-xs font-bold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5" /> Super Admin Portal
-          </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Main Controller Dashboard</h1>
-          <p className="text-slate-400 text-xs md:text-sm font-semibold max-w-xl">Configure and monitor active pharmacy clients, toggle service access, change passwords, and run isolated dataset backups.</p>
-        </div>
-      </div>
+    <div className="max-w-7xl mx-auto space-y-8 relative pt-4">
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
@@ -387,6 +481,45 @@ export default function SuperAdmin() {
           </div>
         </div>
 
+      </div>
+
+      {/* System Data Control (Backup & Restore) */}
+      <div className="bg-white p-6 rounded-[28px] border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:shadow-md transition-all">
+        <div className="flex gap-4 items-start">
+          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
+            <Database className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-800">System Data Control (Backup & Restore)</h2>
+            <p className="text-slate-500 text-xs font-semibold mt-1 max-w-xl">
+              Export all system datasets (all client accounts, medicines, and transactions) into a single encrypted format, or overwrite the active deployment database from a validated JSON backup.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto self-stretch md:self-auto justify-end">
+          <button
+            onClick={handleDownloadSystemBackup}
+            disabled={systemBackupLoading}
+            className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs md:text-sm px-5 py-3 rounded-2xl shadow-sm hover:shadow transition-all disabled:opacity-50 cursor-pointer"
+          >
+            {systemBackupLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            Download Full Backup
+          </button>
+          <label className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs md:text-sm px-5 py-3 rounded-2xl shadow-sm hover:shadow transition-all cursor-pointer">
+            <Upload className="w-4 h-4" />
+            Restore System
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleSystemFileSelect}
+              className="hidden"
+            />
+          </label>
+        </div>
       </div>
 
       {/* User Management List */}
@@ -440,8 +573,8 @@ export default function SuperAdmin() {
               </thead>
               <tbody className="divide-y divide-slate-50 text-xs md:text-sm">
                 {filteredUsers.map((user) => {
-                  const expiry = new Date(user.subscriptionEnd);
-                  const isExpired = expiry < new Date();
+                  const expiry = user.subscriptionEnd ? new Date(user.subscriptionEnd) : null;
+                  const isExpired = !expiry || expiry < new Date();
                   return (
                     <tr key={user._id} className="hover:bg-slate-50/20 transition-colors">
                       
@@ -484,6 +617,14 @@ export default function SuperAdmin() {
                       {/* Subscription End Date */}
                       <td className="p-5">
                         {(() => {
+                          if (!expiry) {
+                            return (
+                              <>
+                                <p className="font-extrabold text-rose-500">No Active Plan</p>
+                                <p className="text-[10px] font-extrabold mt-0.5 text-rose-500">🔴 Expired</p>
+                              </>
+                            );
+                          }
                           const diffTime = expiry - new Date();
                           const daysLeft = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
                           return (
@@ -1057,6 +1198,83 @@ export default function SuperAdmin() {
                 Save Details (No OTP)
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* System Restore Confirmation Modal */}
+      {showSystemRestoreModal && systemRestoreFile && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in duration-200">
+            <button 
+              onClick={() => {
+                setShowSystemRestoreModal(false);
+                setSystemRestoreFile(null);
+                setSystemRestoreConfirmText("");
+              }}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors p-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center">
+                <ShieldAlert className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">Dangerous Action: Full System Restore</h3>
+                <p className="text-xs text-slate-500 font-semibold mt-1">
+                  You are about to restore the system from backup file: <span className="font-bold text-slate-700 block mt-0.5 break-all">"{systemRestoreFile.name}"</span>
+                </p>
+                <div className="mt-3 p-3 bg-rose-50 border border-rose-100 rounded-2xl text-[11px] text-rose-600 font-semibold text-left space-y-1">
+                  <p>⚠️ Warning:</p>
+                  <p>• All existing client accounts (except superadmin) will be wiped.</p>
+                  <p>• All active medicines and sales records will be replaced.</p>
+                  <p>• This action is irreversible.</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSystemRestoreSubmit} className="w-full space-y-3 pt-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase text-left mb-1.5">
+                    Type <span className="font-extrabold text-rose-600 select-all">SYSTEM RESTORE</span> to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="SYSTEM RESTORE"
+                    value={systemRestoreConfirmText}
+                    onChange={(e) => setSystemRestoreConfirmText(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-rose-500 font-bold text-center tracking-wider text-sm placeholder:tracking-normal placeholder:font-normal"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSystemRestoreModal(false);
+                      setSystemRestoreFile(null);
+                      setSystemRestoreConfirmText("");
+                    }}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-all text-xs uppercase"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={systemRestoreConfirmText !== "SYSTEM RESTORE" || systemRestoreLoading}
+                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-rose-100 flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer text-xs uppercase"
+                  >
+                    {systemRestoreLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      "Confirm Restore"
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

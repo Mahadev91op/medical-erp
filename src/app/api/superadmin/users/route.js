@@ -98,7 +98,8 @@ export async function PUT(req) {
 
   try {
     await connectToDatabase();
-    const { userId, action, status, password, subscriptionMonths } = await req.json();
+    const body = await req.json();
+    const { userId, action, status, password, subscriptionMonths } = body;
 
     if (!userId) {
       return NextResponse.json({ success: false, error: "User ID is required" }, { status: 400 });
@@ -183,7 +184,7 @@ export async function PUT(req) {
     }
 
     if (action === "updateDetails") {
-      const { username, name, shopName, address, phoneNumber, email } = await req.json();
+      const { username, name, shopName, address, phoneNumber, email } = body;
 
       if (username && username.toLowerCase().trim() !== user.username) {
         const existing = await User.findOne({ username: username.toLowerCase().trim() });
