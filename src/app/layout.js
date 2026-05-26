@@ -34,11 +34,14 @@ export const metadata = {
   },
 };
 
+import SessionTracker from "@/components/layout/SessionTracker";
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
+          <SessionTracker />
           <div className="min-h-screen bg-slate-50 flex">
             <Sidebar />
             <div className="flex-1 flex flex-col min-w-0 lg:ml-64">

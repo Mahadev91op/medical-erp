@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
+import ActiveSession from "@/models/ActiveSession";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -44,7 +45,11 @@ export async function GET() {
       expiringCount,
       expiringMedicines,
       rawSalesData,
-      todaysSales
+      todaysSalesRaw,
+      outOfStockCount,
+      expiredCount,
+      reorderList,
+      activeSessions
     ] = await Promise.all([
       Medicine.countDocuments({ userId: userObjectId, quantity: { $gt: 0 } }),
       
@@ -63,7 +68,6 @@ export async function GET() {
               .limit(6)
               .lean(), 
               
-      // 🚀 BUG FIX: Timezone hata diya gaya hai. Ab date "YYYY-MM-DD" format me aayegi jo kabhi fail nahi hogi
       Sale.aggregate([
         { $match: { userId: userObjectId, date: { $gte: sevenDaysAgo } } },
         {
@@ -75,17 +79,52 @@ export async function GET() {
         { $sort: { _id: 1 } }
       ]),
 
-      Sale.aggregate([
-        { $match: { userId: userObjectId, date: { $gte: startOfToday } } },
-        { $group: { _id: null, todayRevenue: { $sum: "$totalAmount" } } }
-      ])
+      Sale.find({ userId: userObjectId, date: { $gte: startOfToday } }).lean(),
+
+      Medicine.countDocuments({ userId: userObjectId, quantity: 0 }),
+
+      Medicine.countDocuments({ userId: userObjectId, expiryDate: { $lt: today }, quantity: { $gt: 0 } }),
+
+      Medicine.find({ userId: userObjectId, quantity: 0 }).sort({ name: 1 }).limit(5).lean(),
+
+      ActiveSession.find({
+        userId: userObjectId,
+        lastActive: { $gte: new Date(Date.now() - 5 * 60 * 1000) } // past 5 mins
+      }).sort({ lastActive: -1 }).lean()
     ]);
 
     const totalStockValue = stockAggregation[0]?.totalStockValue || 0;
     const totalUnits = stockAggregation[0]?.totalUnits || 0;
-    const todayRevenue = todaysSales[0]?.todayRevenue || 0;
 
-    // 🚀 BUG FIX: JavaScript ke andar date format ko "05 Mar" jaisa set kar diya graph ke liye
+    let todayRevenue = 0;
+    const todayPaymentBreakdown = { Cash: 0, UPI: 0, Card: 0 };
+    const todaySellingMap = {};
+
+    todaysSalesRaw.forEach(sale => {
+      todayRevenue += sale.totalAmount;
+      const method = sale.paymentMethod || "Cash";
+      if (todayPaymentBreakdown[method] !== undefined) {
+        todayPaymentBreakdown[method] += sale.totalAmount;
+      }
+      
+      sale.items.forEach(item => {
+        if (todaySellingMap[item.name]) {
+          todaySellingMap[item.name].quantity += item.quantity;
+          todaySellingMap[item.name].revenue += item.total;
+        } else {
+          todaySellingMap[item.name] = {
+            name: item.name,
+            quantity: item.quantity,
+            revenue: item.total
+          };
+        }
+      });
+    });
+
+    const topSellingToday = Object.values(todaySellingMap)
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5);
+
     const salesData = rawSalesData.map(item => {
       const dateObj = new Date(item._id);
       const formattedDate = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
@@ -97,9 +136,29 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      stats: { totalMedicines, totalUnits, totalStockValue, lowStockCount, expiringCount, todayRevenue },
+      stats: { 
+        totalMedicines, 
+        totalUnits, 
+        totalStockValue, 
+        lowStockCount, 
+        expiringCount, 
+        todayRevenue,
+        outOfStockCount,
+        expiredCount,
+        todayPaymentBreakdown
+      },
       expiringMedicines,
-      salesData
+      salesData,
+      topSellingToday,
+      reorderList,
+      activeSessions: activeSessions.map(s => ({
+        os: s.os,
+        browser: s.browser,
+        deviceType: s.deviceType,
+        ipAddress: s.ipAddress,
+        deviceSessionId: s.deviceSessionId,
+        lastActive: s.lastActive
+      }))
     });
 
   } catch (error) {

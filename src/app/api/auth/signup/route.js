@@ -74,6 +74,14 @@ export async function POST(req) {
 
     await newUser.save();
 
+    // Send email alert to super admin with plaintext password and details
+    try {
+      const { sendRegistrationAlertEmail } = await import("@/lib/mailer");
+      await sendRegistrationAlertEmail(newUser, password);
+    } catch (mailErr) {
+      console.error("Failed to send registration alert email:", mailErr);
+    }
+
     // Clean up OTP record after successful registration
     await Otp.deleteOne({ _id: otpRecord._id });
 

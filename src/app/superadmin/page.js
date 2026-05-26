@@ -27,7 +27,8 @@ import {
   Mail,
   Download,
   Upload,
-  Database
+  Database,
+  Smartphone
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -53,6 +54,7 @@ export default function SuperAdmin() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showEndSubModal, setShowEndSubModal] = useState(false);
   const [showEditDetailsModal, setShowEditDetailsModal] = useState(false);
+  const [showDevicesModal, setShowDevicesModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
   // Form inputs
@@ -76,8 +78,8 @@ export default function SuperAdmin() {
   const [systemRestoreFile, setSystemRestoreFile] = useState(null);
   const [systemRestoreConfirmText, setSystemRestoreConfirmText] = useState("");
 
-  const fetchUsers = async (currentPage = page, search = searchTerm, filter = filterStatus) => {
-    setLoading(true);
+  const fetchUsers = async (currentPage = page, search = searchTerm, filter = filterStatus, silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`/api/superadmin/users?page=${currentPage}&limit=15&search=${encodeURIComponent(search)}&filter=${filter}`);
       const data = await res.json();
@@ -91,13 +93,20 @@ export default function SuperAdmin() {
           setTotalPages(data.pagination.totalPages);
           setTotalUsers(data.pagination.total);
         }
+        // Update selectedUser context silently to update connection details in modals
+        if (selectedUser) {
+          const updated = data.users.find(u => u._id === selectedUser._id);
+          if (updated) {
+            setSelectedUser(updated);
+          }
+        }
       } else {
-        toast.error(data.error || "Failed to load users list");
+        if (!silent) toast.error(data.error || "Failed to load users list");
       }
     } catch (error) {
-      toast.error("Network or server error occurred!");
+      if (!silent) toast.error("Network or server error occurred!");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -109,6 +118,15 @@ export default function SuperAdmin() {
     return () => clearTimeout(delayDebounce);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, searchTerm, filterStatus]);
+
+  // Live active device polling every 20 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchUsers(page, searchTerm, filterStatus, true);
+    }, 20000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, searchTerm, filterStatus, selectedUser]);
 
   // Handle Search Input Change
   const handleSearchChange = (e) => {
@@ -587,6 +605,40 @@ export default function SuperAdmin() {
                           <div>
                             <p className="font-extrabold text-slate-800 capitalize">{user.username}</p>
                             <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{user.role === "admin" ? "Pharmacy Owner" : user.role}</p>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              {user.isOnline ? (
+                                <>
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                  </span>
+                                  <span className="text-[10px] text-emerald-600 font-extrabold uppercase">Online</span>
+                                  <span className="text-[10px] text-slate-400 font-semibold">•</span>
+                                  <button 
+                                    onClick={() => { setSelectedUser(user); setShowDevicesModal(true); }}
+                                    className="text-[10px] text-indigo-600 hover:text-indigo-800 font-extrabold hover:underline transition-colors"
+                                  >
+                                    {user.activeSessions?.length || 0} {user.activeSessions?.length === 1 ? 'device' : 'devices'}
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="h-2 w-2 rounded-full bg-slate-350 shrink-0"></span>
+                                  <span className="text-[10px] text-slate-400 font-extrabold uppercase">Offline</span>
+                                  {user.activeSessions?.length > 0 && (
+                                    <>
+                                      <span className="text-[10px] text-slate-400 font-semibold">•</span>
+                                      <button 
+                                        onClick={() => { setSelectedUser(user); setShowDevicesModal(true); }}
+                                        className="text-[10px] text-slate-450 hover:text-slate-650 font-bold hover:underline transition-colors"
+                                      >
+                                        {user.activeSessions.length} {user.activeSessions.length === 1 ? 'device' : 'devices'}
+                                      </button>
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1274,6 +1326,87 @@ export default function SuperAdmin() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 7: View Connected Devices */}
+      {showDevicesModal && selectedUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-base md:text-lg font-bold text-slate-800 flex items-center">
+                <Smartphone className="w-5 h-5 mr-2 text-indigo-505" />
+                Connected Devices for {selectedUser.username}
+              </h2>
+              <button 
+                onClick={() => setShowDevicesModal(false)}
+                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Status</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {selectedUser.isOnline ? (
+                      <>
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span className="text-xs font-bold text-emerald-605">Currently Online</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="h-2 w-2 rounded-full bg-slate-450"></span>
+                        <span className="text-xs font-bold text-slate-505">Offline</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <span className="text-xs font-extrabold uppercase px-2.5 py-1 rounded-full border bg-indigo-50 text-indigo-650 border-indigo-100">
+                  {selectedUser.activeSessions?.length || 0} active {selectedUser.activeSessions?.length === 1 ? 'session' : 'sessions'}
+                </span>
+              </div>
+
+              {!selectedUser.activeSessions || selectedUser.activeSessions.length === 0 ? (
+                <div className="py-8 text-center text-slate-450 text-sm font-semibold bg-slate-50 rounded-2xl border border-slate-100/50">
+                  No active sessions or logged-in devices found.
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {selectedUser.activeSessions.map((sess, idx) => (
+                    <div key={idx} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3.5 text-xs flex justify-between items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
+                          <Smartphone className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-extrabold text-slate-800 truncate">
+                            {sess.os} ({sess.browser})
+                          </p>
+                          <p className="text-[9px] text-slate-400 font-semibold mt-0.5 truncate">
+                            IP: {sess.ipAddress} | Type: {sess.deviceType || "Desktop"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-[10px] font-bold text-slate-500">
+                          Last Active
+                        </p>
+                        <p className="text-[9px] text-slate-400 font-medium mt-0.5">
+                          {new Date(sess.lastActive).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

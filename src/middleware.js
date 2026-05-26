@@ -11,6 +11,9 @@ export default withAuth(
       if (token?.role !== "superadmin") {
         return NextResponse.redirect(new URL("/", req.url));
       }
+      if (path === "/superadmin") {
+        return NextResponse.redirect(new URL("/", req.url));
+      }
       return NextResponse.next();
     }
 
@@ -37,15 +40,9 @@ export default withAuth(
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // Redirect from root route based on user role (since Dashboard is disabled)
+    // Redirect from root route based on user role (Dashboard is enabled for superadmin, admin, and staff)
     if (path === "/") {
-      if (token?.role === "superadmin") {
-        return NextResponse.redirect(new URL("/superadmin", req.url));
-      }
-      if (token?.role === "admin") {
-        return NextResponse.redirect(new URL("/inventory", req.url));
-      }
-      return NextResponse.redirect(new URL("/sell", req.url));
+      return NextResponse.next();
     }
 
     // Staff restrictions for Purchase, Reports, and Distributors (Superadmin and Admin both have access)

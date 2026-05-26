@@ -88,7 +88,7 @@ export async function POST(req) {
             barcodeId: uniqueBarcode,
             quantity: Number(data.quantity),
             mrp: Number(data.mrp),
-            purchasePrice: Number(data.purchasePrice || 0)
+            purchasePrice: Number(data.purchasePrice || data.mrp)
         });
         await newMedicine.save();
         return NextResponse.json({ success: true, medicine: newMedicine }, { status: 201 });

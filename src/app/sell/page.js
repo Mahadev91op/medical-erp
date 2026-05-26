@@ -19,6 +19,23 @@ export default function QuickSell() {
   const inputRef = useRef(null);
 
   const [completedInvoice, setCompletedInvoice] = useState(null);
+  const [shopInfo, setShopInfo] = useState(null);
+
+  useEffect(() => {
+    const fetchShopInfo = async () => {
+      try {
+        const res = await fetch("/api/user/profile");
+        const data = await res.json();
+        if (data.success) {
+          setShopInfo(data.user);
+        }
+      } catch (err) {
+        console.error("Failed to fetch shop info:", err);
+      }
+    };
+    fetchShopInfo();
+  }, []);
+
   const invoicePrintRef = useRef(null);
   
   const handlePrintInvoice = useReactToPrint({
@@ -353,9 +370,10 @@ export default function QuickSell() {
               {/* Receipt Ticket Box */}
               <div className="bg-white shadow-md border border-slate-200 rounded-xl p-4 w-[280px] text-slate-800 text-xs font-mono">
                 <div className="text-center border-b border-dashed border-slate-300 pb-3 mb-3">
-                  <h3 className="font-extrabold text-sm uppercase">MedERP Pharmacy</h3>
-                  <p className="text-[10px] text-slate-500 mt-1">Smart Medical Shop ERP</p>
-                  <p className="text-[9px] text-slate-400">Date: {new Date(completedInvoice.date).toLocaleString('en-IN')}</p>
+                  <h3 className="font-extrabold text-sm uppercase">{shopInfo?.shopName || "MedERP Pharmacy"}</h3>
+                  {shopInfo?.address && <p className="text-[10px] text-slate-500 mt-1">{shopInfo.address}</p>}
+                  {shopInfo?.phoneNumber && <p className="text-[10px] text-slate-500 mt-0.5">Phone: {shopInfo.phoneNumber}</p>}
+                  <p className="text-[9px] text-slate-400 mt-1">Date: {new Date(completedInvoice.date).toLocaleString('en-IN')}</p>
                 </div>
                 
                 <div className="space-y-1 pb-3 mb-3 border-b border-dashed border-slate-300">
@@ -493,9 +511,10 @@ export default function QuickSell() {
           {completedInvoice && (
             <div className="thermal-invoice">
               <div className="header">
-                <h3>MedERP Pharmacy</h3>
-                <p>Smart Medical Shop ERP</p>
-                <p>Date: {new Date(completedInvoice.date).toLocaleString('en-IN')}</p>
+                <h3 style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>{shopInfo?.shopName || "MedERP Pharmacy"}</h3>
+                {shopInfo?.address && <p style={{ fontSize: '8px', margin: '2px 0 0 0' }}>{shopInfo.address}</p>}
+                {shopInfo?.phoneNumber && <p style={{ fontSize: '8px', margin: '1px 0 0 0' }}>Phone: {shopInfo.phoneNumber}</p>}
+                <p style={{ fontSize: '8px', margin: '2px 0 0 0' }}>Date: {new Date(completedInvoice.date).toLocaleString('en-IN')}</p>
               </div>
               <div className="info">
                 <p>Invoice No: #{completedInvoice.billNumber}</p>

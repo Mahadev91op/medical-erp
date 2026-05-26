@@ -28,9 +28,9 @@ const UserSchema = new mongoose.Schema({
   subscriptionEnd: {
     type: Date,
     default: () => {
-      // Default to 1 month from registration
+      // Default to 7 days from registration (7-day free trial)
       const d = new Date();
-      d.setMonth(d.getMonth() + 1);
+      d.setDate(d.getDate() + 7);
       return d;
     }
   },

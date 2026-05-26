@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
-import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw, Search, X, IndianRupee, ShoppingCart, PackageOpen, Award, Package, Receipt, TrendingUp, Printer } from "lucide-react";
+import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw, Search, X, IndianRupee, ShoppingCart, PackageOpen, Award, Package, Receipt, TrendingUp, Printer, Trash2 } from "lucide-react";
 import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import toast, { Toaster } from "react-hot-toast";
 
 export default function Reports() {
   const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [], todayOverview: {} });
@@ -11,6 +12,38 @@ export default function Reports() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeReportTab, setActiveReportTab] = useState("items");
   const [printingInvoice, setPrintingInvoice] = useState(null);
+  const [shopInfo, setShopInfo] = useState(null);
+
+  useEffect(() => {
+    const fetchShopInfo = async () => {
+      try {
+        const res = await fetch("/api/user/profile");
+        const data = await res.json();
+        if (data.success) {
+          setShopInfo(data.user);
+        }
+      } catch (err) {
+        console.error("Failed to fetch shop info:", err);
+      }
+    };
+    fetchShopInfo();
+  }, []);
+
+  const handleDeleteMedicine = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete ${name} from your inventory? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/medicine?id=${id}`, { method: "DELETE" });
+      const resData = await res.json();
+      if (resData.success) {
+        toast.success(`${name} has been deleted successfully!`);
+        fetchReports(true, expiryMonths, lowStockThreshold, dateFilter);
+      } else {
+        toast.error(resData.error || "Failed to delete medicine");
+      }
+    } catch (err) {
+      toast.error("Network error");
+    }
+  };
   
   const invoicePrintRef = useRef(null);
   const handlePrintInvoice = useReactToPrint({
@@ -224,25 +257,24 @@ export default function Reports() {
                 </p>
             </div>
         </div>
-
-        {/* Net Profit & Margin */}
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-lg text-white flex items-center hover:shadow-emerald-500/30 transition-shadow col-span-2 sm:col-span-1">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mr-3 shrink-0">
-                <TrendingUp className="w-5 h-5 text-white animate-pulse" />
-            </div>
-            <div>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-emerald-100 text-[9px] md:text-[10px] font-bold uppercase tracking-wider">Net Profit</p>
-                  <span className="px-1.5 py-0.5 text-[8px] font-extrabold bg-white/20 text-white rounded leading-none">
-                    {data.todayOverview?.margin?.toFixed(1) || 0}%
-                  </span>
-                </div>
-                <p className="text-base md:text-xl font-extrabold">
-                    ₹{(data.todayOverview?.profit || 0).toLocaleString('en-IN')}
-                </p>
+        {/* Payment Breakdown Card */}
+        <div className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] border border-slate-100 flex flex-col justify-center hover:shadow-md transition-all col-span-2 sm:col-span-1">
+            <p className="text-slate-405 text-[9px] md:text-[10px] font-bold uppercase tracking-wider mb-2">Payment Breakdown</p>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex justify-between items-center text-slate-600">
+                <span className="font-semibold flex items-center">💵 Cash</span>
+                <span className="font-bold">₹{(data.todayOverview?.paymentBreakdown?.Cash || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-600">
+                <span className="font-semibold flex items-center">📱 UPI</span>
+                <span className="font-bold">₹{(data.todayOverview?.paymentBreakdown?.UPI || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-600">
+                <span className="font-semibold flex items-center">💳 Card</span>
+                <span className="font-bold">₹{(data.todayOverview?.paymentBreakdown?.Card || 0).toLocaleString('en-IN')}</span>
+              </div>
             </div>
         </div>
-
         {/* Stock Valuation */}
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-lg text-white flex items-center hover:shadow-slate-800/30 transition-shadow">
             <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center mr-3 shrink-0">
@@ -678,7 +710,133 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* MODAL 1: Items Sold Details (Top box & bottom card See All) */}
+      {/* 🚀 ADVANCED ERP REPORTS: Already Expired & Out of Stock Widgets */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6 pt-4">
+        
+        {/* Already Expired Stock Tracker */}
+        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-250 overflow-hidden flex flex-col min-h-[350px]">
+          <div className="bg-rose-50/50 p-4 md:p-5 border-b border-rose-100 flex items-center justify-between">
+            <h2 className="text-sm md:text-base font-bold text-rose-800 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-500 animate-pulse" />
+              <span>Expired Stock Tracker</span>
+            </h2>
+            <span className="bg-rose-200 text-rose-800 text-[10px] md:text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0">
+              {data.alreadyExpired?.length || 0} Items
+            </span>
+          </div>
+
+          <div className="p-4 md:p-5 flex-1 flex flex-col justify-between overflow-x-auto">
+            {(!data.alreadyExpired || data.alreadyExpired.length === 0) ? (
+              <div className="text-center text-slate-450 my-auto py-8">
+                <p className="font-semibold text-emerald-600 bg-emerald-50 px-4 py-3 rounded-2xl border border-emerald-100 inline-block text-xs md:text-sm">
+                  Excellent! No expired medicines in stock. 🎉
+                </p>
+              </div>
+            ) : (
+              <div className="w-full">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-[10px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                      <th className="pb-2 font-bold">Item Name</th>
+                      <th className="pb-2 font-bold">Batch</th>
+                      <th className="pb-2 font-bold text-center">Remaining</th>
+                      <th className="pb-2 font-bold text-right">Expired On</th>
+                      <th className="pb-2 font-bold text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 text-xs">
+                    {data.alreadyExpired.slice(0, 10).map((med) => (
+                      <tr key={med._id} className="hover:bg-rose-50/20 transition-colors">
+                        <td className="py-2.5 max-w-[150px] truncate">
+                          <p className="font-bold text-slate-800">{med.name}</p>
+                          <p className="text-[9px] text-slate-400">Dist: {med.distributor}</p>
+                        </td>
+                        <td className="py-2.5 font-semibold text-slate-600">{med.batch}</td>
+                        <td className="py-2.5 text-center">
+                          <span className="font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded shadow-sm">{med.quantity} pcs</span>
+                        </td>
+                        <td className="py-2.5 text-right font-bold text-rose-500">
+                          {formatExpiryDate(med.expiryDate)}
+                        </td>
+                        <td className="py-2.5 text-center">
+                          <button
+                            onClick={() => handleDeleteMedicine(med._id, med.name)}
+                            className="p-1.5 text-rose-500 hover:text-white hover:bg-rose-500 rounded-lg transition-colors border border-rose-100 hover:border-rose-500"
+                            title="Delete Expired Item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {data.alreadyExpired.length > 10 && (
+                  <p className="text-center text-[10px] text-slate-400 mt-3 font-semibold">
+                    + {data.alreadyExpired.length - 10} more expired items. Please clean up your inventory.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Out of Stock / Reorder Checklist */}
+        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-amber-200 overflow-hidden flex flex-col min-h-[350px]">
+          <div className="bg-amber-50/50 p-4 md:p-5 border-b border-amber-100 flex items-center justify-between">
+            <h2 className="text-sm md:text-base font-bold text-amber-800 flex items-center gap-2">
+              <PackageOpen className="w-5 h-5 text-amber-500" />
+              <span>Out of Stock Checklist</span>
+            </h2>
+            <span className="bg-amber-200 text-amber-800 text-[10px] md:text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0">
+              {data.outOfStock?.length || 0} Items
+            </span>
+          </div>
+
+          <div className="p-4 md:p-5 flex-1 flex flex-col justify-between overflow-x-auto">
+            {(!data.outOfStock || data.outOfStock.length === 0) ? (
+              <div className="text-center text-slate-450 my-auto py-8">
+                <p className="font-semibold text-slate-600 bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100 inline-block text-xs md:text-sm">
+                  All medicines are currently in stock! 📦
+                </p>
+              </div>
+            ) : (
+              <div className="w-full">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-[10px] md:text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                      <th className="pb-2 font-bold">Item Name</th>
+                      <th className="pb-2 font-bold">Distributor / Agency</th>
+                      <th className="pb-2 font-bold">Last Bill No.</th>
+                      <th className="pb-2 font-bold text-right">MRP</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 text-xs">
+                    {data.outOfStock.slice(0, 10).map((med) => (
+                      <tr key={med._id} className="hover:bg-amber-50/10 transition-colors">
+                        <td className="py-2.5">
+                          <p className="font-bold text-slate-800">{med.name}</p>
+                          <p className="text-[9px] text-slate-400">Batch: {med.batch}</p>
+                        </td>
+                        <td className="py-2.5 font-semibold text-slate-600">{med.distributor || "N/A"}</td>
+                        <td className="py-2.5 text-slate-500 font-medium">{med.billNumber || "N/A"}</td>
+                        <td className="py-2.5 text-right font-extrabold text-slate-700">₹{med.mrp}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {data.outOfStock.length > 10 && (
+                  <p className="text-center text-[10px] text-slate-400 mt-3 font-semibold">
+                    + {data.outOfStock.length - 10} more out-of-stock items.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+
       {showSoldItemsModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[24px] md:rounded-3xl w-full max-w-5xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100">
@@ -1236,14 +1394,13 @@ export default function Reports() {
             `}
           </style>
 
-          {printingInvoice && (
-            <div className="thermal-invoice">
+          {printingInvoice && (            <div className="thermal-invoice">
               <div className="header">
-                <h3>MedERP Pharmacy</h3>
-                <p>Smart Medical Shop ERP</p>
-                <p>Date: {new Date(printingInvoice.date).toLocaleString('en-IN')}</p>
-              </div>
-              <div className="info">
+                <h3>{shopInfo?.shopName || "MedERP Pharmacy"}</h3>
+                {shopInfo?.address && <p style={{ fontSize: '8px', margin: '2px 0 0 0' }}>{shopInfo.address}</p>}
+                {shopInfo?.phoneNumber && <p style={{ fontSize: '8px', margin: '1px 0 0 0' }}>Phone: {shopInfo.phoneNumber}</p>}
+                <p style={{ fontSize: '8px', margin: '2px 0 0 0' }}>Date: {new Date(printingInvoice.date).toLocaleString('en-IN')}</p>
+              </div>              <div className="info">
                 <p>Invoice No: #{printingInvoice.billNumber}</p>
                 <p>Payment Mode: {printingInvoice.paymentMethod}</p>
               </div>

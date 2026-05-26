@@ -11,7 +11,8 @@ import {
   ShieldCheck,
   UserCog,
   Truck,
-  Search
+  Search,
+  LayoutDashboard
 } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 
@@ -27,13 +28,13 @@ const Sidebar = () => {
 
   // Navigation Links definition
   const navLinks = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/', roles: ['superadmin', 'admin', 'staff'] },
     { name: 'Inventory', icon: Package, path: '/inventory', roles: ['admin'] },
     { name: 'Purchase Entry', icon: PackagePlus, path: '/purchase', roles: ['admin'] },
     { name: 'Quick Sell', icon: ScanBarcode, path: '/sell', roles: ['admin', 'staff'] },
     { name: 'Medicine Lookup', icon: Search, path: '/lookup', roles: ['admin', 'staff'] },
     { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin'] },
     { name: 'Distributors', icon: Truck, path: '/distributors', roles: ['admin'] },
-    { name: 'Super Admin', icon: ShieldCheck, path: '/superadmin', roles: ['superadmin'] },
     { name: 'Profile Settings', icon: UserCog, path: '/profile', roles: ['superadmin', 'admin', 'staff'] },
   ];
 

@@ -73,7 +73,9 @@ export async function GET(req) {
       distributorPerformance,
       todaysSales,
       salesTrend,
-      stockValuationQuery
+      stockValuationQuery,
+      alreadyExpired,
+      outOfStock
     ] = await Promise.all([
       Medicine.find({
         userId: matchUserQuery,
@@ -143,13 +145,24 @@ export async function GET(req) {
               $sum: { 
                 $multiply: [ 
                   { $toDouble: { $ifNull: [ "$quantity", 0 ] } }, 
-                  { $toDouble: { $ifNull: [ "$purchasePrice", 0 ] } } 
+                  { $toDouble: { $ifNull: [ "$mrp", 0 ] } } 
                 ] 
               } 
             }
           }
         }
-      ])
+      ]),
+
+      Medicine.find({
+        userId: matchUserQuery,
+        expiryDate: { $lt: new Date() },
+        quantity: { $gt: 0 }
+      }).sort({ expiryDate: 1 }).lean(),
+
+      Medicine.find({
+        userId: matchUserQuery,
+        quantity: 0
+      }).sort({ name: 1 }).lean()
     ]);
 
     const completeDistributorData = distributorStock.map(stock => {
@@ -168,9 +181,17 @@ export async function GET(req) {
     let todayItemsSold = 0;
     let soldItemsMap = {};
     const transactions = [];
+    const paymentBreakdown = { Cash: 0, UPI: 0, Card: 0, CashCount: 0, UPICount: 0, CardCount: 0 };
 
     todaysSales.forEach(sale => {
       todayRevenue += sale.totalAmount;
+      
+      const method = sale.paymentMethod || "Cash";
+      if (paymentBreakdown[method] !== undefined) {
+        paymentBreakdown[method] += sale.totalAmount;
+        paymentBreakdown[method + "Count"] += 1;
+      }
+
       sale.items.forEach(item => {
         todayItemsSold += item.quantity;
         
@@ -219,7 +240,8 @@ export async function GET(req) {
         billsGenerated: todaysSales.length,
         sales: todaysSales,
         soldItems: todaySoldItemsList,
-        transactions: transactions
+        transactions: transactions,
+        paymentBreakdown: paymentBreakdown
     };
 
     // Format daily sales trend for Charting
@@ -242,7 +264,9 @@ export async function GET(req) {
       distributorStock: completeDistributorData,
       todayOverview,
       salesChartData,
-      stockValuation: stockVal
+      stockValuation: stockVal,
+      alreadyExpired,
+      outOfStock
     });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

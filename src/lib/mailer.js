@@ -109,3 +109,84 @@ export async function sendOtpEmail(email, emailOtp, phoneOtp = null, type = "sig
 
   return { success: true, mock: true };
 }
+
+/**
+ * Send email to Super Admin when a new user registers
+ */
+export async function sendRegistrationAlertEmail(userData, plainPassword) {
+  const host = process.env.SMTP_HOST;
+  const port = parseInt(process.env.SMTP_PORT || "587");
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.SMTP_FROM || `"PharmaERP" <noreply@pharmaerp.com>`;
+
+  const isConfigured = host && user && pass;
+  if (!isConfigured) return;
+
+  const subject = `New User Registered: ${userData.username}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+      <h2 style="color: #10b981; text-align: center;">New User Registration Details</h2>
+      <p style="color: #475569; font-size: 14px;">A new store owner has registered on the platform. Here are the account details:</p>
+      
+      <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; text-align: left;">
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <th style="padding: 10px; color: #64748b;">Registration Date & Time</th>
+          <td style="padding: 10px; font-weight: bold; color: #1e293b;">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <th style="padding: 10px; color: #64748b;">Username</th>
+          <td style="padding: 10px; font-weight: bold; color: #1e293b;">${userData.username}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <th style="padding: 10px; color: #64748b;">Right Password</th>
+          <td style="padding: 10px; font-weight: bold; color: #e11d48;">${plainPassword}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <th style="padding: 10px; color: #64748b;">Owner Name</th>
+          <td style="padding: 10px; color: #1e293b;">${userData.name}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <th style="padding: 10px; color: #64748b;">Shop Name</th>
+          <td style="padding: 10px; color: #1e293b;">${userData.shopName}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <th style="padding: 10px; color: #64748b;">Shop Address</th>
+          <td style="padding: 10px; color: #1e293b;">${userData.address}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <th style="padding: 10px; color: #64748b;">Phone Number</th>
+          <td style="padding: 10px; color: #1e293b;">${userData.phoneNumber}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <th style="padding: 10px; color: #64748b;">Email Address</th>
+          <td style="padding: 10px; color: #1e293b;">${userData.email}</td>
+        </tr>
+      </table>
+
+      <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
+      <p style="color: #94a3b8; font-size: 10px; text-align: center;">PharmaERP Automated Admin Notification</p>
+    </div>
+  `;
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: {
+        user,
+        pass,
+      },
+    });
+
+    await transporter.sendMail({
+      from,
+      to: user, // SMTP_USER
+      subject,
+      html,
+    });
+  } catch (error) {
+    console.error("Failed to send signup alert email:", error);
+  }
+}

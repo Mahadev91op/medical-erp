@@ -12,7 +12,8 @@ import {
   Truck,
   Search,
   Menu,
-  LogOut
+  LogOut,
+  LayoutDashboard
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 
@@ -29,13 +30,13 @@ const MobileNav = () => {
 
   // Re-ordered navigation links: Billing, Inventory, Lookup are prioritized
   const navLinks = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/', roles: ['superadmin', 'admin', 'staff'] },
     { name: 'Billing', icon: ScanBarcode, path: '/sell', roles: ['admin', 'staff'] },
     { name: 'Inventory', icon: Package, path: '/inventory', roles: ['admin'] },
     { name: 'Lookup', icon: Search, path: '/lookup', roles: ['admin', 'staff'] },
     { name: 'Purchase', icon: PackagePlus, path: '/purchase', roles: ['admin'] },
     { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin'] },
     { name: 'Distributors', icon: Truck, path: '/distributors', roles: ['admin'] },
-    { name: 'Super Admin', icon: ShieldCheck, path: '/superadmin', roles: ['superadmin'] },
     { name: 'Profile Settings', icon: UserCog, path: '/profile', roles: ['superadmin', 'admin', 'staff'] },
   ];
 

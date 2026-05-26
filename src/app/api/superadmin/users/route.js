@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
+import ActiveSession from "@/models/ActiveSession";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -58,15 +59,29 @@ export async function GET(req) {
       User.countDocuments({ role: { $ne: "superadmin" }, status: "active", subscriptionEnd: { $lt: new Date() } })
     ]);
 
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const usersWithCounts = await Promise.all(users.map(async (user) => {
-      const [medicinesCount, salesCount] = await Promise.all([
+      const [medicinesCount, salesCount, activeSessions] = await Promise.all([
         Medicine.countDocuments({ userId: user._id }),
-        Sale.countDocuments({ userId: user._id })
+        Sale.countDocuments({ userId: user._id }),
+        ActiveSession.find({
+          userId: user._id,
+          lastActive: { $gte: fiveMinutesAgo }
+        }).sort({ lastActive: -1 }).lean()
       ]);
       return {
         ...user,
         medicinesCount,
-        salesCount
+        salesCount,
+        isOnline: activeSessions.length > 0,
+        activeSessions: activeSessions.map(s => ({
+          deviceSessionId: s.deviceSessionId,
+          os: s.os,
+          browser: s.browser,
+          deviceType: s.deviceType,
+          ipAddress: s.ipAddress,
+          lastActive: s.lastActive
+        }))
       };
     }));
 
