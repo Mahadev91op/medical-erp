@@ -45,8 +45,8 @@ const Sidebar = () => {
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-100 hidden lg:flex flex-col z-[60]">
-      <div className="p-8">
-        <div className="flex items-center space-x-3 mb-10">
+      <div className="p-8 flex flex-col flex-1 min-h-0 pb-4">
+        <div className="flex items-center space-x-3 mb-10 shrink-0">
           <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200">
             <PackagePlus className="text-white w-6 h-6" />
           </div>
@@ -55,7 +55,7 @@ const Sidebar = () => {
           </span>
         </div>
 
-        <nav className="space-y-1.5">
+        <nav className="space-y-1.5 flex-1 overflow-y-auto pr-1 select-none">
           {filteredLinks.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.path;
@@ -78,7 +78,7 @@ const Sidebar = () => {
         </nav>
       </div>
 
-      <div className="mt-auto p-8 border-t border-slate-50 space-y-4">
+      <div className="p-8 border-t border-slate-50 space-y-4 shrink-0 bg-white">
         <div className="bg-slate-50 p-4 rounded-2xl">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Logged in as</p>
           <p className="text-sm font-bold text-slate-700 truncate">{session?.user?.name || 'User'}</p>

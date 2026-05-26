@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Search, UserCircle, LogOut, Package, IndianRupee, X, AlertTriangle, TrendingDown } from "lucide-react";
+import { Search, Package, IndianRupee, X, AlertTriangle, TrendingDown } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -168,7 +168,7 @@ export default function Header() {
     <header className="h-16 md:h-20 bg-white/90 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50">
       
       {/* 1. Global Quick Search Bar */}
-      <div ref={searchRef} className="relative flex flex-1 md:flex-none items-center bg-slate-50 hover:bg-slate-100 px-3 md:px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl md:w-[400px] border border-slate-200/60 transition-all duration-300 mr-4 group focus-within:ring-4 focus-within:ring-emerald-50 focus-within:border-emerald-200">
+      <div ref={searchRef} className="relative flex flex-1 md:flex-none items-center bg-slate-50 hover:bg-slate-100 px-3 md:px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl md:w-[260px] lg:w-[360px] border border-slate-200/60 transition-all duration-300 mr-4 group focus-within:ring-4 focus-within:ring-emerald-50 focus-within:border-emerald-200">
         <Search className={`w-4 h-4 mr-2 md:mr-3 shrink-0 ${isSearching ? 'text-emerald-500 animate-pulse' : 'text-slate-400 group-focus-within:text-emerald-500'}`} />
         <input 
           type="text" 
@@ -204,7 +204,7 @@ export default function Header() {
                       <p className={`text-sm font-extrabold ${med.quantity < 10 ? 'text-rose-500' : 'text-emerald-500'}`}>
                         {med.quantity} <span className="text-[10px] font-semibold opacity-70">in stock</span>
                       </p>
-                      <p className="text-xs font-bold text-slate-500 flex items-center justify-end mt-0.5">
+                      <p className="text-xs font-bold text-slate-505 flex items-center justify-end mt-0.5">
                         <IndianRupee className="w-3 h-3 mr-0.5"/> {med.mrp}
                       </p>
                     </div>
@@ -224,7 +224,7 @@ export default function Header() {
       <div className="flex items-center space-x-3 md:space-x-6 shrink-0">
         
         {/* Live IST Clock */}
-        <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200/60 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs font-bold shadow-sm shrink-0">
+        <div className="hidden lg:flex items-center gap-2 bg-slate-50 border border-slate-200/60 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs font-bold shadow-sm shrink-0">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -235,7 +235,7 @@ export default function Header() {
 
         {/* Live Warnings/Badges */}
         {session?.user?.role !== "superadmin" && (alerts.lowStock > 0 || alerts.expiring > 0) && (
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             {/* Expiring Soon */}
             {alerts.expiring > 0 && (
               <button 
@@ -243,7 +243,7 @@ export default function Header() {
                 className="flex items-center bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-xl text-xs font-bold gap-1 shadow-sm transition-all cursor-pointer"
                 title={`${alerts.expiring} items expiring soon`}
               >
-                <AlertTriangle className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-505 animate-pulse" />
                 <span>{alerts.expiring} Expiring</span>
               </button>
             )}
@@ -269,30 +269,6 @@ export default function Header() {
         >
           <Package className="w-4 h-4 mr-2 text-emerald-400" /> New Sale
         </button>
-        
-        <div className="flex items-center space-x-3 md:border-l pl-0 md:pl-6 border-slate-100">
-          <div className="bg-slate-50 p-1.5 md:p-2 rounded-xl border border-slate-200/60 hidden md:block">
-            <UserCircle className="w-5 h-5 md:w-6 md:h-6 text-slate-400" />
-          </div>
-          <div className="hidden md:block">
-            <p className="text-sm font-bold text-slate-700 capitalize">{session?.user?.name}</p>
-            <p className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md mt-0.5 inline-block">
-              {session?.user?.role}
-            </p>
-          </div>
-          
-          {/* Logout Button */}
-          <button 
-            onClick={async () => {
-              await signOut({ redirect: false });
-              window.location.href = "/login";
-            }}
-            className="ml-2 p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm"
-            title="Logout"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
-        </div>
       </div>
     </header>
   );
