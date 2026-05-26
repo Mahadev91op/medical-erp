@@ -7,6 +7,7 @@ import ActiveSession from "@/models/ActiveSession";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getUserDataSize, getTotalDatabaseSize, formatBytes } from "@/lib/storageHelper";
 
 // Secure Admin Panel checks
 async function isSuperAdmin() {
@@ -61,17 +62,20 @@ export async function GET(req) {
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const usersWithCounts = await Promise.all(users.map(async (user) => {
-      const [medicinesCount, salesCount, activeSessions] = await Promise.all([
+      const [medicinesCount, salesCount, activeSessions, dataSizeBytes] = await Promise.all([
         Medicine.countDocuments({ userId: user._id }),
         Sale.countDocuments({ userId: user._id }),
         ActiveSession.find({
           userId: user._id
-        }).sort({ lastActive: -1 }).lean()
+        }).sort({ lastActive: -1 }).lean(),
+        getUserDataSize(user._id)
       ]);
       return {
         ...user,
         medicinesCount,
         salesCount,
+        dataSize: dataSizeBytes,
+        dataSizeFormatted: formatBytes(dataSizeBytes),
         isOnline: activeSessions.some(s => s.lastActive >= fiveMinutesAgo),
         activeSessions: activeSessions.map(s => ({
           deviceSessionId: s.deviceSessionId,
@@ -85,6 +89,8 @@ export async function GET(req) {
       };
     }));
 
+    const totalDatabaseSizeBytes = await getTotalDatabaseSize();
+
     return NextResponse.json({
       success: true,
       users: usersWithCounts,
@@ -92,7 +98,9 @@ export async function GET(req) {
         totalClients,
         activeCount,
         disabledCount,
-        expiredCount
+        expiredCount,
+        totalDatabaseSize: totalDatabaseSizeBytes,
+        totalDatabaseSizeFormatted: formatBytes(totalDatabaseSizeBytes)
       },
       pagination: {
         total,

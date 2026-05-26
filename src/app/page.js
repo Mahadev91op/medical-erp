@@ -408,9 +408,15 @@ export default function Dashboard() {
               })}
             </div>
           </div>
-          <p className="text-[9px] text-slate-400 italic text-center pt-2 border-t border-slate-100 mt-2">
-            Tracks active dashboard heartbeats.
-          </p>
+          <div className="pt-2.5 border-t border-slate-100 mt-2 flex items-center justify-between flex-wrap gap-2 text-[10px] md:text-xs">
+            <span className="font-bold text-slate-500 flex items-center gap-1.5">
+              <Database className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+              <span>My Storage Space:</span>
+            </span>
+            <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] md:text-xs font-extrabold px-2.5 py-0.5 rounded-lg shadow-sm">
+              {dashboardData?.stats?.dataSizeFormatted || "0 Bytes"}
+            </span>
+          </div>
         </div>
       </div>
     </div>

@@ -44,7 +44,9 @@ export default function SuperAdmin() {
     totalClients: 0,
     activeCount: 0,
     disabledCount: 0,
-    expiredCount: 0
+    expiredCount: 0,
+    totalDatabaseSize: 0,
+    totalDatabaseSizeFormatted: "0 Bytes"
   });
 
   // Modals state
@@ -453,7 +455,7 @@ export default function SuperAdmin() {
     <div className="max-w-7xl mx-auto space-y-8 relative pt-4">
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         
         {/* Total Users */}
         <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] flex items-center hover:shadow-md transition-all">
@@ -496,6 +498,17 @@ export default function SuperAdmin() {
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Suspended</p>
             <p className="text-xl md:text-2xl font-extrabold text-slate-700">{disabledCount}</p>
+          </div>
+        </div>
+
+        {/* Total Database Size */}
+        <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] flex items-center hover:shadow-md transition-all col-span-2 md:col-span-1">
+          <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center mr-4 shrink-0">
+            <Database className="w-6 h-6 animate-pulse" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total Storage Size</p>
+            <p className="text-xl md:text-2xl font-extrabold text-slate-700">{stats.totalDatabaseSizeFormatted || "0 Bytes"}</p>
           </div>
         </div>
 
@@ -656,12 +669,15 @@ export default function SuperAdmin() {
 
                       {/* DB Live Stats */}
                       <td className="p-5">
-                        <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
+                        <div className="flex flex-col sm:flex-row gap-2 justify-center items-center flex-wrap">
                           <span className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-100 text-indigo-600 px-2 py-0.5 rounded-lg text-[10px] font-extrabold">
                             <PackageOpen className="w-3.5 h-3.5" /> {user.medicinesCount || 0} Medicines
                           </span>
                           <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-600 px-2 py-0.5 rounded-lg text-[10px] font-extrabold">
                             <Receipt className="w-3.5 h-3.5" /> {user.salesCount || 0} Bills
+                          </span>
+                          <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-100 text-teal-600 px-2 py-0.5 rounded-lg text-[10px] font-extrabold" title="Data storage space in database">
+                            <Database className="w-3.5 h-3.5" /> {user.dataSizeFormatted || "0 Bytes"}
                           </span>
                         </div>
                       </td>

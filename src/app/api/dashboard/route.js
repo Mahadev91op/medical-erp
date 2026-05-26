@@ -6,6 +6,7 @@ import Sale from "@/models/Sale";
 import ActiveSession from "@/models/ActiveSession";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getUserDataSize, formatBytes } from "@/lib/storageHelper";
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,8 @@ export async function GET() {
       outOfStockCount,
       expiredCount,
       reorderList,
-      activeSessions
+      activeSessions,
+      dataSizeBytes
     ] = await Promise.all([
       Medicine.countDocuments({ userId: userObjectId, quantity: { $gt: 0 } }),
       
@@ -89,7 +91,9 @@ export async function GET() {
 
       ActiveSession.find({
         userId: userObjectId
-      }).sort({ lastActive: -1 }).lean()
+      }).sort({ lastActive: -1 }).lean(),
+
+      getUserDataSize(userId)
     ]);
 
     const totalStockValue = stockAggregation[0]?.totalStockValue || 0;
@@ -144,7 +148,9 @@ export async function GET() {
         todayRevenue,
         outOfStockCount,
         expiredCount,
-        todayPaymentBreakdown
+        todayPaymentBreakdown,
+        dataSize: dataSizeBytes,
+        dataSizeFormatted: formatBytes(dataSizeBytes)
       },
       expiringMedicines,
       salesData,
