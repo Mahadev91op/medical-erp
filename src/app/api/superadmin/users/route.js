@@ -65,22 +65,22 @@ export async function GET(req) {
         Medicine.countDocuments({ userId: user._id }),
         Sale.countDocuments({ userId: user._id }),
         ActiveSession.find({
-          userId: user._id,
-          lastActive: { $gte: fiveMinutesAgo }
+          userId: user._id
         }).sort({ lastActive: -1 }).lean()
       ]);
       return {
         ...user,
         medicinesCount,
         salesCount,
-        isOnline: activeSessions.length > 0,
+        isOnline: activeSessions.some(s => s.lastActive >= fiveMinutesAgo),
         activeSessions: activeSessions.map(s => ({
           deviceSessionId: s.deviceSessionId,
           os: s.os,
           browser: s.browser,
           deviceType: s.deviceType,
           ipAddress: s.ipAddress,
-          lastActive: s.lastActive
+          lastActive: s.lastActive,
+          isOnline: s.lastActive >= fiveMinutesAgo
         }))
       };
     }));

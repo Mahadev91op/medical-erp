@@ -1396,6 +1396,11 @@ export default function SuperAdmin() {
                         </div>
                       </div>
                       <div className="text-left sm:text-right shrink-0">
+                        {sess.isOnline ? (
+                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md inline-block mb-1.5 tracking-wider">ONLINE</span>
+                        ) : (
+                          <span className="bg-slate-200 text-slate-600 border border-slate-300 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md inline-block mb-1.5 tracking-wider">OFFLINE</span>
+                        )}
                         <p className="text-[10px] font-bold text-slate-500">
                           Last Active
                         </p>

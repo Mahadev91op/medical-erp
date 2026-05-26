@@ -387,17 +387,22 @@ export default function Dashboard() {
                 return (
                   <div key={sess.deviceSessionId} className={`flex items-center justify-between p-2.5 rounded-2xl border transition-all ${isThisDevice ? 'bg-emerald-50/50 border-emerald-100' : 'bg-slate-50 border-slate-100'}`}>
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isThisDevice ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-505'}`}>
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${sess.isOnline ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
                         <Smartphone className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-slate-800 text-[11px] md:text-xs flex items-center gap-1.5 truncate">
                           <span className="truncate">{sess.os} ({sess.browser})</span>
-                          {isThisDevice && <span className="bg-emerald-200 text-emerald-800 text-[8px] font-extrabold px-1 rounded-sm shrink-0">THIS DEVICE</span>}
+                          {isThisDevice && <span className="bg-emerald-200 text-emerald-805 text-[8px] font-extrabold px-1.5 py-0.5 rounded-sm shrink-0">THIS DEVICE</span>}
                         </p>
-                        <p className="text-[9px] text-slate-400 mt-0.5 truncate">IP: {sess.ipAddress}</p>
+                        <p className="text-[9px] text-slate-450 mt-0.5 truncate">IP: {sess.ipAddress} | {sess.isOnline ? '🟢 Live' : '⚫ Offline'}</p>
                       </div>
                     </div>
+                    {sess.isOnline ? (
+                      <span className="bg-emerald-100 text-emerald-700 border border-emerald-100 text-[8px] font-bold px-1.5 py-0.5 rounded-md shrink-0">ONLINE</span>
+                    ) : (
+                      <span className="bg-slate-100 text-slate-500 border border-slate-200 text-[8px] font-bold px-1.5 py-0.5 rounded-md shrink-0">OFFLINE</span>
+                    )}
                   </div>
                 );
               })}

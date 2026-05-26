@@ -88,8 +88,7 @@ export async function GET() {
       Medicine.find({ userId: userObjectId, quantity: 0 }).sort({ name: 1 }).limit(5).lean(),
 
       ActiveSession.find({
-        userId: userObjectId,
-        lastActive: { $gte: new Date(Date.now() - 5 * 60 * 1000) } // past 5 mins
+        userId: userObjectId
       }).sort({ lastActive: -1 }).lean()
     ]);
 
@@ -151,14 +150,18 @@ export async function GET() {
       salesData,
       topSellingToday,
       reorderList,
-      activeSessions: activeSessions.map(s => ({
-        os: s.os,
-        browser: s.browser,
-        deviceType: s.deviceType,
-        ipAddress: s.ipAddress,
-        deviceSessionId: s.deviceSessionId,
-        lastActive: s.lastActive
-      }))
+      activeSessions: activeSessions.map(s => {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        return {
+          os: s.os,
+          browser: s.browser,
+          deviceType: s.deviceType,
+          ipAddress: s.ipAddress,
+          deviceSessionId: s.deviceSessionId,
+          lastActive: s.lastActive,
+          isOnline: new Date(s.lastActive) >= fiveMinutesAgo
+        };
+      })
     });
 
   } catch (error) {
