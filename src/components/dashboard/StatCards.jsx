@@ -10,9 +10,9 @@ export default function StatCards({ stats }) {
       <div className="bg-white p-3.5 md:p-6 rounded-[20px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col-reverse md:flex-row md:items-center justify-between group hover:-translate-y-1 transition-all duration-300 cursor-pointer">
         <div className="mt-2 md:mt-0">
           <p className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Today&apos;s Revenue</p>
-          <h3 className="text-xl md:text-3xl font-extrabold text-emerald-600 mt-0.5 md:mt-2">₹{(stats.todayRevenue || 0).toLocaleString('en-IN')}</h3>
+          <h3 className="text-xl md:text-3xl font-extrabold text-blue-600 mt-0.5 md:mt-2">₹{(stats.todayRevenue || 0).toLocaleString('en-IN')}</h3>
         </div>
-        <div className="w-8 h-8 md:w-12 md:h-12 bg-emerald-50 text-emerald-500 rounded-xl md:rounded-2xl flex items-center justify-center self-end md:self-auto">
+        <div className="w-8 h-8 md:w-12 md:h-12 bg-blue-50 text-blue-500 rounded-xl md:rounded-2xl flex items-center justify-center self-end md:self-auto">
           <IndianRupee className="w-4 h-4 md:w-6 md:h-6" />
         </div>
       </div>
@@ -21,9 +21,9 @@ export default function StatCards({ stats }) {
       <div className="bg-white p-3.5 md:p-6 rounded-[20px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col-reverse md:flex-row md:items-center justify-between group hover:-translate-y-1 transition-all duration-300 cursor-pointer">
         <div className="mt-2 md:mt-0">
           <p className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Stock Value (MRP)</p>
-          <h3 className="text-xl md:text-3xl font-extrabold text-slate-700 mt-0.5 md:mt-2 group-hover:text-emerald-600 transition-colors">₹{(stats.totalStockValue || 0).toLocaleString('en-IN')}</h3>
+          <h3 className="text-xl md:text-3xl font-extrabold text-slate-700 mt-0.5 md:mt-2 group-hover:text-blue-600 transition-colors">₹{(stats.totalStockValue || 0).toLocaleString('en-IN')}</h3>
         </div>
-        <div className="w-8 h-8 md:w-12 md:h-12 bg-emerald-50 text-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center self-end md:self-auto">
+        <div className="w-8 h-8 md:w-12 md:h-12 bg-blue-50 text-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center self-end md:self-auto">
           <Database className="w-4 h-4 md:w-6 md:h-6" />
         </div>
       </div>

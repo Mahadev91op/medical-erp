@@ -21,7 +21,7 @@ export const authOptions = {
 
         // Agar galti se .env me data set karna bhul gaye, toh error aayega
         if (!envAdminUser || !envAdminPass) {
-          throw new Error("Server Error: .env file me ADMIN_USERNAME ya ADMIN_PASSWORD set nahi hai!");
+          throw new Error("Server Error: ADMIN_USERNAME or ADMIN_PASSWORD is not set in the .env file!");
         }
 
         // 2. Pehle check karo ki kya ye Super Admin hai (Seedha .env se)
@@ -39,7 +39,7 @@ export const authOptions = {
         const user = await User.findOne({ username: credentials.username.toLowerCase().trim() });
         
         if (!user) {
-          throw new Error("User nahi mila ya password galat hai.");
+          throw new Error("User not found or incorrect password.");
         }
 
         // 3b. Check if account is disabled
@@ -50,7 +50,7 @@ export const authOptions = {
         // 4. Agar user database me mil gaya, toh password match karo
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) {
-          throw new Error("Galat password!");
+          throw new Error("Incorrect password!");
         }
 
         // Sab sahi hai toh user details return karo

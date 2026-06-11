@@ -6,6 +6,69 @@ import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import toast, { Toaster } from "react-hot-toast";
 
+const ReportsSkeleton = () => {
+  return (
+    <div className="max-w-7xl mx-auto space-y-6 animate-pulse">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-2">
+          <div className="h-6 w-52 bg-slate-200 rounded-md"></div>
+          <div className="h-4 w-72 bg-slate-200 rounded-md"></div>
+        </div>
+        <div className="h-10 w-32 bg-slate-200 rounded-xl"></div>
+      </div>
+
+      {/* Grid of Flash Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-5">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl border border-slate-100 flex items-center space-x-3 shadow-sm">
+            <div className="w-10 h-10 bg-slate-200 rounded-xl shrink-0"></div>
+            <div className="space-y-1.5 flex-1">
+              <div className="h-3 w-16 bg-slate-200 rounded-md"></div>
+              <div className="h-4 w-24 bg-slate-200 rounded-md"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Date filter bar */}
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+        <div className="h-9 w-28 bg-slate-200 rounded-lg"></div>
+        <div className="h-9 w-28 bg-slate-200 rounded-lg"></div>
+        <div className="h-9 w-28 bg-slate-200 rounded-lg"></div>
+        <div className="h-9 w-28 bg-slate-200 rounded-lg"></div>
+      </div>
+
+      {/* Chart and Details Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
+          <div className="h-5 w-40 bg-slate-200 rounded-md"></div>
+          <div className="h-64 bg-slate-50 rounded-2xl flex items-end justify-between p-4">
+            {[30, 50, 40, 70, 60, 80, 50, 90, 75, 85].map((h, idx) => (
+              <div key={idx} className="w-full mx-1.5 bg-slate-200 rounded-t-md" style={{ height: `${h}%` }}></div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
+          <div className="h-5 w-36 bg-slate-200 rounded-md"></div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                <div className="space-y-1.5">
+                  <div className="h-3.5 w-24 bg-slate-200 rounded-md"></div>
+                  <div className="h-2.5 w-16 bg-slate-200 rounded-md"></div>
+                </div>
+                <div className="h-5 w-10 bg-slate-200 rounded-full"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Reports() {
   const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [], todayOverview: {} });
   const [loading, setLoading] = useState(true);
@@ -165,6 +228,23 @@ export default function Reports() {
     documentTitle: `Expiry_Report_${expiryMonths}_Months`,
   });
 
+  const lowStockPrintRef = useRef(null);
+  const handleDownloadLowStockPDF = useReactToPrint({
+    contentRef: lowStockPrintRef,
+    documentTitle: `Low_Stock_Report_Threshold_${lowStockThreshold}`,
+  });
+
+  const [reportsPdfConfig, setReportsPdfConfig] = useState({
+    showDistributor: true, showBatch: true, showBillNo: true, showQty: true, showExpiryDate: true
+  });
+
+  useEffect(() => {
+    const savedReports = localStorage.getItem("super_reports_pdf_config");
+    if (savedReports) {
+      try { setReportsPdfConfig(JSON.parse(savedReports)); } catch(e) {}
+    }
+  }, []);
+
   const fetchReports = async (isSilent = false, currentExpiryMonths = expiryMonths, currentLowStockThreshold = lowStockThreshold, filter = dateFilter) => {
     if (!isSilent) setLoading(true);
     try {
@@ -214,12 +294,7 @@ export default function Reports() {
   ) || [];
 
   if (loading) {
-    return (
-      <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
-        <Loader2 className="w-8 h-8 md:w-10 md:h-10 animate-spin text-emerald-500 mb-3 md:mb-4" />
-        <p className="font-medium text-sm md:text-base">Loading Smart Reports...</p>
-      </div>
-    );
+    return <ReportsSkeleton />;
   }
 
   return (
@@ -235,9 +310,9 @@ export default function Reports() {
         <button 
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="flex items-center justify-center text-xs md:text-sm font-bold bg-white border border-slate-200 text-slate-600 px-3 py-2 md:px-4 md:py-2.5 rounded-xl shadow-sm hover:bg-slate-50 hover:text-emerald-600 hover:border-emerald-200 transition-all focus:outline-none w-full md:w-auto shrink-0"
+          className="flex items-center justify-center text-xs md:text-sm font-bold bg-white border border-slate-200 text-slate-600 px-3 py-2 md:px-4 md:py-2.5 rounded-xl shadow-sm hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all focus:outline-none w-full md:w-auto shrink-0"
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin text-emerald-500' : ''}`} />
+          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
           {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
         </button>
       </div>
@@ -247,7 +322,7 @@ export default function Reports() {
         
         {/* Revenue */}
         <div className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center hover:shadow-md transition-all">
-            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mr-3 shrink-0 text-emerald-500">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mr-3 shrink-0 text-blue-500">
                 <IndianRupee className="w-5 h-5" />
             </div>
             <div>
@@ -278,7 +353,7 @@ export default function Reports() {
         {/* Stock Valuation */}
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-lg text-white flex items-center hover:shadow-slate-800/30 transition-shadow">
             <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center mr-3 shrink-0">
-                <Package className="w-5 h-5 text-emerald-400" />
+                <Package className="w-5 h-5 text-blue-400" />
             </div>
             <div>
                 <p className="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase tracking-wider mb-0.5">Stock Valuation</p>
@@ -335,8 +410,8 @@ export default function Reports() {
               <AreaChart data={data.salesChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
@@ -345,7 +420,7 @@ export default function Reports() {
                   contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
                   formatter={(value) => [`₹${value}`, 'Revenue']}
                 />
-                <Area type="monotone" dataKey="Revenue" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" />
+                <Area type="monotone" dataKey="Revenue" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -375,7 +450,7 @@ export default function Reports() {
                 </div>
                 <div className="text-right">
                   <p className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Revenue</p>
-                  <p className="text-base md:text-xl font-extrabold text-emerald-600 flex items-center justify-end">
+                  <p className="text-base md:text-xl font-extrabold text-blue-600 flex items-center justify-end">
                     <IndianRupee className="w-3 h-3 md:w-4 md:h-4 mr-0.5" />
                     {(dist?.revenueGenerated || 0).toLocaleString('en-IN')}
                   </p>
@@ -414,25 +489,25 @@ export default function Reports() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
                 {/* Sold Items Report Card */}
-        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-emerald-100 overflow-hidden flex flex-col">
-          <div className="bg-emerald-50/50 p-4 border-b border-emerald-100 space-y-3">
+        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-blue-100 overflow-hidden flex flex-col">
+          <div className="bg-blue-50/50 p-4 border-b border-blue-100 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm md:text-base font-bold text-emerald-700 flex items-center min-w-0">
+              <h2 className="text-sm md:text-base font-bold text-blue-700 flex items-center min-w-0">
                 <TrendingUp className="w-4 h-4 mr-1.5 shrink-0" /> 
                 <span className="truncate">Sold Items Report</span>
               </h2>
-              <span className="bg-emerald-200 text-emerald-800 text-[10px] md:text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0">
+              <span className="bg-blue-200 text-blue-800 text-[10px] md:text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0">
                 {data.todayOverview?.transactions?.length || 0} Items
               </span>
             </div>
             
-            <div className="flex flex-col gap-2 pt-1 border-t border-emerald-100/50">
+            <div className="flex flex-col gap-2 pt-1 border-t border-blue-100/50">
               <div className="flex items-center gap-1.5 w-full">
-                <span className="text-[10px] md:text-xs font-bold text-emerald-600 uppercase tracking-wider whitespace-nowrap">Filter:</span>
+                <span className="text-[10px] md:text-xs font-bold text-blue-600 uppercase tracking-wider whitespace-nowrap">Filter:</span>
                 <select 
                   value={dateFilter} 
                   onChange={(e) => setDateFilter(e.target.value)}
-                  className="bg-white border border-emerald-200 text-emerald-700 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 cursor-pointer w-full h-8"
+                  className="bg-white border border-blue-200 text-blue-700 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 cursor-pointer w-full h-8"
                 >
                   <option value="today">Today</option>
                   <option value="yesterday">Yesterday</option>
@@ -448,14 +523,14 @@ export default function Reports() {
               
               {dateFilter === "customDays" && (
                 <div className="flex items-center gap-2 pt-1">
-                  <span className="text-[10px] md:text-xs font-bold text-emerald-600 uppercase tracking-wider whitespace-nowrap">Days:</span>
+                  <span className="text-[10px] md:text-xs font-bold text-blue-600 uppercase tracking-wider whitespace-nowrap">Days:</span>
                   <input 
                     type="number"
                     min="1"
                     max="365"
                     value={customDays}
                     onChange={(e) => setCustomDays(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="bg-white border border-emerald-200 text-emerald-700 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 w-full h-8"
+                    className="bg-white border border-blue-200 text-blue-700 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 w-full h-8"
                   />
                 </div>
               )}
@@ -463,21 +538,21 @@ export default function Reports() {
               {dateFilter === "custom" && (
                 <div className="flex items-center gap-2 pt-1">
                   <div className="flex items-center gap-1 flex-1">
-                    <span className="text-[9px] font-bold text-emerald-600 uppercase">From:</span>
+                    <span className="text-[9px] font-bold text-blue-600 uppercase">From:</span>
                     <input 
                       type="date"
                       value={customStartDate}
                       onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="bg-white border border-emerald-200 text-emerald-700 rounded-lg px-1.5 py-0.5 text-[10px] font-bold focus:outline-none w-full h-7"
+                      className="bg-white border border-blue-200 text-blue-700 rounded-lg px-1.5 py-0.5 text-[10px] font-bold focus:outline-none w-full h-7"
                     />
                   </div>
                   <div className="flex items-center gap-1 flex-1">
-                    <span className="text-[9px] font-bold text-emerald-600 uppercase">To:</span>
+                    <span className="text-[9px] font-bold text-blue-600 uppercase">To:</span>
                     <input 
                       type="date"
                       value={customEndDate}
                       onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="bg-white border border-emerald-200 text-emerald-700 rounded-lg px-1.5 py-0.5 text-[10px] font-bold focus:outline-none w-full h-7"
+                      className="bg-white border border-blue-200 text-blue-700 rounded-lg px-1.5 py-0.5 text-[10px] font-bold focus:outline-none w-full h-7"
                     />
                   </div>
                 </div>
@@ -504,7 +579,7 @@ export default function Reports() {
                       const timeStr = txDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
                       const dateStr = txDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
                       return (
-                        <tr key={index} className="hover:bg-emerald-50/30 transition-colors">
+                        <tr key={index} className="hover:bg-blue-50/30 transition-colors">
                           <td className="py-2.5 max-w-[140px] md:max-w-[160px]">
                             <p className="font-bold text-slate-700 text-xs md:text-sm leading-tight truncate" title={tx.name}>{tx.name}</p>
                             <div className="flex items-center gap-1 mt-1 flex-wrap">
@@ -514,13 +589,13 @@ export default function Reports() {
                               <span className="text-[9px] bg-slate-100 text-slate-500 font-semibold px-1 rounded">
                                 {timeStr}
                               </span>
-                              <span className={`text-[9px] font-bold px-1 rounded ${tx.paymentMethod === 'UPI' ? 'bg-indigo-50 text-indigo-600' : tx.paymentMethod === 'Card' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                              <span className={`text-[9px] font-bold px-1 rounded ${tx.paymentMethod === 'UPI' ? 'bg-indigo-50 text-indigo-600' : tx.paymentMethod === 'Card' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
                                 {tx.paymentMethod}
                               </span>
                             </div>
                           </td>
                           <td className="py-2.5 text-center">
-                            <span className="text-[10px] md:text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg inline-block">
+                            <span className="text-[10px] md:text-xs font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg inline-block">
                               {tx.quantity} pcs
                             </span>
                           </td>
@@ -540,7 +615,7 @@ export default function Reports() {
                   <div className="pt-3 border-t border-slate-50 mt-auto">
                     <button
                       onClick={() => setShowSoldItemsModal(true)}
-                      className="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 py-2 rounded-xl transition-colors w-full"
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 py-2 rounded-xl transition-colors w-full"
                     >
                       See All ({data.todayOverview.transactions.length})
                     </button>
@@ -728,7 +803,7 @@ export default function Reports() {
           <div className="p-4 md:p-5 flex-1 flex flex-col justify-between overflow-x-auto">
             {(!data.alreadyExpired || data.alreadyExpired.length === 0) ? (
               <div className="text-center text-slate-400 my-auto py-8">
-                <p className="font-semibold text-emerald-600 bg-emerald-50 px-4 py-3 rounded-2xl border border-emerald-100 inline-block text-xs md:text-sm">
+                <p className="font-semibold text-blue-600 bg-blue-50 px-4 py-3 rounded-2xl border border-blue-100 inline-block text-xs md:text-sm">
                   Excellent! No expired medicines in stock. 🎉
                 </p>
               </div>
@@ -857,13 +932,13 @@ export default function Reports() {
             <div className="flex border-b border-slate-100 px-4 md:px-6 bg-slate-50/50">
               <button
                 onClick={() => setActiveReportTab("items")}
-                className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "items" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+                className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "items" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
               >
                 Sold Medicines
               </button>
               <button
                 onClick={() => setActiveReportTab("bills")}
-                className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "bills" ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+                className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "bills" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
               >
                 Receipt Invoices
               </button>
@@ -895,20 +970,20 @@ export default function Reports() {
                       const timeStr = txDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
                       const dateStr = txDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
                       return (
-                        <tr key={index} className="hover:bg-emerald-50/20 transition-colors">
+                        <tr key={index} className="hover:bg-blue-50/20 transition-colors">
                           <td className="p-3 md:p-4 text-slate-400">{index + 1}</td>
                           <td className="p-3 md:p-4 font-medium text-slate-500">#{tx.billNumber}</td>
                           <td className="p-3 md:p-4">
                             <p className="font-bold text-slate-800">{tx.name}</p>
                           </td>
                           <td className="p-3 md:p-4 text-center">
-                            <span className="font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                            <span className="font-extrabold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
                               {tx.quantity} pcs
                             </span>
                           </td>
                           <td className="p-3 md:p-4 text-center font-medium text-slate-600">₹{tx.mrp}</td>
                           <td className="p-3 md:p-4 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${tx.paymentMethod === 'UPI' ? 'bg-indigo-50 text-indigo-600' : tx.paymentMethod === 'Card' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${tx.paymentMethod === 'UPI' ? 'bg-indigo-50 text-indigo-600' : tx.paymentMethod === 'Card' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
                               {tx.paymentMethod}
                             </span>
                           </td>
@@ -952,7 +1027,7 @@ export default function Reports() {
                             <p className="text-[10px] text-slate-400 mt-0.5 font-bold uppercase">{sale.items.length} items</p>
                           </td>
                           <td className="p-3 md:p-4 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${sale.paymentMethod === 'UPI' ? 'bg-indigo-50 text-indigo-600' : sale.paymentMethod === 'Card' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${sale.paymentMethod === 'UPI' ? 'bg-indigo-50 text-indigo-600' : sale.paymentMethod === 'Card' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
                               {sale.paymentMethod || "Cash"}
                             </span>
                           </td>
@@ -972,7 +1047,7 @@ export default function Reports() {
                                   paymentMethod: sale.paymentMethod || "Cash"
                                 });
                               }}
-                              className="p-1.5 md:p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-sm"
+                              className="p-1.5 md:p-2 bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white rounded-xl transition-all shadow-sm"
                               title="Print Receipt"
                             >
                               <Printer className="w-4 h-4" />
@@ -1022,10 +1097,10 @@ export default function Reports() {
                   <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">
                     <th className="p-3 md:p-4 font-bold">#</th>
                     <th className="p-3 md:p-4 font-bold">Medicine</th>
-                    <th className="p-3 md:p-4 font-bold">Batch No.</th>
-                    <th className="p-3 md:p-4 font-bold">Bill No.</th>
-                    <th className="p-3 md:p-4 font-bold text-center">Stock Qty</th>
-                    <th className="p-3 md:p-4 font-bold text-right">Expiry Date</th>
+                    {reportsPdfConfig.showBatch && <th className="p-3 md:p-4 font-bold">Batch No.</th>}
+                    {reportsPdfConfig.showBillNo && <th className="p-3 md:p-4 font-bold">Bill No.</th>}
+                    {reportsPdfConfig.showQty && <th className="p-3 md:p-4 font-bold text-center">Stock Qty</th>}
+                    {reportsPdfConfig.showExpiryDate && <th className="p-3 md:p-4 font-bold text-right">Expiry Date</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
@@ -1034,20 +1109,26 @@ export default function Reports() {
                       <td className="p-3 md:p-4 text-slate-400">{index + 1}</td>
                       <td className="p-3 md:p-4">
                         <p className="font-bold text-slate-800">{med.name}</p>
-                        <p className="text-[10px] text-slate-400">Distributor: {med.distributor || 'N/A'}</p>
+                        {reportsPdfConfig.showDistributor && (
+                          <p className="text-[10px] text-slate-400 font-medium mt-0.5">Distributor: {med.distributor || 'N/A'}</p>
+                        )}
                       </td>
-                      <td className="p-3 md:p-4 font-medium text-slate-600">{med.batch || 'N/A'}</td>
-                      <td className="p-3 md:p-4 font-medium text-slate-600">{med.billNumber || 'N/A'}</td>
-                      <td className="p-3 md:p-4 text-center">
-                        <span className="font-extrabold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-lg">
-                          {med.quantity}
-                        </span>
-                      </td>
-                      <td className="p-3 md:p-4 text-right">
-                        <span className="font-bold text-rose-600">
-                          {formatExpiryDate(med.expiryDate)}
-                        </span>
-                      </td>
+                      {reportsPdfConfig.showBatch && <td className="p-3 md:p-4 font-medium text-slate-600">{med.batch || 'N/A'}</td>}
+                      {reportsPdfConfig.showBillNo && <td className="p-3 md:p-4 font-medium text-slate-600">{med.billNumber || 'N/A'}</td>}
+                      {reportsPdfConfig.showQty && (
+                        <td className="p-3 md:p-4 text-center">
+                          <span className="font-extrabold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-lg">
+                            {med.quantity}
+                          </span>
+                        </td>
+                      )}
+                      {reportsPdfConfig.showExpiryDate && (
+                        <td className="p-3 md:p-4 text-right">
+                          <span className="font-bold text-rose-600">
+                            {formatExpiryDate(med.expiryDate)}
+                          </span>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -1066,12 +1147,22 @@ export default function Reports() {
                 <TrendingDown className="w-5 h-5 mr-2 text-amber-500" />
                 Low Stock Alerts (Qty &lt; {lowStockThreshold})
               </h2>
-              <button 
-                onClick={() => setShowLowStockModal(false)}
-                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
-              >
-                <X className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
+              <div className="flex items-center gap-3">
+                {data.lowStock?.length > 0 && (
+                  <button
+                    onClick={handleDownloadLowStockPDF}
+                    className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+                  >
+                    <Printer className="w-4 h-4" /> Download PDF
+                  </button>
+                )}
+                <button 
+                  onClick={() => setShowLowStockModal(false)}
+                  className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
+                >
+                  <X className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+              </div>
             </div>
             
             <div className="p-4 md:p-6 overflow-x-auto overflow-y-auto flex-1 bg-slate-50/30">
@@ -1080,9 +1171,9 @@ export default function Reports() {
                   <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">
                     <th className="p-3 md:p-4 font-bold">#</th>
                     <th className="p-3 md:p-4 font-bold">Medicine</th>
-                    <th className="p-3 md:p-4 font-bold">Distributor</th>
-                    <th className="p-3 md:p-4 font-bold">Batch No.</th>
-                    <th className="p-3 md:p-4 font-bold text-right">Available Qty</th>
+                    {reportsPdfConfig.showBatch && <th className="p-3 md:p-4 font-bold">Batch No.</th>}
+                    {reportsPdfConfig.showBillNo && <th className="p-3 md:p-4 font-bold">Bill No.</th>}
+                    {reportsPdfConfig.showQty && <th className="p-3 md:p-4 font-bold text-right">Available Qty</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
@@ -1091,14 +1182,19 @@ export default function Reports() {
                       <td className="p-3 md:p-4 text-slate-400">{index + 1}</td>
                       <td className="p-3 md:p-4">
                         <p className="font-bold text-slate-800">{med.name}</p>
+                        {reportsPdfConfig.showDistributor && (
+                          <p className="text-[10px] text-slate-400 font-medium mt-0.5">Distributor: {med.distributor || 'N/A'}</p>
+                        )}
                       </td>
-                      <td className="p-3 md:p-4 font-medium text-slate-600">{med.distributor || 'N/A'}</td>
-                      <td className="p-3 md:p-4 font-medium text-slate-600">{med.batch || 'N/A'}</td>
-                      <td className="p-3 md:p-4 text-right">
-                        <span className="font-extrabold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-lg">
-                          {med.quantity}
-                        </span>
-                      </td>
+                      {reportsPdfConfig.showBatch && <td className="p-3 md:p-4 font-medium text-slate-600">{med.batch || 'N/A'}</td>}
+                      {reportsPdfConfig.showBillNo && <td className="p-3 md:p-4 font-medium text-slate-600">{med.billNumber || 'N/A'}</td>}
+                      {reportsPdfConfig.showQty && (
+                        <td className="p-3 md:p-4 text-right">
+                          <span className="font-extrabold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-lg">
+                            {med.quantity}
+                          </span>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -1133,7 +1229,7 @@ export default function Reports() {
                   placeholder="Search distributor by name..."
                   value={distributorSearch}
                   onChange={(e) => setDistributorSearch(e.target.value)}
-                  className="w-full pl-10 md:pl-12 pr-4 py-2.5 md:py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-slate-700"
+                  className="w-full pl-10 md:pl-12 pr-4 py-2.5 md:py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
                 />
               </div>
             </div>
@@ -1172,7 +1268,7 @@ export default function Reports() {
                         </div>
                         <div className="pt-2 border-t border-slate-100 flex justify-between items-center mt-1">
                           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Revenue</span>
-                          <span className="text-sm font-extrabold text-emerald-600 flex items-center">
+                          <span className="text-sm font-extrabold text-blue-600 flex items-center">
                             <IndianRupee className="w-3 h-3 mr-0.5" />
                             {(dist?.revenueGenerated || 0).toLocaleString('en-IN')}
                           </span>
@@ -1285,10 +1381,10 @@ export default function Reports() {
               <tr>
                 <th style={{ width: '6%' }}>#</th>
                 <th style={{ width: '40%' }}>Medicine Name</th>
-                <th style={{ width: '15%' }}>Batch No.</th>
-                <th style={{ width: '15%' }}>Bill Number</th>
-                <th style={{ width: '12%', textAlign: 'center' }}>Stock Qty</th>
-                <th style={{ width: '12%', textAlign: 'right' }}>Expiry Date</th>
+                {reportsPdfConfig.showBatch && <th style={{ width: '15%' }}>Batch No.</th>}
+                {reportsPdfConfig.showBillNo && <th style={{ width: '15%' }}>Bill Number</th>}
+                {reportsPdfConfig.showQty && <th style={{ width: '12%', textAlign: 'center' }}>Stock Qty</th>}
+                {reportsPdfConfig.showExpiryDate && <th style={{ width: '12%', textAlign: 'right' }}>Expiry Date</th>}
               </tr>
             </thead>
             <tbody>
@@ -1297,12 +1393,137 @@ export default function Reports() {
                   <td>{idx + 1}</td>
                   <td>
                     <div style={{ fontWeight: 'bold' }}>{med.name}</div>
-                    <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>Dist: {med.distributor || 'N/A'}</div>
+                    {reportsPdfConfig.showDistributor && (
+                      <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>Dist: {med.distributor || 'N/A'}</div>
+                    )}
                   </td>
-                  <td>{med.batch || 'N/A'}</td>
-                  <td>{med.billNumber || 'N/A'}</td>
-                  <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{med.quantity}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{formatExpiryDate(med.expiryDate)}</td>
+                  {reportsPdfConfig.showBatch && <td>{med.batch || 'N/A'}</td>}
+                  {reportsPdfConfig.showBillNo && <td>{med.billNumber || 'N/A'}</td>}
+                  {reportsPdfConfig.showQty && <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{med.quantity}</td>}
+                  {reportsPdfConfig.showExpiryDate && <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{formatExpiryDate(med.expiryDate)}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Hidden printable container for B&W PDF Low Stock Report */}
+      <div style={{ position: 'absolute', top: '-10000px', left: '-10000px', overflow: 'hidden' }}>
+        <div ref={lowStockPrintRef} className="p-8 bg-white text-black font-sans w-[210mm]">
+          <style type="text/css" media="print">
+            {`
+              @page {
+                size: A4;
+                margin: 20mm 15mm 20mm 15mm;
+              }
+              body {
+                color: #000 !important;
+                background: #fff !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              }
+              .print-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+              }
+              .print-table th {
+                border-bottom: 2px solid #000;
+                padding: 10px 8px;
+                font-size: 11px;
+                font-weight: bold;
+                text-transform: uppercase;
+                text-align: left;
+              }
+              .print-table td {
+                border-bottom: 1px solid #ddd;
+                padding: 10px 8px;
+                font-size: 11px;
+                color: #000;
+              }
+              .print-header {
+                border-bottom: 3px solid #000;
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+              }
+              .print-title {
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: -0.5px;
+                text-transform: uppercase;
+                margin: 0;
+              }
+              .print-subtitle {
+                font-size: 11px;
+                color: #555;
+                margin-top: 4px;
+                font-weight: 500;
+              }
+              .print-meta {
+                font-size: 10px;
+                color: #333;
+                text-align: right;
+                font-weight: 500;
+                line-height: 1.4;
+              }
+              .print-summary-box {
+                background-color: #f8fafc;
+                border: 1px solid #000;
+                padding: 12px;
+                display: flex;
+                justify-content: space-between;
+                margin-top: 15px;
+                font-size: 11px;
+                font-weight: bold;
+              }
+            `}
+          </style>
+          
+          {/* Header */}
+          <div className="print-header">
+            <div>
+              <h1 className="print-title">Medicines Low Stock Report</h1>
+              <p className="print-subtitle">Smart Inventory replenishment insights</p>
+            </div>
+            <div className="print-meta">
+              <p>Generated: {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+              <p>Filter: Stock Level below {lowStockThreshold} Units</p>
+            </div>
+          </div>
+
+          {/* Quick Summary Banner */}
+          <div className="print-summary-box">
+            <span>TOTAL LOW STOCK PRODUCTS: {data.lowStock?.length || 0}</span>
+            <span>STATUS: REORDER RECOMMENDED</span>
+          </div>
+
+          {/* Data Table */}
+          <table className="print-table">
+            <thead>
+              <tr>
+                <th style={{ width: '6%' }}>#</th>
+                <th style={{ width: '40%' }}>Medicine Name</th>
+                {reportsPdfConfig.showBatch && <th style={{ width: '15%' }}>Batch No.</th>}
+                {reportsPdfConfig.showBillNo && <th style={{ width: '15%' }}>Bill Number</th>}
+                {reportsPdfConfig.showQty && <th style={{ width: '15%', textAlign: 'right' }}>Available Qty</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {data.lowStock?.map((med, idx) => (
+                <tr key={med._id}>
+                  <td>{idx + 1}</td>
+                  <td>
+                    <div style={{ fontWeight: 'bold' }}>{med.name}</div>
+                    {reportsPdfConfig.showDistributor && (
+                      <div style={{ fontSize: '9px', color: '#555', marginTop: '2px' }}>Dist: {med.distributor || 'N/A'}</div>
+                    )}
+                  </td>
+                  {reportsPdfConfig.showBatch && <td>{med.batch || 'N/A'}</td>}
+                  {reportsPdfConfig.showBillNo && <td>{med.billNumber || 'N/A'}</td>}
+                  {reportsPdfConfig.showQty && <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{med.quantity}</td>}
                 </tr>
               ))}
             </tbody>

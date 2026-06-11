@@ -14,6 +14,76 @@ import toast, { Toaster } from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import SuperAdmin from "./superadmin/page";
 
+const DashboardSkeleton = () => {
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto animate-pulse">
+      {/* Top Banner Skeleton */}
+      <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+        <div className="space-y-2">
+          <div className="h-6 w-48 bg-slate-200 rounded-lg"></div>
+          <div className="h-4 w-32 bg-slate-200 rounded-lg"></div>
+        </div>
+        <div className="h-10 w-28 bg-slate-200 rounded-xl"></div>
+      </div>
+
+      {/* Grid of Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 space-y-3 shadow-sm">
+            <div className="flex justify-between items-center">
+              <div className="h-4 w-24 bg-slate-200 rounded-md"></div>
+              <div className="w-8 h-8 bg-blue-50 rounded-lg"></div>
+            </div>
+            <div className="h-8 w-20 bg-slate-200 rounded-lg mt-2"></div>
+            <div className="h-3 w-36 bg-slate-200 rounded-md"></div>
+          </div>
+        ))}
+      </div>
+
+      {/* Main Split Layout: Chart and Expiry Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Side: Large Chart Area */}
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
+          <div className="flex justify-between items-center">
+            <div className="space-y-1.5">
+              <div className="h-5 w-36 bg-slate-200 rounded-md"></div>
+              <div className="h-3 w-48 bg-slate-200 rounded-md"></div>
+            </div>
+            <div className="flex gap-2">
+              <div className="h-8 w-16 bg-slate-200 rounded-lg"></div>
+              <div className="h-8 w-16 bg-slate-200 rounded-lg"></div>
+            </div>
+          </div>
+          <div className="h-64 bg-slate-50 rounded-2xl flex items-end justify-between p-4 pt-10">
+            {[40, 60, 45, 80, 50, 75, 90, 65, 55, 70, 85, 95].map((h, idx) => (
+              <div key={idx} className="w-full mx-1 bg-slate-200 rounded-t-md" style={{ height: `${h}%` }}></div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Side: List Area */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
+          <div className="space-y-1.5">
+            <div className="h-5 w-40 bg-slate-200 rounded-md"></div>
+            <div className="h-3 w-28 bg-slate-200 rounded-md"></div>
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex justify-between items-center p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="space-y-2">
+                  <div className="h-4 w-32 bg-slate-200 rounded-md"></div>
+                  <div className="h-3 w-20 bg-slate-200 rounded-md"></div>
+                </div>
+                <div className="h-6 w-12 bg-rose-100/60 rounded-full"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -38,8 +108,9 @@ export default function Dashboard() {
       }
     } catch (error) {
       toast.error("Network or Server error occurred!");
+    } finally {
+      setLoading(false);
     }
-    if (!silent) setLoading(false);
   };
 
   const handleSearch = async (val) => {
@@ -140,7 +211,7 @@ export default function Dashboard() {
   if (status === "loading") {
     return (
       <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
-        <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
+        <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
         <p className="font-medium">Loading session...</p>
       </div>
     );
@@ -153,7 +224,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
-        <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
+        <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
         <p className="font-medium">Loading Dashboard...</p>
       </div>
     );
@@ -168,9 +239,9 @@ export default function Dashboard() {
         <button 
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="flex items-center text-xs md:text-sm font-bold bg-white border border-slate-200 text-slate-600 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl shadow-sm hover:bg-slate-50 hover:text-emerald-600 hover:border-emerald-200 transition-all focus:outline-none z-10"
+          className="flex items-center text-xs md:text-sm font-bold bg-white border border-slate-200 text-slate-600 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl shadow-sm hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all focus:outline-none z-10"
         >
-          <RefreshCw className={`w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2 ${isRefreshing ? 'animate-spin text-emerald-500' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 md:w-4 md:h-4 mr-1.5 md:mr-2 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
           {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
         </button>
       </div>
@@ -186,15 +257,15 @@ export default function Dashboard() {
         {/* Quick Actions Grid */}
         <div className="bg-white p-4 md:p-6 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 space-y-4">
           <h2 className="text-sm md:text-base font-bold text-slate-700 flex items-center gap-2">
-            <LayoutGrid className="w-5 h-5 text-emerald-500" />
+            <LayoutGrid className="w-5 h-5 text-blue-500" />
             <span>Store Command Center</span>
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <a href="/sell" className="flex items-center gap-3 p-3 md:p-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl transition-all shadow-sm border border-emerald-100/50 hover:scale-[1.02] duration-200">
+            <a href="/sell" className="flex items-center gap-3 p-3 md:p-4 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-2xl transition-all shadow-sm border border-blue-100/50 hover:scale-[1.02] duration-200">
               <ShoppingCart className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
               <div>
                 <p className="font-extrabold text-xs md:text-sm">Fast Billing</p>
-                <p className="text-[9px] md:text-[10px] text-emerald-600/80 font-medium">Scan & Sell</p>
+                <p className="text-[9px] md:text-[10px] text-blue-600/80 font-medium">Scan & Sell</p>
               </div>
             </a>
             <a href="/purchase" className="flex items-center gap-3 p-3 md:p-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl transition-all shadow-sm border border-indigo-100/50 hover:scale-[1.02] duration-200">
@@ -204,18 +275,18 @@ export default function Dashboard() {
                 <p className="text-[9px] md:text-[10px] text-indigo-600/80 font-medium">Add stock</p>
               </div>
             </a>
-            <a href="/inventory" className="flex items-center gap-3 p-3 md:p-4 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-2xl transition-all shadow-sm border border-amber-100/50 hover:scale-[1.02] duration-200">
+            <a href="/inventory" className="flex items-center gap-3 p-3 md:p-4 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-2xl transition-all shadow-sm border border-sky-100/50 hover:scale-[1.02] duration-200">
               <Package className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
               <div>
                 <p className="font-extrabold text-xs md:text-sm">Inventory</p>
-                <p className="text-[9px] md:text-[10px] text-amber-600/80 font-medium">Manage stock</p>
+                <p className="text-[9px] md:text-[10px] text-sky-600/80 font-medium">Manage stock</p>
               </div>
             </a>
-            <a href="/reports" className="flex items-center gap-3 p-3 md:p-4 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-2xl transition-all shadow-sm border border-rose-100/50 hover:scale-[1.02] duration-200">
+            <a href="/reports" className="flex items-center gap-3 p-3 md:p-4 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl transition-all shadow-sm border border-slate-200/50 hover:scale-[1.02] duration-200">
               <FileText className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
               <div>
                 <p className="font-extrabold text-xs md:text-sm">Reports</p>
-                <p className="text-[9px] md:text-[10px] text-rose-600/80 font-medium">Store analysis</p>
+                <p className="text-[9px] md:text-[10px] text-slate-500 font-medium">Store analysis</p>
               </div>
             </a>
           </div>
@@ -225,19 +296,19 @@ export default function Dashboard() {
         <div className="bg-white p-4 md:p-6 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 space-y-3.5 flex flex-col justify-between">
           <div>
             <h2 className="text-sm md:text-base font-bold text-slate-700 flex items-center gap-2">
-              <Search className="w-5 h-5 text-emerald-500" />
+              <Search className="w-5 h-5 text-blue-500" />
               <span>Instant Stock Finder</span>
             </h2>
             <div className="relative mt-2">
               <input 
                 type="text" 
                 placeholder="Search medicine name, barcode, batch..." 
-                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl pl-10 pr-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-xs md:text-sm font-semibold"
+                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl pl-10 pr-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-xs md:text-sm font-semibold"
                 value={searchTerm}
                 onChange={(e) => handleSearch(e.target.value)}
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              {searching && <Loader2 className="w-4 h-4 text-emerald-500 absolute right-3.5 top-3.5 animate-spin" />}
+              {searching && <Loader2 className="w-4 h-4 text-blue-500 absolute right-3.5 top-3.5 animate-spin" />}
             </div>
           </div>
           
@@ -249,13 +320,13 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-2 max-h-[120px] overflow-y-auto">
                 {searchResults.map((med) => (
-                  <div key={med._id} className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] md:text-xs hover:border-emerald-200 transition-colors">
+                  <div key={med._id} className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] md:text-xs hover:border-blue-200 transition-colors">
                     <div>
                       <p className="font-bold text-slate-800">{med.name}</p>
                       <p className="text-[9px] text-slate-400 mt-0.5">Batch: {med.batch} | Exp: {new Date(med.expiryDate).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' })}</p>
                     </div>
                     <div className="text-right">
-                      <span className={`px-2 py-0.5 font-extrabold rounded-md ${med.quantity <= 0 ? 'bg-rose-100 text-rose-700' : med.quantity < 10 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      <span className={`px-2 py-0.5 font-extrabold rounded-md ${med.quantity <= 0 ? 'bg-rose-100 text-rose-700' : med.quantity < 10 ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
                         {med.quantity} in stock
                       </span>
                       {med.rackNumber && <p className="text-[9px] text-slate-500 font-medium mt-0.5">Rack: {med.rackNumber}</p>}
@@ -280,12 +351,12 @@ export default function Dashboard() {
         <div className="bg-white p-4 md:p-6 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 space-y-4">
           <div className="flex justify-between items-center border-b border-slate-50 pb-2">
             <h2 className="text-sm md:text-base font-bold text-slate-700">Today&apos;s Sales Dashboard</h2>
-            <span className="text-[9px] md:text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">Live Data</span>
+            <span className="text-[9px] md:text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold">Live Data</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-slate-50/50 p-2.5 rounded-xl text-center border border-slate-100">
-              <Banknote className="w-5 h-5 mx-auto text-emerald-600 mb-1" />
+              <Banknote className="w-5 h-5 mx-auto text-blue-600 mb-1" />
               <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase">Cash Sales</p>
               <p className="text-xs md:text-sm font-extrabold text-slate-700 mt-0.5">₹{(dashboardData?.stats?.todayPaymentBreakdown?.Cash || 0).toLocaleString('en-IN')}</p>
             </div>
@@ -339,7 +410,7 @@ export default function Dashboard() {
             <div className="mt-3">
               {(!dashboardData?.reorderList || dashboardData.reorderList.length === 0) ? (
                 <div className="text-center py-12 text-slate-400">
-                  <p className="font-semibold text-emerald-600 bg-emerald-50 px-4 py-3 rounded-2xl border border-emerald-100 inline-block text-xs md:text-sm">
+                  <p className="font-semibold text-blue-600 bg-blue-50 px-4 py-3 rounded-2xl border border-blue-100 inline-block text-xs md:text-sm">
                     Perfect! No out-of-stock items. 📦
                   </p>
                 </div>
@@ -385,21 +456,21 @@ export default function Dashboard() {
               {dashboardData?.activeSessions?.map((sess) => {
                 const isThisDevice = typeof window !== 'undefined' && localStorage.getItem('device_session_id') === sess.deviceSessionId;
                 return (
-                  <div key={sess.deviceSessionId} className={`flex items-center justify-between p-2.5 rounded-2xl border transition-all ${isThisDevice ? 'bg-emerald-50/50 border-emerald-100' : 'bg-slate-50 border-slate-100'}`}>
+                  <div key={sess.deviceSessionId} className={`flex items-center justify-between p-2.5 rounded-2xl border transition-all ${isThisDevice ? 'bg-blue-50/50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${sess.isOnline ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${sess.isOnline ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-400'}`}>
                         <Smartphone className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-slate-800 text-[11px] md:text-xs flex items-center gap-1.5 truncate">
                           <span className="truncate">{sess.os} ({sess.browser})</span>
-                          {isThisDevice && <span className="bg-emerald-200 text-emerald-800 text-[8px] font-extrabold px-1.5 py-0.5 rounded-sm shrink-0">THIS DEVICE</span>}
+                          {isThisDevice && <span className="bg-blue-200 text-blue-800 text-[8px] font-extrabold px-1.5 py-0.5 rounded-sm shrink-0">THIS DEVICE</span>}
                         </p>
                         <p className="text-[9px] text-slate-400 mt-0.5 truncate">IP: {sess.ipAddress} | {sess.isOnline ? '🟢 Live' : '⚫ Offline'}</p>
                       </div>
                     </div>
                     {sess.isOnline ? (
-                      <span className="bg-emerald-100 text-emerald-700 border border-emerald-100 text-[8px] font-bold px-1.5 py-0.5 rounded-md shrink-0">ONLINE</span>
+                      <span className="bg-blue-100 text-blue-700 border border-blue-100 text-[8px] font-bold px-1.5 py-0.5 rounded-md shrink-0">ONLINE</span>
                     ) : (
                       <span className="bg-slate-100 text-slate-500 border border-slate-200 text-[8px] font-bold px-1.5 py-0.5 rounded-md shrink-0">OFFLINE</span>
                     )}

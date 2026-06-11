@@ -8,6 +8,29 @@ import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 import CameraScanner from "@/components/sell/CameraScanner";
 import toast, { Toaster } from "react-hot-toast";
 
+const TableHistorySkeleton = () => {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+        <div className="bg-slate-50 h-10 w-full border-b border-slate-150 flex items-center px-4">
+          <div className="h-3.5 w-full bg-slate-200 rounded-md"></div>
+        </div>
+        <div className="divide-y divide-slate-50">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-4 flex items-center justify-between gap-4">
+              <div className="h-4 w-20 bg-slate-200 rounded-md"></div>
+              <div className="h-4 w-12 bg-slate-200 rounded-md"></div>
+              <div className="h-4 w-16 bg-slate-200 rounded-md"></div>
+              <div className="h-4 w-16 bg-slate-200 rounded-md"></div>
+              <div className="h-4 w-28 bg-slate-200 rounded-md"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function MedicineLookup() {
   const [searchTerm, setSearchTerm] = useState("");
   const [medicines, setMedicines] = useState([]);
@@ -161,7 +184,7 @@ export default function MedicineLookup() {
                           ? "bg-rose-50 border-rose-100 text-rose-500" 
                           : isOutOfStock 
                             ? "bg-rose-50 border-rose-100 text-rose-500" 
-                            : "bg-emerald-50 border-emerald-100 text-emerald-600"
+                            : "bg-blue-50 border-blue-100 text-blue-600"
                       }`}>
                         {isExpired ? "Expired" : isOutOfStock ? "Out of Stock" : `${med.quantity} in stock`}
                       </span>
@@ -210,7 +233,7 @@ export default function MedicineLookup() {
                     <ShieldAlert className="w-3.5 h-3.5" /> Finished (Out of Stock)
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-600 px-3 py-1 rounded-xl text-[10px] font-extrabold uppercase">
+                  <span className="inline-flex items-center gap-1 bg-blue-50 border border-blue-100 text-blue-600 px-3 py-1 rounded-xl text-[10px] font-extrabold uppercase">
                     <Package className="w-3.5 h-3.5" /> {selectedMed.quantity} Units Available
                   </span>
                 )}
@@ -230,7 +253,7 @@ export default function MedicineLookup() {
                 </div>
                 <div className="flex justify-between text-xs font-semibold">
                   <span className="text-slate-400 uppercase">MRP Price</span>
-                  <span className="text-emerald-600 font-extrabold text-sm">₹{selectedMed.mrp}</span>
+                  <span className="text-blue-600 font-extrabold text-sm">₹{selectedMed.mrp}</span>
                 </div>
                 <div className="flex justify-between text-xs font-semibold">
                   <span className="text-slate-400 uppercase">Expiry Date</span>
@@ -271,10 +294,7 @@ export default function MedicineLookup() {
               </h3>
 
               {historyLoading ? (
-                <div className="py-20 text-center text-slate-400 flex flex-col items-center justify-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-3" />
-                  <p className="font-semibold text-sm">Loading Sales Logs...</p>
-                </div>
+                <TableHistorySkeleton />
               ) : salesHistory.length === 0 ? (
                 <div className="py-16 text-center text-slate-400 bg-slate-50/50 border border-slate-100 rounded-2xl">
                   <FileText className="w-10 h-10 text-slate-200 mx-auto mb-2" />
@@ -311,7 +331,7 @@ export default function MedicineLookup() {
                                   ? "bg-indigo-50 border border-indigo-100 text-indigo-600" 
                                   : item.paymentMethod === "Card" 
                                     ? "bg-amber-50 border border-amber-100 text-amber-600" 
-                                    : "bg-emerald-50 border border-emerald-100 text-emerald-600"
+                                    : "bg-blue-50 border border-blue-100 text-blue-600"
                               }`}>
                                 {item.paymentMethod}
                               </span>
@@ -344,7 +364,7 @@ export default function MedicineLookup() {
                   </div>
                   <div className="text-right border-l border-indigo-100 pl-4">
                     <p className="text-[10px] text-slate-400 font-bold">Total Revenue</p>
-                    <p className="text-sm font-extrabold text-emerald-600">₹{salesHistory.reduce((sum, x) => sum + x.total, 0).toLocaleString("en-IN")}</p>
+                    <p className="text-sm font-extrabold text-blue-600">₹{salesHistory.reduce((sum, x) => sum + x.total, 0).toLocaleString("en-IN")}</p>
                   </div>
                 </div>
               </div>

@@ -103,7 +103,7 @@ export default function CameraScanner({ onScan, onClose }) {
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center text-slate-800 font-bold">
-            <Camera className="w-5 h-5 mr-2 text-emerald-600" />
+            <Camera className="w-5 h-5 mr-2 text-blue-600" />
             Live Camera Scanner
           </div>
           <button
@@ -119,7 +119,7 @@ export default function CameraScanner({ onScan, onClose }) {
           {/* Jab tak camera full load na ho jaye, ye spinner dikhega */}
           {isStarting && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10 bg-slate-900">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mb-3" />
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
               <p className="text-sm font-medium">Starting Camera...</p>
             </div>
           )}
@@ -133,7 +133,7 @@ export default function CameraScanner({ onScan, onClose }) {
             Scan the Barcode
           </p>
           <p className="text-xs text-slate-400 font-medium">
-            Sticker ko screen par dikh rahe box ke beech me rakhein.
+            Place the barcode sticker in the center of the scanning area.
           </p>
         </div>
       </div>

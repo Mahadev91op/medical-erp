@@ -21,7 +21,7 @@ export default function ExpiryAlerts({ alerts }) {
           Urgent Expiry Alerts
         </h2>
         <Link href="/reports">
-          <button className="text-[10px] md:text-sm text-emerald-600 font-bold hover:text-emerald-700 flex items-center group bg-emerald-50 px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-colors shrink-0">
+          <button className="text-[10px] md:text-sm text-blue-600 font-bold hover:text-blue-700 flex items-center group bg-blue-50 px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-colors shrink-0">
             View All <ArrowRight className="w-3 h-3 md:w-4 md:h-4 ml-1 group-hover:translate-x-1 transition-transform" />
           </button>
         </Link>

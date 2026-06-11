@@ -175,7 +175,7 @@ export default function QuickSell() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
         <div className="flex items-center">
-          <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-50 text-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center mr-3 shrink-0 border border-emerald-100 shadow-sm">
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center mr-3 shrink-0 border border-blue-100 shadow-sm">
             <ScanBarcode className="w-5 h-5 md:w-6 md:h-6" />
           </div>
           <div>
@@ -202,11 +202,11 @@ export default function QuickSell() {
               <div className="relative">
                 <input 
                   ref={inputRef} type="text" placeholder="Focus here to scan..." 
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-4 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-semibold"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-4 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-semibold"
                   value={barcode} onChange={(e) => setBarcode(e.target.value)} 
                 />
                 <ScanBarcode className="absolute left-3 md:left-4 top-3 md:top-4.5 text-slate-400 w-5 h-5 md:w-6 md:h-6" />
-                {loading && <Loader2 className="absolute right-3 md:right-4 top-3 md:top-4.5 text-emerald-500 w-5 h-5 md:w-6 md:h-6 animate-spin" />}
+                {loading && <Loader2 className="absolute right-3 md:right-4 top-3 md:top-4.5 text-blue-500 w-5 h-5 md:w-6 md:h-6 animate-spin" />}
               </div>
             </form>
 
@@ -215,10 +215,10 @@ export default function QuickSell() {
               <div className="flex">
                 <input 
                   type="text" placeholder="Medicine name..." 
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-l-xl md:rounded-l-2xl px-3 md:px-4 py-3 md:py-4 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-semibold"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-l-xl md:rounded-l-2xl px-3 md:px-4 py-3 md:py-4 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-semibold"
                   value={manualSearch} onChange={(e) => setManualSearch(e.target.value)} 
                 />
-                <button type="submit" className="bg-emerald-500 text-white px-4 md:px-5 rounded-r-xl md:rounded-r-2xl hover:bg-emerald-600 transition-colors">
+                <button type="submit" className="bg-blue-600 text-white px-4 md:px-5 rounded-r-xl md:rounded-r-2xl hover:bg-blue-700 transition-colors">
                   <Search className="w-4 h-4 md:w-5 md:h-5"/>
                 </button>
               </div>
@@ -227,17 +227,17 @@ export default function QuickSell() {
 
           {/* Search Results Display */}
           {searchResults.length > 0 && (
-            <div className="bg-white p-3 md:p-4 rounded-2xl md:rounded-3xl shadow-sm border border-emerald-100">
+            <div className="bg-white p-3 md:p-4 rounded-2xl md:rounded-3xl shadow-sm border border-blue-100">
               <h3 className="text-xs md:text-sm font-bold mb-2 md:mb-3 text-slate-700">Search Results:</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
                 {searchResults.map(med => (
-                  <div key={med._id} className="flex justify-between items-center bg-slate-50 p-2.5 md:p-3 rounded-xl border border-slate-200 hover:border-emerald-200 transition-colors">
+                  <div key={med._id} className="flex justify-between items-center bg-slate-50 p-2.5 md:p-3 rounded-xl border border-slate-200 hover:border-blue-200 transition-colors">
                     <div className="flex-1 pr-2 md:pr-3 min-w-0">
                       <p className="font-bold text-xs md:text-sm text-slate-800 truncate">{med.name}</p>
                       
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                         <span className="text-[8px] md:text-[9px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded shadow-sm">Stock: {med.quantity}</span>
-                        <span className="text-[8px] md:text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded shadow-sm">₹{med.mrp}</span>
+                        <span className="text-[8px] md:text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shadow-sm">₹{med.mrp}</span>
                         <span className="text-[8px] md:text-[9px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-1.5 py-0.5 rounded shadow-sm">Exp: {formatExpiryDate(med.expiryDate)}</span>
                         {med.rackNumber && <span className="text-[8px] md:text-[9px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded shadow-sm">Rack: {med.rackNumber}</span>}
                       </div>
@@ -247,7 +247,7 @@ export default function QuickSell() {
                         Sold Out
                       </button>
                     ) : (
-                      <button onClick={() => addToCart(med)} className="bg-emerald-100 text-emerald-700 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold hover:bg-emerald-200 transition-colors shrink-0">
+                      <button onClick={() => addToCart(med)} className="bg-blue-100 text-blue-700 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold hover:bg-blue-200 transition-colors shrink-0">
                         + Add
                       </button>
                     )}
@@ -282,7 +282,7 @@ export default function QuickSell() {
                         {item.distributor && <span className="text-[9px] md:text-[10px] font-bold bg-amber-50 border border-amber-100 text-amber-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)] max-w-[100px] md:max-w-[120px] truncate">Dist: {item.distributor}</span>}
                       </div>
 
-                      <p className="text-xs md:text-sm text-emerald-600 font-extrabold">₹{item.mrp || 0} / unit</p>
+                      <p className="text-xs md:text-sm text-blue-600 font-extrabold">₹{item.mrp || 0} / unit</p>
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end space-x-3 md:space-x-4 shrink-0 bg-white sm:bg-transparent p-2 sm:p-0 rounded-lg sm:rounded-none border sm:border-none border-slate-100">
@@ -306,7 +306,7 @@ export default function QuickSell() {
         {/* Checkout Sidebar */}
         <div className="bg-slate-800 p-5 md:p-8 rounded-[24px] md:rounded-3xl shadow-lg flex flex-col justify-between text-white lg:h-[450px] lg:sticky lg:top-24">
           <div>
-            <h2 className="text-base md:text-lg font-bold text-emerald-400 mb-4 md:mb-6 flex items-center border-b border-slate-700 pb-3 md:pb-4">
+            <h2 className="text-base md:text-lg font-bold text-blue-400 mb-4 md:mb-6 flex items-center border-b border-slate-700 pb-3 md:pb-4">
               <CheckCircle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" /> Summary
             </h2>
             
@@ -317,7 +317,7 @@ export default function QuickSell() {
 
             <div className="flex justify-between items-center mb-5 md:mb-6 pt-3 md:pt-4 border-t border-slate-700">
               <span className="text-slate-300 font-bold text-sm md:text-base">Total Amount</span>
-              <span className="text-2xl md:text-3xl font-bold text-emerald-400 flex items-center">
+              <span className="text-2xl md:text-3xl font-bold text-blue-400 flex items-center">
                 <IndianRupee className="w-5 h-5 md:w-6 md:h-6 mr-0.5 md:mr-1" /> {totalCartAmount}
               </span>
             </div>
@@ -327,7 +327,7 @@ export default function QuickSell() {
               <select 
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full bg-slate-700 border-none text-white rounded-xl px-3 md:px-4 py-2.5 md:py-3 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer text-xs md:text-base"
+                className="w-full bg-slate-700 border-none text-white rounded-xl px-3 md:px-4 py-2.5 md:py-3 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer text-xs md:text-base"
               >
                 <option value="Cash">💵 Cash</option>
                 <option value="UPI">📱 UPI / PhonePe</option>
@@ -339,7 +339,7 @@ export default function QuickSell() {
           <button 
             onClick={handleCheckout} 
             disabled={cart.length === 0 || checkoutLoading}
-            className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-sm md:text-lg px-4 py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all shadow-lg shadow-emerald-500/30 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm md:text-lg px-4 py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all shadow-lg shadow-blue-500/30 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {checkoutLoading ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : "Complete Sale"}
           </button>
@@ -352,7 +352,7 @@ export default function QuickSell() {
           <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="bg-slate-800 p-4 flex justify-between items-center text-white">
               <div className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-emerald-400" />
+                <Printer className="w-5 h-5 text-blue-400" />
                 <h2 className="text-sm md:text-base font-bold">Billing Completed</h2>
               </div>
               <button 
@@ -415,9 +415,9 @@ export default function QuickSell() {
               </button>
               <button 
                 onClick={handlePrintInvoice}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-1.5"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-xs font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-1.5"
               >
-                <Printer className="w-4 h-4 text-emerald-100" /> Print Receipt
+                <Printer className="w-4 h-4 text-blue-100" /> Print Receipt
               </button>
             </div>
           </div>

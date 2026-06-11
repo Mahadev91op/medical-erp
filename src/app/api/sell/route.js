@@ -39,9 +39,9 @@ export async function POST(req) {
       for (let item of cartItems) {
         const med = medMap[item._id.toString()];
         
-        if (!med) throw new Error(`${item.name} database me nahi mili!`);
+        if (!med) throw new Error(`${item.name} not found in database!`);
         if (med.quantity < item.sellQuantity) {
-          throw new Error(`${item.name} ka stock kam hai! Available: ${med.quantity}`);
+          throw new Error(`${item.name} has insufficient stock! Available: ${med.quantity}`);
         }
 
         // Atomic stock update to prevent race conditions
@@ -51,7 +51,7 @@ export async function POST(req) {
         );
         
         if (res.modifiedCount === 0) {
-          throw new Error(`${item.name} ka stock kam hai ya update fail ho gaya!`);
+          throw new Error(`${item.name} has insufficient stock or update failed!`);
         }
 
         // Track for rollback

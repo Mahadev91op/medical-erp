@@ -37,10 +37,10 @@ export default function Login() {
 
                 {/* Logo Area */}
                 <div className="flex flex-col items-center mb-8">
-                    <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-100 mb-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100 mb-4">
                         <Activity className="text-white w-7 h-7" />
                     </div>
-                    <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Pharma<span className="text-emerald-500">ERP</span></h1>
+                    <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Pharma<span className="text-blue-500">ERP</span></h1>
                     <p className="text-slate-500 text-sm font-medium mt-1">Staff & Admin Login Portal</p>
                 </div>
 
@@ -58,7 +58,7 @@ export default function Login() {
                                 type="text"
                                 required
                                 placeholder="Enter username"
-                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium"
+                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium"
                                 value={formData.username}
                                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                             />
@@ -73,7 +73,7 @@ export default function Login() {
                                 type="password"
                                 required
                                 placeholder="Enter password"
-                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium"
+                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium"
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                             />
@@ -84,7 +84,7 @@ export default function Login() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base px-4 py-4 rounded-xl transition-all shadow-lg shadow-emerald-200 flex items-center justify-center mt-2 disabled:opacity-70"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-base px-4 py-4 rounded-xl transition-all shadow-lg shadow-blue-200 flex items-center justify-center mt-2 disabled:opacity-70"
                     >
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Secure Login"}
                     </button>
@@ -92,7 +92,7 @@ export default function Login() {
 
                 <div className="mt-6 text-center text-sm text-slate-500 font-medium">
                     Don&apos;t have an account?{" "}
-                    <Link href="/signup" className="text-emerald-500 hover:text-emerald-600 font-bold inline-flex items-center">
+                    <Link href="/signup" className="text-blue-500 hover:text-blue-600 font-bold inline-flex items-center">
                         Register here <ArrowRight className="w-4 h-4 ml-1" />
                     </Link>
                 </div>

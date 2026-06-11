@@ -2,12 +2,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, Package, IndianRupee, X, AlertTriangle, TrendingDown } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import toast from "react-hot-toast";
 
 export default function Header() {
   const { data: session } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   // Live Indian Time State and Effect
   const [indianTime, setIndianTime] = useState("");
@@ -161,15 +162,17 @@ export default function Header() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin"].includes(pathname);
+
   // Agar login nahi hai ya role superadmin hai, toh Header mat dikhao
-  if (!session || session?.user?.role === "superadmin") return null;
+  if (!session || session?.user?.role === "superadmin" || isAuthOrPausedOrNotFound) return null;
 
   return (
     <header className="h-16 md:h-20 bg-white/90 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50">
       
       {/* 1. Global Quick Search Bar */}
-      <div ref={searchRef} className="relative flex flex-1 md:flex-none items-center bg-slate-50 hover:bg-slate-100 px-3 md:px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl md:w-[260px] lg:w-[360px] border border-slate-200/60 transition-all duration-300 mr-4 group focus-within:ring-4 focus-within:ring-emerald-50 focus-within:border-emerald-200">
-        <Search className={`w-4 h-4 mr-2 md:mr-3 shrink-0 ${isSearching ? 'text-emerald-500 animate-pulse' : 'text-slate-400 group-focus-within:text-emerald-500'}`} />
+      <div ref={searchRef} className="relative flex flex-1 md:flex-none items-center bg-slate-50 hover:bg-slate-100 px-3 md:px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl md:w-[260px] lg:w-[360px] border border-slate-200/60 transition-all duration-300 mr-4 group focus-within:ring-4 focus-within:ring-blue-50 focus-within:border-blue-200">
+        <Search className={`w-4 h-4 mr-2 md:mr-3 shrink-0 ${isSearching ? 'text-blue-500 animate-pulse' : 'text-slate-400 group-focus-within:text-blue-500'}`} />
         <input 
           type="text" 
           placeholder="Quick search medicine stock..." 
@@ -197,11 +200,11 @@ export default function Header() {
                     className="flex justify-between items-center p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-100 group/item"
                   >
                     <div>
-                      <p className="font-bold text-slate-800 text-sm group-hover/item:text-emerald-600 transition-colors">{med.name}</p>
+                      <p className="font-bold text-slate-800 text-sm group-hover/item:text-blue-600 transition-colors">{med.name}</p>
                       <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">Batch: {med.batch}</p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-sm font-extrabold ${med.quantity < 10 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                      <p className={`text-sm font-extrabold ${med.quantity < 10 ? 'text-rose-500' : 'text-blue-500'}`}>
                         {med.quantity} <span className="text-[10px] font-semibold opacity-70">in stock</span>
                       </p>
                       <p className="text-xs font-bold text-slate-500 flex items-center justify-end mt-0.5">
@@ -213,7 +216,7 @@ export default function Header() {
               </div>
             ) : (
               <div className="p-6 text-center text-sm text-slate-500 font-bold bg-slate-50/50">
-                Koi dawai stock mein nahi mili.
+                No medicines found in stock.
               </div>
             )}
           </div>
@@ -226,8 +229,8 @@ export default function Header() {
         {/* Live IST Clock */}
         <div className="hidden lg:flex items-center gap-2 bg-slate-50 border border-slate-200/60 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs font-bold shadow-sm shrink-0">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
           </span>
           <span className="text-slate-400 font-semibold">IST:</span>
           <span className="font-extrabold font-mono text-slate-700 tracking-tight">{indianTime || "Loading..."}</span>
@@ -267,7 +270,7 @@ export default function Header() {
           onClick={() => router.push('/sell')} 
           className="hidden lg:flex items-center bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-slate-200"
         >
-          <Package className="w-4 h-4 mr-2 text-emerald-400" /> New Sale
+          <Package className="w-4 h-4 mr-2 text-blue-400" /> New Sale
         </button>
       </div>
     </header>

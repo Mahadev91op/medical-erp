@@ -24,7 +24,7 @@ export async function sendOtpEmail(email, emailOtp, phoneOtp = null, type = "sig
     subject = "PharmaERP - Account Verification OTPs";
     html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #f1f5f9; rounded: 12px; background-color: #ffffff;">
-        <h2 style="color: #10b981; text-align: center;">Welcome to PharmaERP!</h2>
+        <h2 style="color: #3b82f6; text-align: center;">Welcome to PharmaERP!</h2>
         <p style="color: #475569; font-size: 14px;">Thank you for registering. To complete your signup, please use the following one-time password (OTP) codes to verify your email and phone number.</p>
         
         <div style="margin: 20px 0; padding: 15px; background-color: #f8fafc; border-radius: 8px;">
@@ -48,7 +48,7 @@ export async function sendOtpEmail(email, emailOtp, phoneOtp = null, type = "sig
     subject = "PharmaERP - Profile Change Authorization Code";
     html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #f1f5f9; rounded: 12px; background-color: #ffffff;">
-        <h2 style="color: #10b981; text-align: center;">Profile Authorization Request</h2>
+        <h2 style="color: #3b82f6; text-align: center;">Profile Authorization Request</h2>
         <p style="color: #475569; font-size: 14px;">A request has been made to update details on your PharmaERP profile. Please verify this action using the authorization OTP below.</p>
         
         <div style="margin: 20px 0; padding: 15px; background-color: #f8fafc; border-radius: 8px;">
@@ -126,7 +126,7 @@ export async function sendRegistrationAlertEmail(userData, plainPassword) {
   const subject = `New User Registered: ${userData.username}`;
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-      <h2 style="color: #10b981; text-align: center;">New User Registration Details</h2>
+      <h2 style="color: #3b82f6; text-align: center;">New User Registration Details</h2>
       <p style="color: #475569; font-size: 14px;">A new store owner has registered on the platform. Here are the account details:</p>
       
       <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; text-align: left;">

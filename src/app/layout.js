@@ -35,6 +35,7 @@ export const metadata = {
 };
 
 import SessionTracker from "@/components/layout/SessionTracker";
+import LayoutWrapper from "@/components/layout/LayoutWrapper";
 
 export default function RootLayout({ children }) {
   return (
@@ -42,16 +43,9 @@ export default function RootLayout({ children }) {
       <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
           <SessionTracker />
-          <div className="min-h-screen bg-slate-50 flex">
-            <Sidebar />
-            <div className="flex-1 flex flex-col min-w-0 lg:ml-64">
-              <Header />
-              <main className="flex-1 p-4 md:p-8 lg:p-10 pb-28 lg:pb-10 transition-all duration-300">
-                {children}
-              </main>
-              <MobileNav />
-            </div>
-          </div>
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
         </AuthProvider>
       </body>
     </html>

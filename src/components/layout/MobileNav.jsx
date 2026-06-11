@@ -22,11 +22,15 @@ const MobileNav = () => {
   const { data: session } = useSession();
   const [showMore, setShowMore] = useState(false);
 
+  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin"].includes(pathname);
+  
   useEffect(() => {
     if (session?.error === "disabled") {
       signOut({ callbackUrl: "/login" });
     }
   }, [session]);
+
+  if (isAuthOrPausedOrNotFound) return null;
 
   // Re-ordered navigation links: Billing, Inventory, Lookup are prioritized
   const navLinks = [
@@ -57,10 +61,10 @@ const MobileNav = () => {
           const isActive = pathname === link.path;
           return (
             <Link key={link.path} href={link.path} className="flex flex-col items-center space-y-1 flex-1">
-              <div className={`p-2 rounded-xl transition-all ${isActive ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200' : 'text-slate-400'}`}>
+              <div className={`p-2 rounded-xl transition-all ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-400'}`}>
                 <Icon className="w-5 h-5" />
               </div>
-              <span className={`text-[10px] font-bold ${isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
+              <span className={`text-[10px] font-bold ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
                 {link.name}
               </span>
             </Link>
@@ -109,7 +113,7 @@ const MobileNav = () => {
                     key={link.path} 
                     href={link.path}
                     onClick={() => setShowMore(false)}
-                    className={`flex items-center space-x-3 p-3.5 rounded-2xl border transition-all ${isActive ? 'bg-emerald-500 border-emerald-500 text-white font-bold shadow-md shadow-emerald-100' : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'}`}
+                    className={`flex items-center space-x-3 p-3.5 rounded-2xl border transition-all ${isActive ? 'bg-blue-600 border-blue-600 text-white font-bold shadow-md shadow-blue-100' : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'}`}
                   >
                     <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                     <span className="text-xs font-bold">{link.name}</span>

@@ -32,6 +32,60 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+const SuperAdminSkeleton = () => {
+  return (
+    <div className="max-w-7xl mx-auto space-y-8 animate-pulse pt-4">
+      {/* Grid of metrics cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="bg-white p-6 rounded-[24px] border border-slate-100 flex items-center shadow-sm">
+            <div className="w-12 h-12 bg-slate-200 rounded-2xl mr-4 shrink-0"></div>
+            <div className="space-y-1.5 flex-1">
+              <div className="h-3 w-16 bg-slate-200 rounded-md"></div>
+              <div className="h-5 w-12 bg-slate-200 rounded-md"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Control Banner */}
+      <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="h-10 w-full md:w-72 bg-slate-200 rounded-xl"></div>
+        <div className="flex gap-3 w-full md:w-auto">
+          <div className="h-10 w-28 bg-slate-200 rounded-xl"></div>
+          <div className="h-10 w-28 bg-slate-200 rounded-xl"></div>
+          <div className="h-10 w-28 bg-slate-200 rounded-xl"></div>
+        </div>
+      </div>
+
+      {/* User Table Skeleton */}
+      <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-50 flex justify-between items-center">
+          <div className="h-5 w-36 bg-slate-200 rounded-md"></div>
+          <div className="h-8 w-24 bg-slate-200 rounded-md"></div>
+        </div>
+        <div className="divide-y divide-slate-50">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-10 h-10 bg-slate-200 rounded-xl"></div>
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-4 w-40 bg-slate-200 rounded-md"></div>
+                  <div className="h-3.5 w-60 bg-slate-200 rounded-md"></div>
+                </div>
+              </div>
+              <div className="flex gap-4 items-center shrink-0">
+                <div className="h-6 w-16 bg-slate-200 rounded-full"></div>
+                <div className="h-8 w-24 bg-slate-200 rounded-lg"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function SuperAdmin() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -443,12 +497,7 @@ export default function SuperAdmin() {
   };
 
   if (loading && users.length === 0) {
-    return (
-      <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
-        <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
-        <p className="font-medium">Loading Super Admin Dashboard...</p>
-      </div>
-    );
+    return <SuperAdminSkeleton />;
   }
 
   return (
@@ -470,7 +519,7 @@ export default function SuperAdmin() {
 
         {/* Active Accounts */}
         <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] flex items-center hover:shadow-md transition-all">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mr-4 shrink-0">
+          <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mr-4 shrink-0">
             <UserCheck className="w-6 h-6" />
           </div>
           <div>
@@ -503,7 +552,7 @@ export default function SuperAdmin() {
 
         {/* Total Database Size */}
         <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] flex items-center hover:shadow-md transition-all col-span-2 md:col-span-1">
-          <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center mr-4 shrink-0">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mr-4 shrink-0">
             <Database className="w-6 h-6 animate-pulse" />
           </div>
           <div>
@@ -517,7 +566,7 @@ export default function SuperAdmin() {
       {/* System Data Control (Backup & Restore) */}
       <div className="bg-white p-6 rounded-[28px] border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:shadow-md transition-all">
         <div className="flex gap-4 items-start">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0">
             <Database className="w-6 h-6" />
           </div>
           <div>
@@ -540,7 +589,7 @@ export default function SuperAdmin() {
             )}
             Download Full Backup
           </button>
-          <label className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs md:text-sm px-5 py-3 rounded-2xl shadow-sm hover:shadow transition-all cursor-pointer">
+          <label className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs md:text-sm px-5 py-3 rounded-2xl shadow-sm hover:shadow transition-all cursor-pointer">
             <Upload className="w-4 h-4" />
             Restore System
             <input
@@ -558,7 +607,7 @@ export default function SuperAdmin() {
         
         {/* Search Header */}
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/30">
-          <div className="relative flex flex-1 max-w-md items-center bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 focus-within:ring-4 focus-within:ring-emerald-50 focus-within:border-emerald-200 transition-all shadow-sm">
+          <div className="relative flex flex-1 max-w-md items-center bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 focus-within:ring-4 focus-within:ring-blue-50 focus-within:border-blue-200 transition-all shadow-sm">
             <Search className="w-4 h-4 mr-2.5 text-slate-400 shrink-0" />
             <input 
               type="text" 
@@ -577,7 +626,7 @@ export default function SuperAdmin() {
                 setFilterStatus(e.target.value);
                 setPage(1);
               }}
-              className="bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all shadow-sm cursor-pointer"
+              className="bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all shadow-sm cursor-pointer"
             >
               <option value="all">All Clients</option>
               <option value="active">Active Plans</option>
@@ -622,10 +671,10 @@ export default function SuperAdmin() {
                               {user.isOnline ? (
                                 <>
                                   <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                                   </span>
-                                  <span className="text-[10px] text-emerald-600 font-extrabold uppercase">Online</span>
+                                  <span className="text-[10px] text-blue-600 font-extrabold uppercase">Online</span>
                                   <span className="text-[10px] text-slate-400 font-semibold">•</span>
                                   <button 
                                     onClick={() => { setSelectedUser(user); setShowDevicesModal(true); }}
@@ -660,7 +709,7 @@ export default function SuperAdmin() {
                       <td className="p-5 text-center">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${
                           user.status === "active" 
-                            ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                            ? "bg-blue-50 text-blue-600 border-blue-100" 
                             : "bg-rose-50 text-rose-600 border-rose-100"
                         }`}>
                           {user.status === "active" ? "Active" : "Disabled"}
@@ -708,7 +757,7 @@ export default function SuperAdmin() {
                                 {isExpired ? (
                                   <span className="text-rose-500">🔴 Expired</span>
                                 ) : (
-                                  <span className="text-emerald-600">🟢 Active ({daysLeft} days left)</span>
+                                  <span className="text-blue-600">🔵 Active ({daysLeft} days left)</span>
                                 )}
                               </p>
                             </>
@@ -726,7 +775,7 @@ export default function SuperAdmin() {
                             className={`p-2 rounded-xl border transition-all ${
                               user.status === "active" 
                                 ? "bg-rose-50 border-rose-100 text-rose-500 hover:bg-rose-500 hover:text-white" 
-                                : "bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-500 hover:text-white"
+                                : "bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-500 hover:text-white"
                             }`}
                             title={user.status === "active" ? "Suspend Account" : "Activate Account"}
                           >
@@ -857,7 +906,7 @@ export default function SuperAdmin() {
           <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h2 className="text-base md:text-lg font-bold text-slate-800 flex items-center">
-                <CalendarClock className="w-5 h-5 mr-2 text-emerald-500" />
+                <CalendarClock className="w-5 h-5 mr-2 text-blue-500" />
                 Subscription Addition
               </h2>
               <button 
@@ -876,7 +925,7 @@ export default function SuperAdmin() {
                 <select
                   value={subMonths}
                   onChange={(e) => setSubMonths(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-3 focus:outline-none focus:border-emerald-400 font-bold cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-3 focus:outline-none focus:border-blue-400 font-bold cursor-pointer"
                 >
                   <option value={1}>1 Month Extension</option>
                   <option value={3}>3 Months Extension</option>
@@ -897,14 +946,14 @@ export default function SuperAdmin() {
                     placeholder="Enter number of months"
                     value={customMonths}
                     onChange={(e) => setCustomMonths(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3.5 py-3 focus:outline-none focus:border-emerald-400 font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3.5 py-3 focus:outline-none focus:border-blue-400 font-semibold"
                   />
                 </div>
               )}
 
               <button
                 type="submit"
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-1.5"
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-1.5"
               >
                 <PlusCircle className="w-4 h-4" /> Extend Subscription
               </button>
@@ -919,7 +968,7 @@ export default function SuperAdmin() {
           <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h2 className="text-base md:text-lg font-bold text-slate-800 flex items-center">
-                <KeyRound className="w-5 h-5 mr-2 text-emerald-500" />
+                <KeyRound className="w-5 h-5 mr-2 text-blue-500" />
                 Reset Password
               </h2>
               <button 
@@ -941,7 +990,7 @@ export default function SuperAdmin() {
                   placeholder="Enter at least 4 characters"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3.5 py-3 focus:outline-none focus:border-emerald-400 font-semibold"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3.5 py-3 focus:outline-none focus:border-blue-400 font-semibold"
                 />
               </div>
  
@@ -962,7 +1011,7 @@ export default function SuperAdmin() {
           <div className="bg-white rounded-[24px] w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h2 className="text-base md:text-lg font-bold text-slate-800 flex items-center">
-                <History className="w-5 h-5 mr-2 text-emerald-500" />
+                <History className="w-5 h-5 mr-2 text-blue-500" />
                 Subscription History for {selectedUser.username}
               </h2>
               <button 
@@ -1006,7 +1055,7 @@ export default function SuperAdmin() {
                         ? "bg-rose-50 text-rose-600 border-rose-100"
                         : isExpired
                           ? "bg-rose-50 text-rose-600 border-rose-100"
-                          : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                          : "bg-blue-50 text-blue-600 border-blue-100"
                     }`}>
                       {selectedUser.status === "disabled" ? "Account Disabled" : isExpired ? "Expired" : `${daysLeft} Days Left`}
                     </span>
@@ -1031,7 +1080,7 @@ export default function SuperAdmin() {
                     return (
                       <div key={index} className="relative group">
                         {/* Timeline Bullet */}
-                        <div className="absolute -left-[27px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
+                        <div className="absolute -left-[27px] top-1.5 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
                         
                         <div className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 text-xs">
                           <div className="flex justify-between items-start">
@@ -1041,7 +1090,7 @@ export default function SuperAdmin() {
                                 Added: {new Date(item.addedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                               </p>
                             </div>
-                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-extrabold ${item.addedMonths === 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-extrabold ${item.addedMonths === 0 ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'}`}>
                               {item.addedMonths === 0 ? 'Cancel' : `+${item.addedMonths} M`}
                             </span>
                           </div>
@@ -1155,8 +1204,8 @@ export default function SuperAdmin() {
           <div className="bg-white rounded-[24px] w-full max-w-lg shadow-2xl overflow-hidden border border-slate-100">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h2 className="text-base md:text-lg font-bold text-slate-800 flex items-center">
-                <Edit className="w-5 h-5 mr-2 text-emerald-500" />
-                Edit Client Details: <span className="capitalize ml-1 text-emerald-600">{selectedUser.username}</span>
+                <Edit className="w-5 h-5 mr-2 text-blue-500" />
+                Edit Client Details: <span className="capitalize ml-1 text-blue-600">{selectedUser.username}</span>
               </h2>
               <button 
                 onClick={() => setShowEditDetailsModal(false)}
@@ -1177,7 +1226,7 @@ export default function SuperAdmin() {
                     placeholder="Username"
                     value={editDetails.username}
                     onChange={(e) => setEditDetails({ ...editDetails, username: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-400 font-semibold text-sm"
                   />
                   <User className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
                 </div>
@@ -1192,7 +1241,7 @@ export default function SuperAdmin() {
                       placeholder="Owner Name"
                       value={editDetails.name}
                       onChange={(e) => setEditDetails({ ...editDetails, name: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-400 font-semibold text-sm"
                     />
                     <User className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
                   </div>
@@ -1206,7 +1255,7 @@ export default function SuperAdmin() {
                       placeholder="Pharmacy/Shop Name"
                       value={editDetails.shopName}
                       onChange={(e) => setEditDetails({ ...editDetails, shopName: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-400 font-semibold text-sm"
                     />
                     <Store className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
                   </div>
@@ -1221,7 +1270,7 @@ export default function SuperAdmin() {
                     placeholder="Pharmacy Address"
                     value={editDetails.address}
                     onChange={(e) => setEditDetails({ ...editDetails, address: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-400 font-semibold text-sm"
                   />
                   <MapPin className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
                 </div>
@@ -1236,7 +1285,7 @@ export default function SuperAdmin() {
                       placeholder="Phone Number"
                       value={editDetails.phoneNumber}
                       onChange={(e) => setEditDetails({ ...editDetails, phoneNumber: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-400 font-semibold text-sm"
                     />
                     <Phone className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
                   </div>
@@ -1251,7 +1300,7 @@ export default function SuperAdmin() {
                       placeholder="Email Address"
                       value={editDetails.email}
                       onChange={(e) => setEditDetails({ ...editDetails, email: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-400 font-semibold text-sm"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-400 font-semibold text-sm"
                     />
                     <Mail className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
                   </div>
@@ -1261,7 +1310,7 @@ export default function SuperAdmin() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-1.5 mt-2"
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-1.5 mt-2"
               >
                 Save Details (No OTP)
               </button>
@@ -1372,10 +1421,10 @@ export default function SuperAdmin() {
                     {selectedUser.isOnline ? (
                       <>
                         <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                         </span>
-                        <span className="text-xs font-bold text-emerald-600">Currently Online</span>
+                        <span className="text-xs font-bold text-blue-600">Currently Online</span>
                       </>
                     ) : (
                       <>
@@ -1413,7 +1462,7 @@ export default function SuperAdmin() {
                       </div>
                       <div className="text-left sm:text-right shrink-0">
                         {sess.isOnline ? (
-                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md inline-block mb-1.5 tracking-wider">ONLINE</span>
+                          <span className="bg-blue-100 text-blue-800 border border-blue-200 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md inline-block mb-1.5 tracking-wider">ONLINE</span>
                         ) : (
                           <span className="bg-slate-200 text-slate-600 border border-slate-300 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md inline-block mb-1.5 tracking-wider">OFFLINE</span>
                         )}

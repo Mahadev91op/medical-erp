@@ -9,6 +9,73 @@ import { useReactToPrint } from "react-to-print";
 import toast, { Toaster } from "react-hot-toast";
 import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 
+const InventorySkeleton = () => {
+  return (
+    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 animate-pulse">
+      {/* Header Area */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-center">
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-200 rounded-xl md:rounded-2xl shrink-0"></div>
+          <div className="ml-3 md:ml-4 space-y-2">
+            <div className="h-5 w-44 bg-slate-200 rounded-md"></div>
+            <div className="h-3.5 w-64 bg-slate-200 rounded-md"></div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+          <div className="h-10 w-24 bg-slate-200 rounded-xl"></div>
+          <div className="h-10 w-full sm:w-80 bg-slate-200 rounded-xl"></div>
+        </div>
+      </div>
+
+      {/* Grid of Shimmer Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="bg-white rounded-2xl md:rounded-3xl border border-slate-100 p-4 md:p-6 space-y-4 shadow-sm">
+            <div className="flex justify-between items-start gap-4">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className="w-5 h-5 bg-slate-200 rounded mt-1 shrink-0"></div>
+                <div className="space-y-2 flex-1">
+                  <div className="h-5 w-3/4 bg-slate-200 rounded-md"></div>
+                  <div className="h-3 w-1/2 bg-slate-200 rounded-md"></div>
+                </div>
+              </div>
+              <div className="w-16 h-6 bg-slate-200 rounded-full"></div>
+            </div>
+
+            <div className="border-t border-slate-50 pt-4 space-y-2">
+              <div className="flex justify-between">
+                <div className="h-3 w-20 bg-slate-200 rounded-md"></div>
+                <div className="h-3 w-28 bg-slate-200 rounded-md"></div>
+              </div>
+              <div className="flex justify-between">
+                <div className="h-3 w-16 bg-slate-200 rounded-md"></div>
+                <div className="h-3 w-24 bg-slate-200 rounded-md"></div>
+              </div>
+              <div className="flex justify-between">
+                <div className="h-3 w-20 bg-slate-200 rounded-md"></div>
+                <div className="h-3 w-16 bg-slate-200 rounded-md"></div>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-50 pt-4 flex justify-between items-center gap-4">
+              <div className="space-y-1">
+                <div className="h-3.5 w-16 bg-slate-200 rounded-md"></div>
+                <div className="h-5 w-24 bg-slate-200 rounded-md"></div>
+              </div>
+              <div className="flex gap-2">
+                <div className="w-8 h-8 bg-slate-200 rounded-lg"></div>
+                <div className="w-8 h-8 bg-slate-200 rounded-lg"></div>
+                <div className="w-8 h-8 bg-slate-200 rounded-lg"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export default function Inventory() {
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +92,17 @@ export default function Inventory() {
   const [printQueue, setPrintQueue] = useState([]); 
   
   const isActionActive = useRef(false);
+
+  const [barcodeConfig, setBarcodeConfig] = useState({
+    showName: true, showPrice: true, showExpiry: true, showBatch: true, showBillNo: true, showPurchaseDate: true, showBarcodeText: true
+  });
+
+  useEffect(() => {
+    const savedBarcode = localStorage.getItem("super_barcode_config");
+    if (savedBarcode) {
+      try { setBarcodeConfig(JSON.parse(savedBarcode)); } catch(e) {}
+    }
+  }, []);
 
   useEffect(() => {
     isActionActive.current = showBulkModal || !!editMed;
@@ -192,12 +270,7 @@ export default function Inventory() {
   };
 
   if (loading && medicines.length === 0) {
-    return (
-      <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
-        <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
-        <p className="font-medium">Loading Inventory...</p>
-      </div>
-    );
+    return <InventorySkeleton />;
   }
 
   return (
@@ -206,7 +279,7 @@ export default function Inventory() {
       
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center">
-          <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-50 text-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center mr-3 md:mr-4 border border-emerald-100 shadow-sm shrink-0">
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center mr-3 md:mr-4 border border-blue-100 shadow-sm shrink-0">
             <Package className="w-5 h-5 md:w-6 md:h-6" />
           </div>
           <div>
@@ -220,9 +293,9 @@ export default function Inventory() {
           <button 
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center justify-center bg-white border border-slate-200 text-slate-600 px-3 py-3 md:py-3.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold shadow-sm hover:bg-slate-50 hover:text-emerald-600 hover:border-emerald-200 transition-all shrink-0"
+            className="flex items-center justify-center bg-white border border-slate-200 text-slate-600 px-3 py-3 md:py-3.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold shadow-sm hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shrink-0"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin text-emerald-500' : ''}`} />
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </button>
 
@@ -240,7 +313,7 @@ export default function Inventory() {
                 onClick={() => setShowBulkModal(true)}
                 className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-3 md:py-3.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold flex items-center justify-center transition-all shadow-md shrink-0 animate-in fade-in"
               >
-                <Printer className="w-4 h-4 md:w-5 md:h-5 mr-2 text-emerald-400" />
+                <Printer className="w-4 h-4 md:w-5 md:h-5 mr-2 text-blue-400" />
                 Print ({selectedMeds.length})
               </button>
             </>
@@ -250,11 +323,11 @@ export default function Inventory() {
             <input 
               type="text" 
               placeholder="Search Name, Batch or Barcode..." 
-              className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-3.5 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium shadow-sm"
+              className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-3.5 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Search className="absolute left-3.5 md:left-4 top-3 md:top-4 text-slate-400 w-4 h-4 md:w-5 md:h-5 group-focus-within:text-emerald-500 transition-colors" />
+            <Search className="absolute left-3.5 md:left-4 top-3 md:top-4 text-slate-400 w-4 h-4 md:w-5 md:h-5 group-focus-within:text-blue-500 transition-colors" />
           </div>
         </div>
       </div>
@@ -272,19 +345,19 @@ export default function Inventory() {
             return (
               <div 
                 key={med._id} 
-                className={`bg-white rounded-2xl md:rounded-3xl border shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 overflow-hidden group ${isSelected ? 'border-emerald-400 ring-2 ring-emerald-50' : 'border-slate-100'}`}
+                className={`bg-white rounded-2xl md:rounded-3xl border shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 overflow-hidden group ${isSelected ? 'border-blue-400 ring-2 ring-blue-50' : 'border-slate-100'}`}
               >
                 <div className="p-4 md:p-6">
                   <div className="flex justify-between items-start gap-4 mb-3 md:mb-4">
                     <div className="flex items-start gap-2.5 md:gap-3 flex-1 min-w-0">
                       <button onClick={() => toggleSelection(med._id)} className="mt-0.5 md:mt-1 focus:outline-none shrink-0">
                         {isSelected ? 
-                          <CheckSquare className="w-4 h-4 md:w-5 md:h-5 text-emerald-500" /> : 
-                          <Square className="w-4 h-4 md:w-5 md:h-5 text-slate-300 hover:text-emerald-400 transition-colors" />
+                          <CheckSquare className="w-4 h-4 md:w-5 md:h-5 text-blue-500" /> : 
+                          <Square className="w-4 h-4 md:w-5 md:h-5 text-slate-300 hover:text-blue-400 transition-colors" />
                         }
                       </button>
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-sm md:text-lg text-slate-800 group-hover:text-emerald-600 transition-colors leading-tight truncate" title={med.name}>{med.name}</h3>
+                        <h3 className="font-bold text-sm md:text-lg text-slate-800 group-hover:text-blue-600 transition-colors leading-tight truncate" title={med.name}>{med.name}</h3>
                         <span className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5 md:mt-1">ID: {med.barcodeId}</span>
                       </div>
                     </div>
@@ -292,7 +365,7 @@ export default function Inventory() {
                     <div className="flex space-x-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <button 
                         onClick={() => setEditMed(med)}
-                        className="p-1.5 md:p-2 bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg md:rounded-xl transition-colors"
+                        className="p-1.5 md:p-2 bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-lg md:rounded-xl transition-colors"
                       >
                         <Edit className="w-3.5 h-3.5 md:w-4 md:h-4" />
                       </button>
@@ -320,7 +393,7 @@ export default function Inventory() {
                     </div>
                     <div className="bg-slate-50 p-2 rounded-xl">
                       <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5 tracking-wider">MRP</p>
-                      <p className="text-sm md:text-base font-extrabold text-emerald-600">
+                      <p className="text-sm md:text-base font-extrabold text-blue-600">
                         ₹{med.mrp}
                       </p>
                     </div>
@@ -376,7 +449,7 @@ export default function Inventory() {
           <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
             <div className="bg-slate-800 p-4 md:p-6 flex justify-between items-center text-white">
               <div className="flex items-center">
-                <Printer className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 text-emerald-400" />
+                <Printer className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 text-blue-400" />
                 <h2 className="text-base md:text-lg font-bold tracking-tight">Bulk Print Setup</h2>
               </div>
               <button onClick={() => setShowBulkModal(false)} className="bg-white/10 hover:bg-white/20 p-1.5 md:p-2 rounded-full transition-colors">
@@ -400,7 +473,7 @@ export default function Inventory() {
                         <label className="text-[10px] md:text-xs font-bold text-slate-400">Copies:</label>
                         <input 
                           type="number" min="1" max="100"
-                          className="w-12 md:w-16 bg-slate-50 border border-slate-200 px-1 md:px-2 py-1 md:py-1.5 rounded-lg text-center text-xs md:text-sm font-bold outline-none focus:border-emerald-400"
+                          className="w-12 md:w-16 bg-slate-50 border border-slate-200 px-1 md:px-2 py-1 md:py-1.5 rounded-lg text-center text-xs md:text-sm font-bold outline-none focus:border-blue-400"
                           value={printCopies[id] || 1}
                           onChange={(e) => setPrintCopies({...printCopies, [id]: parseInt(e.target.value) || 1})}
                         />
@@ -420,7 +493,7 @@ export default function Inventory() {
               </button>
               <button 
                 onClick={generateBulkQueue}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3 md:py-3.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 md:py-3.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center"
               >
                 <Printer className="w-4 h-4 mr-1.5 md:mr-2" /> Start Print
               </button>
@@ -432,7 +505,7 @@ export default function Inventory() {
       {editMed && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
           <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="bg-emerald-500 p-4 md:p-6 flex justify-between items-center text-white">
+            <div className="bg-blue-600 p-4 md:p-6 flex justify-between items-center text-white">
               <div className="flex items-center">
                 <Edit className="w-4 h-4 md:w-5 h-5 mr-2 md:mr-3" />
                 <h2 className="text-base md:text-lg font-bold tracking-tight">Update Details</h2>
@@ -447,7 +520,7 @@ export default function Inventory() {
                 <label className="block text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 md:mb-2">Medicine Name</label>
                 <input 
                   type="text" required
-                  className="w-full bg-slate-50 border border-slate-200 p-3 md:p-4 rounded-xl md:rounded-2xl text-sm md:text-base focus:ring-4 focus:ring-emerald-50 outline-none font-bold"
+                  className="w-full bg-slate-50 border border-slate-200 p-3 md:p-4 rounded-xl md:rounded-2xl text-sm md:text-base focus:ring-4 focus:ring-blue-50 outline-none font-bold"
                   value={editMed.name} 
                   onChange={(e) => setEditMed({...editMed, name: e.target.value})}
                 />
@@ -458,7 +531,7 @@ export default function Inventory() {
                   <label className="block text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 text-rose-500">Edit Stock</label>
                   <input 
                     type="number" required
-                    className="w-full bg-slate-50 border border-slate-200 p-2.5 md:p-3.5 rounded-xl text-xs md:text-sm focus:ring-4 focus:ring-emerald-50 outline-none font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 p-2.5 md:p-3.5 rounded-xl text-xs md:text-sm focus:ring-4 focus:ring-blue-50 outline-none font-bold"
                     value={editMed.quantity} 
                     onChange={(e) => setEditMed({...editMed, quantity: e.target.value})}
                   />
@@ -467,7 +540,7 @@ export default function Inventory() {
                   <label className="block text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Cost Price</label>
                   <input 
                     type="number" required
-                    className="w-full bg-slate-50 border border-slate-200 p-2.5 md:p-3.5 rounded-xl text-xs md:text-sm focus:ring-4 focus:ring-emerald-50 outline-none font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 p-2.5 md:p-3.5 rounded-xl text-xs md:text-sm focus:ring-4 focus:ring-blue-50 outline-none font-bold"
                     value={editMed.purchasePrice || ""} 
                     onChange={(e) => setEditMed({...editMed, purchasePrice: e.target.value})}
                   />
@@ -476,7 +549,7 @@ export default function Inventory() {
                   <label className="block text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">MRP Price</label>
                   <input 
                     type="number" required
-                    className="w-full bg-slate-50 border border-slate-200 p-2.5 md:p-3.5 rounded-xl text-xs md:text-sm focus:ring-4 focus:ring-emerald-50 outline-none font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 p-2.5 md:p-3.5 rounded-xl text-xs md:text-sm focus:ring-4 focus:ring-blue-50 outline-none font-bold"
                     value={editMed.mrp} 
                     onChange={(e) => setEditMed({...editMed, mrp: e.target.value})}
                   />
@@ -486,7 +559,7 @@ export default function Inventory() {
               <button 
                 type="submit" 
                 disabled={isUpdating}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl text-sm md:text-base font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center mt-2"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 md:py-4 rounded-xl md:rounded-2xl text-sm md:text-base font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center mt-2"
               >
                 {isUpdating ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : "Confirm Changes"}
               </button>
@@ -559,20 +632,35 @@ export default function Inventory() {
                   format="CODE128"
                   renderer="svg"     
                   width={1.5}        
-                  height={40}        
-                  fontSize={10}      
+                  height={32}        
+                  fontSize={8}      
                   /* 🔥 margin=0 karne se Barcode ka internal white space khatam ho jayega jisse gap aa raha tha */
                   margin={0}         
                   textMargin={1}     
                   background="#ffffff" 
                   lineColor="#000000" 
-                  displayValue={true} 
+                  displayValue={barcodeConfig.showBarcodeText} 
                 />
               </div>
 
-              <div className="text-wrapper">
-                <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate" style={{ fontFamily: 'sans-serif' }}>
-                  BILL: {item.billNumber || "N/A"} | PUR: {item.purchaseDate ? formatDate(item.purchaseDate) : "N/A"}
+              <div className="text-wrapper flex flex-col items-center leading-none mt-1 space-y-0.5 w-full text-center">
+                {barcodeConfig.showName && (
+                  <p className="text-[9px] font-black text-black uppercase tracking-tight leading-none truncate max-w-full" style={{ fontFamily: 'sans-serif', margin: 0 }}>
+                    {item.name}
+                  </p>
+                )}
+                <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none" style={{ fontFamily: 'sans-serif', margin: 0 }}>
+                  {[
+                    barcodeConfig.showBatch && `B: ${item.batch}`,
+                    barcodeConfig.showExpiry && `E: ${formatExpiryDate(item.expiryDate)}`
+                  ].filter(Boolean).join(" | ")}
+                </p>
+                <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none" style={{ fontFamily: 'sans-serif', margin: 0 }}>
+                  {[
+                    barcodeConfig.showPrice && `₹${item.mrp}`,
+                    barcodeConfig.showBillNo && `BILL: ${item.billNumber}`,
+                    barcodeConfig.showPurchaseDate && `PUR: ${formatDate(item.purchaseDate)}`
+                  ].filter(Boolean).join(" | ")}
                 </p>
               </div>
 

@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import Barcode from "react-barcode";
 import { PackagePlus, Printer, CheckCircle2, Loader2 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast"; 
-import { formatDate } from "@/lib/formatDate";
+import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 import { useReactToPrint } from "react-to-print";
 
 const getTodayInputString = () => {
@@ -37,6 +37,29 @@ const formatExpiryDateInput = (value) => {
   return `${clean.slice(0, 2)}/${clean.slice(2)}`;
 };
 
+const getOneYearLaterExpiryInput = () => {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const year = String(today.getFullYear() + 1).slice(-2);
+  return `${month}/${year}`;
+};
+
+const getTodayDateString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getOneYearLaterDateString = () => {
+  const today = new Date();
+  const year = today.getFullYear() + 1;
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function PurchaseEntry() {
   const [formData, setFormData] = useState({
     name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", purchasePrice: "", billNumber: "", purchaseDate: ""
@@ -45,6 +68,33 @@ export default function PurchaseEntry() {
   const [expiryDateInput, setExpiryDateInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedMed, setSavedMed] = useState(null);
+  
+  const [formConfig, setFormConfig] = useState({
+    name: true, batch: true, quantity: true, distributor: true, mrp: true, billNumber: true, purchaseDate: true, expiryDate: true
+  });
+  const [barcodeConfig, setBarcodeConfig] = useState({
+    showName: true, showPrice: true, showExpiry: true, showBatch: true, showBillNo: true, showPurchaseDate: true, showBarcodeText: true
+  });
+
+  useEffect(() => {
+    const savedForm = localStorage.getItem("super_purchase_form_config");
+    let activeFormConfig = { name: true, batch: true, quantity: true, distributor: true, mrp: true, billNumber: true, purchaseDate: true, expiryDate: true };
+    if (savedForm) {
+      try { 
+        activeFormConfig = JSON.parse(savedForm);
+        setFormConfig(activeFormConfig); 
+      } catch(e) {}
+    }
+    
+    if (!activeFormConfig.expiryDate) {
+      setExpiryDateInput(getOneYearLaterExpiryInput());
+    }
+
+    const savedBarcode = localStorage.getItem("super_barcode_config");
+    if (savedBarcode) {
+      try { setBarcodeConfig(JSON.parse(savedBarcode)); } catch(e) {}
+    }
+  }, []);
   
   const printRef = useRef(null);
   const handlePrint = useReactToPrint({
@@ -119,10 +169,15 @@ export default function PurchaseEntry() {
     
     try {
       const payload = {
-        ...formData,
-        purchasePrice: formData.mrp, // Set cost price same as mrp as requested
-        purchaseDate: parsedPurchaseDate,
-        expiryDate: parsedExpiryDate
+        name: formConfig.name ? formData.name : (formData.name || "Unnamed Medicine"),
+        batch: formConfig.batch ? formData.batch : (formData.batch || "B-GEN"),
+        quantity: formConfig.quantity ? Number(formData.quantity) : 1,
+        distributor: formConfig.distributor ? formData.distributor : (formData.distributor || "Generic Distributor"),
+        mrp: formConfig.mrp ? Number(formData.mrp) : 0,
+        purchasePrice: formConfig.mrp ? Number(formData.mrp) : 0, // Set cost price same as mrp as requested
+        billNumber: formConfig.billNumber ? formData.billNumber : (formData.billNumber || "BILL-GEN"),
+        purchaseDate: formConfig.purchaseDate ? parsedPurchaseDate : getTodayDateString(),
+        expiryDate: formConfig.expiryDate ? parsedExpiryDate : getOneYearLaterDateString()
       };
 
       const res = await fetch("/api/medicine", {
@@ -169,7 +224,7 @@ export default function PurchaseEntry() {
       <Toaster position="top-center" reverseOrder={false} /> 
       
       <div className="flex items-center">
-        <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-50 text-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center mr-3 md:mr-4 border border-emerald-100 shrink-0">
+        <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 text-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center mr-3 md:mr-4 border border-blue-100 shrink-0">
           <PackagePlus className="w-5 h-5 md:w-6 md:h-6" />
         </div>
         <div>
@@ -183,83 +238,99 @@ export default function PurchaseEntry() {
         <div className="bg-white p-4 md:p-6 lg:p-8 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100">
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
             
-            <div>
-              <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Medicine Name</label>
-              <input 
-                type="text" 
-                required 
-                placeholder="e.g. Paracetamol 500mg"
-                ref={nameInputRef}
-                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
-                value={formData.name} 
-                onChange={(e) => setFormData({...formData, name: e.target.value})} 
-              />
+            {formConfig.name && (
+              <div>
+                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Medicine Name</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="e.g. Paracetamol 500mg"
+                  ref={nameInputRef}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                  value={formData.name} 
+                  onChange={(e) => setFormData({...formData, name: e.target.value})} 
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3 md:gap-5">
+              {formConfig.batch && (
+                <div>
+                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Batch No.</label>
+                  <input type="text" required placeholder="e.g. B-1029"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                    value={formData.batch} onChange={(e) => setFormData({...formData, batch: e.target.value})} />
+                </div>
+              )}
+              {formConfig.quantity && (
+                <div>
+                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Quantity</label>
+                  <input type="number" required placeholder="0" min="1"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                    value={formData.quantity} onChange={(e) => setFormData({...formData, quantity: e.target.value})} />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3 md:gap-5">
-              <div>
-                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Batch No.</label>
-                <input type="text" required placeholder="e.g. B-1029"
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
-                  value={formData.batch} onChange={(e) => setFormData({...formData, batch: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Quantity</label>
-                <input type="number" required placeholder="0" min="1"
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
-                  value={formData.quantity} onChange={(e) => setFormData({...formData, quantity: e.target.value})} />
-              </div>
+              {formConfig.billNumber && (
+                <div>
+                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Dist. Bill Number</label>
+                  <input type="text" required placeholder="e.g. INV-1002"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                    value={formData.billNumber} onChange={(e) => setFormData({...formData, billNumber: e.target.value})} />
+                </div>
+              )}
+              {formConfig.purchaseDate && (
+                <div>
+                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Purchase Date (DD/MM/YY)</label>
+                  <input type="text" required placeholder="DD/MM/YY"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                    value={purchaseDateInput} onChange={(e) => setPurchaseDateInput(formatPurchaseDateInput(e.target.value))} />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3 md:gap-5">
-              <div>
-                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Dist. Bill Number</label>
-                <input type="text" required placeholder="e.g. INV-1002"
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
-                  value={formData.billNumber} onChange={(e) => setFormData({...formData, billNumber: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Purchase Date (DD/MM/YY)</label>
-                <input type="text" required placeholder="DD/MM/YY"
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
-                  value={purchaseDateInput} onChange={(e) => setPurchaseDateInput(formatPurchaseDateInput(e.target.value))} />
-              </div>
+              {formConfig.mrp && (
+                <div>
+                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">MRP Price ₹</label>
+                  <input type="number" required placeholder="0.00" min="0" step="0.01"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                    value={formData.mrp} onChange={(e) => setFormData({...formData, mrp: e.target.value})} />
+                </div>
+              )}
+              {formConfig.expiryDate && (
+                <div>
+                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Expiry (MM/YY)</label>
+                  <input type="text" required placeholder="MM/YY"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                    value={expiryDateInput} onChange={(e) => setExpiryDateInput(formatExpiryDateInput(e.target.value))} />
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3 md:gap-5">
+            {formConfig.distributor && (
               <div>
-                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">MRP Price ₹</label>
-                <input type="number" required placeholder="0.00" min="0" step="0.01"
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
-                  value={formData.mrp} onChange={(e) => setFormData({...formData, mrp: e.target.value})} />
+                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Distributor / Agency</label>
+                <input 
+                  type="text" required placeholder="e.g. Cipla / SunPharma"
+                  list="distributor-suggestions"
+                  autoComplete="off"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                  value={formData.distributor} 
+                  onChange={(e) => setFormData({...formData, distributor: e.target.value})} 
+                />
+                <datalist id="distributor-suggestions">
+                  {distributors.map((dist, index) => (
+                    <option key={index} value={dist} />
+                  ))}
+                </datalist>
               </div>
-              <div>
-                <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Expiry (MM/YY)</label>
-                <input type="text" required placeholder="MM/YY"
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
-                  value={expiryDateInput} onChange={(e) => setExpiryDateInput(formatExpiryDateInput(e.target.value))} />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Distributor / Agency</label>
-              <input 
-                type="text" required placeholder="e.g. Cipla / SunPharma"
-                list="distributor-suggestions"
-                autoComplete="off"
-                className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all text-sm md:text-base font-medium"
-                value={formData.distributor} 
-                onChange={(e) => setFormData({...formData, distributor: e.target.value})} 
-              />
-              <datalist id="distributor-suggestions">
-                {distributors.map((dist, index) => (
-                  <option key={index} value={dist} />
-                ))}
-              </datalist>
-            </div>
+            )}
 
             <button type="submit" disabled={loading}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs md:text-sm px-4 py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all shadow-lg shadow-emerald-200 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed mt-2 md:mt-4">
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs md:text-sm px-4 py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all shadow-lg shadow-blue-200 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed mt-2 md:mt-4">
               {loading ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : "Save Entry & Generate Barcode"}
             </button>
           </form>
@@ -274,18 +345,42 @@ export default function PurchaseEntry() {
             </div>
           ) : (
             <div className="w-full flex flex-col items-center animate-in fade-in zoom-in duration-300">
-              <div className="flex items-center text-emerald-600 font-bold mb-4 md:mb-6 bg-emerald-50 px-3 md:px-4 py-1.5 md:py-2 rounded-full border border-emerald-100 text-[10px] md:text-sm">
+              <div className="flex items-center text-blue-600 font-bold mb-4 md:mb-6 bg-blue-50 px-3 md:px-4 py-1.5 md:py-2 rounded-full border border-blue-100 text-[10px] md:text-sm">
                 <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" />
                 Entry Saved Successfully!
               </div>
               
               <div className="bg-white shadow-xl shadow-slate-200 rounded-lg md:rounded-xl p-3 md:p-4 mb-4 md:mb-6 scale-[0.85] md:scale-100 origin-center">
-                <div className="bg-white flex flex-col items-center justify-center overflow-hidden" style={{ width: '50mm', height: '25mm', padding: '2mm' }}>
-                  <Barcode value={savedMed.barcodeId} width={1.2} height={32} fontSize={10} margin={0} background="#ffffff" lineColor="#000000" displayValue={true} />
+                <div className="bg-white flex flex-col items-center justify-center overflow-hidden" style={{ width: '50mm', height: '25mm', padding: '1.5mm 2mm' }}>
+                  <Barcode 
+                    value={savedMed.barcodeId} 
+                    width={1.2} 
+                    height={30} 
+                    fontSize={8} 
+                    margin={0} 
+                    background="#ffffff" 
+                    lineColor="#000000" 
+                    displayValue={barcodeConfig.showBarcodeText} 
+                  />
                   
-                  <div className="w-full text-center mt-1">
-                    <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate">
-                      BILL: {savedMed.billNumber} | PUR: {formatDate(savedMed.purchaseDate)}
+                  <div className="w-full text-center mt-1 space-y-0.5 leading-none">
+                    {barcodeConfig.showName && (
+                      <p className="text-[9px] font-black text-black uppercase tracking-tight leading-none truncate max-w-full">
+                        {savedMed.name}
+                      </p>
+                    )}
+                    <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none">
+                      {[
+                        barcodeConfig.showBatch && `B: ${savedMed.batch}`,
+                        barcodeConfig.showExpiry && `E: ${formatExpiryDate(savedMed.expiryDate)}`
+                      ].filter(Boolean).join(" | ")}
+                    </p>
+                    <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none">
+                      {[
+                        barcodeConfig.showPrice && `₹${savedMed.mrp}`,
+                        barcodeConfig.showBillNo && `BILL: ${savedMed.billNumber}`,
+                        barcodeConfig.showPurchaseDate && `PUR: ${formatDate(savedMed.purchaseDate)}`
+                      ].filter(Boolean).join(" | ")}
                     </p>
                   </div>
                 </div>
@@ -295,7 +390,7 @@ export default function PurchaseEntry() {
                 onClick={handlePrint}
                 className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs md:text-sm px-5 py-3 rounded-xl md:rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] w-full max-w-[200px]"
               >
-                <Printer className="w-4 h-4 text-emerald-400" /> Print Label
+                <Printer className="w-4 h-4 text-blue-400" /> Print Label
               </button>
             </div>
           )}
@@ -364,19 +459,34 @@ export default function PurchaseEntry() {
                   format="CODE128"
                   renderer="svg"     
                   width={1.5}        
-                  height={40}        
-                  fontSize={10}      
+                  height={35}        
+                  fontSize={8}      
                   margin={0}         
                   textMargin={1}     
                   background="#ffffff" 
                   lineColor="#000000" 
-                  displayValue={true} 
+                  displayValue={barcodeConfig.showBarcodeText} 
                 />
               </div>
 
-              <div className="text-wrapper">
-                <p className="text-[8px] font-bold text-black uppercase tracking-tight leading-tight truncate" style={{ fontFamily: 'sans-serif' }}>
-                  BILL: {savedMed.billNumber} | PUR: {formatDate(savedMed.purchaseDate)}
+              <div className="text-wrapper flex flex-col items-center leading-none mt-1 space-y-0.5 w-full text-center">
+                {barcodeConfig.showName && (
+                  <p className="text-[9px] font-black text-black uppercase tracking-tight leading-none truncate max-w-full" style={{ fontFamily: 'sans-serif', margin: 0 }}>
+                    {savedMed.name}
+                  </p>
+                )}
+                <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none" style={{ fontFamily: 'sans-serif', margin: 0 }}>
+                  {[
+                    barcodeConfig.showBatch && `B: ${savedMed.batch}`,
+                    barcodeConfig.showExpiry && `E: ${formatExpiryDate(savedMed.expiryDate)}`
+                  ].filter(Boolean).join(" | ")}
+                </p>
+                <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none" style={{ fontFamily: 'sans-serif', margin: 0 }}>
+                  {[
+                    barcodeConfig.showPrice && `₹${savedMed.mrp}`,
+                    barcodeConfig.showBillNo && `BILL: ${savedMed.billNumber}`,
+                    barcodeConfig.showPurchaseDate && `PUR: ${formatDate(savedMed.purchaseDate)}`
+                  ].filter(Boolean).join(" | ")}
                 </p>
               </div>
             </div>

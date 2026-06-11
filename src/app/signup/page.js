@@ -127,10 +127,10 @@ export default function Signup() {
 
                 {/* Logo Area */}
                 <div className="flex flex-col items-center mb-8">
-                    <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-100 mb-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100 mb-4">
                         <Activity className="text-white w-7 h-7" />
                     </div>
-                    <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Pharma<span className="text-emerald-500">ERP</span></h1>
+                    <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Pharma<span className="text-blue-500">ERP</span></h1>
                     <p className="text-slate-500 text-sm font-medium mt-1">Register your Pharmacy Owner Account</p>
                 </div>
 
@@ -171,7 +171,7 @@ export default function Signup() {
                                         type="text"
                                         required
                                         placeholder="Full Name"
-                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium text-sm"
+                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium text-sm"
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     />
@@ -186,7 +186,7 @@ export default function Signup() {
                                         type="text"
                                         required
                                         placeholder="Shop Name"
-                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium text-sm"
+                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium text-sm"
                                         value={formData.shopName}
                                         onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
                                     />
@@ -202,7 +202,7 @@ export default function Signup() {
                                     type="text"
                                     required
                                     placeholder="Complete Shop Address"
-                                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium text-sm"
+                                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium text-sm"
                                     value={formData.address}
                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                                 />
@@ -224,7 +224,7 @@ export default function Signup() {
                                         required
                                         disabled={otpSent}
                                         placeholder="Phone Number"
-                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium text-sm disabled:opacity-70"
+                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium text-sm disabled:opacity-70"
                                         value={formData.phoneNumber}
                                         onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                                     />
@@ -240,7 +240,7 @@ export default function Signup() {
                                         required
                                         disabled={otpSent}
                                         placeholder="Email Address"
-                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium text-sm disabled:opacity-70"
+                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium text-sm disabled:opacity-70"
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     />
@@ -260,8 +260,8 @@ export default function Signup() {
                             </button>
                         ) : (
                             <div className="space-y-4">
-                                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-center gap-2 text-[11px] text-emerald-800 font-bold">
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center gap-2 text-[11px] text-blue-800 font-bold">
+                                    <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
                                     <span>Verification OTP codes sent. Enter them below:</span>
                                     <button 
                                         type="button" 
@@ -280,7 +280,7 @@ export default function Signup() {
                                             required
                                             maxLength={6}
                                             placeholder="6-digit code"
-                                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-emerald-400 font-bold text-base tracking-wider"
+                                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-blue-400 font-bold text-base tracking-wider"
                                             value={formData.emailOtp}
                                             onChange={(e) => setFormData({ ...formData, emailOtp: e.target.value })}
                                         />
@@ -292,7 +292,7 @@ export default function Signup() {
                                             required
                                             maxLength={6}
                                             placeholder="6-digit code"
-                                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-emerald-400 font-bold text-base tracking-wider"
+                                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-blue-400 font-bold text-base tracking-wider"
                                             value={formData.phoneOtp}
                                             onChange={(e) => setFormData({ ...formData, phoneOtp: e.target.value })}
                                         />
@@ -313,7 +313,7 @@ export default function Signup() {
                                     type="text"
                                     required
                                     placeholder="Choose a username"
-                                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium text-sm"
+                                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium text-sm"
                                     value={formData.username}
                                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                                 />
@@ -329,7 +329,7 @@ export default function Signup() {
                                         type="password"
                                         required
                                         placeholder="Create password"
-                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium text-sm"
+                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium text-sm"
                                         value={formData.password}
                                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     />
@@ -344,7 +344,7 @@ export default function Signup() {
                                         type="password"
                                         required
                                         placeholder="Repeat password"
-                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all font-medium text-sm"
+                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium text-sm"
                                         value={formData.confirmPassword}
                                         onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                                     />
@@ -357,7 +357,7 @@ export default function Signup() {
                     <button
                         type="submit"
                         disabled={loading || !otpSent}
-                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-150 disabled:text-slate-400 text-white font-bold text-base px-4 py-4 rounded-xl transition-all shadow-lg shadow-emerald-100 flex items-center justify-center mt-2 disabled:shadow-none"
+                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-150 disabled:text-slate-400 text-white font-bold text-base px-4 py-4 rounded-xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center mt-2 disabled:shadow-none"
                     >
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Register Account"}
                     </button>
@@ -365,7 +365,7 @@ export default function Signup() {
 
                 <div className="mt-6 text-center text-sm text-slate-500 font-medium">
                     Already have an account?{" "}
-                    <Link href="/login" className="text-emerald-500 hover:text-emerald-600 font-bold inline-flex items-center">
+                    <Link href="/login" className="text-blue-500 hover:text-blue-600 font-bold inline-flex items-center">
                         Login here <ArrowRight className="w-4 h-4 ml-1" />
                     </Link>
                 </div>
