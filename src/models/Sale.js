@@ -22,6 +22,7 @@ const SaleSchema = new mongoose.Schema({
 
 // 🚀 SPEED OPTIMIZATION FOR REPORTS
 SaleSchema.index({ userId: 1 });
+SaleSchema.index({ userId: 1, date: -1 });
 SaleSchema.index({ date: -1 });
 SaleSchema.index({ "items.medicineId": 1 });
 

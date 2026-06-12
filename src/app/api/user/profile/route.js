@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/models/User";
 import Otp from "@/models/Otp";
+import Medicine from "@/models/Medicine";
+import Sale from "@/models/Sale";
+import ActiveSession from "@/models/ActiveSession";
+import { getUserDataSize, formatBytes } from "@/lib/storageHelper";
 import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -28,7 +32,12 @@ export async function GET(req) {
           email: "admin@system.local",
           role: "superadmin",
           status: "active"
-        }
+        },
+        medicinesCount: 0,
+        salesCount: 0,
+        dataSize: 0,
+        dataSizeFormatted: "0 Bytes",
+        activeSessions: []
       });
     }
 
@@ -38,7 +47,32 @@ export async function GET(req) {
       return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, user });
+    // Fetch metrics and sessions
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const [medicinesCount, salesCount, activeSessions, dataSizeBytes] = await Promise.all([
+      Medicine.countDocuments({ userId }),
+      Sale.countDocuments({ userId }),
+      ActiveSession.find({ userId }).sort({ lastActive: -1 }).lean(),
+      getUserDataSize(userId)
+    ]);
+
+    return NextResponse.json({ 
+      success: true, 
+      user,
+      medicinesCount,
+      salesCount,
+      dataSize: dataSizeBytes,
+      dataSizeFormatted: formatBytes(dataSizeBytes),
+      activeSessions: activeSessions.map(s => ({
+        deviceSessionId: s.deviceSessionId,
+        os: s.os,
+        browser: s.browser,
+        deviceType: s.deviceType,
+        ipAddress: s.ipAddress,
+        lastActive: s.lastActive,
+        isOnline: s.lastActive >= fiveMinutesAgo
+      }))
+    });
   } catch (error) {
     console.error("Profile GET Error:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

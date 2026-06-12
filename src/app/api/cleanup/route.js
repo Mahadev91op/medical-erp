@@ -7,7 +7,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 
 export const dynamic = 'force-dynamic';
 
-export async function POST() {
+export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
@@ -15,34 +15,69 @@ export async function POST() {
     }
     const userId = session.user.id;
 
+    let months = 6;
+    let cleanSoldOut = true;
+    let cleanExpired = true;
+    let cleanSales = true;
+
+    try {
+      const body = await req.json();
+      if (body) {
+        if (body.months !== undefined) months = parseInt(body.months) || 6;
+        if (body.cleanSoldOut !== undefined) cleanSoldOut = !!body.cleanSoldOut;
+        if (body.cleanExpired !== undefined) cleanExpired = !!body.cleanExpired;
+        if (body.cleanSales !== undefined) cleanSales = !!body.cleanSales;
+      }
+    } catch (e) {
+      // Body may not exist, use defaults
+    }
+
     await connectToDatabase();
 
-    // Calculate the date 6 months ago
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const thresholdDate = new Date();
+    thresholdDate.setMonth(thresholdDate.getMonth() - months);
 
-    // 1. Delete sold-out medicines (quantity <= 0) and updated older than 6 months
-    const deletedSold = await Medicine.deleteMany({
-      userId,
-      quantity: { $lte: 0 },
-      updatedAt: { $lt: sixMonthsAgo }
-    });
+    let deletedSold = { deletedCount: 0 };
+    let deletedExpired = { deletedCount: 0 };
+    let deletedSales = { deletedCount: 0 };
 
-    // 2. Delete expired medicines (expiryDate older than 6 months)
-    const deletedExpired = await Medicine.deleteMany({
-      userId,
-      expiryDate: { $lt: sixMonthsAgo }
-    });
+    // 1. Delete sold-out medicines (quantity <= 0) and updated older than threshold
+    if (cleanSoldOut) {
+      deletedSold = await Medicine.deleteMany({
+        userId,
+        quantity: { $lte: 0 },
+        updatedAt: { $lt: thresholdDate }
+      });
+    }
 
-    // 3. Delete old sales logs older than 6 months
-    const deletedSales = await Sale.deleteMany({
-      userId,
-      date: { $lt: sixMonthsAgo }
-    });
+    // 2. Delete expired medicines (expiryDate older than threshold)
+    if (cleanExpired) {
+      deletedExpired = await Medicine.deleteMany({
+        userId,
+        expiryDate: { $lt: thresholdDate }
+      });
+    }
+
+    // 3. Delete old sales logs older than threshold
+    if (cleanSales) {
+      deletedSales = await Sale.deleteMany({
+        userId,
+        date: { $lt: thresholdDate }
+      });
+    }
+
+    let summaryParts = [];
+    if (cleanSoldOut) summaryParts.push(`${deletedSold.deletedCount} sold-out inventory items`);
+    if (cleanExpired) summaryParts.push(`${deletedExpired.deletedCount} expired medicine batches`);
+    if (cleanSales) summaryParts.push(`${deletedSales.deletedCount} transaction invoices`);
+
+    const summaryMessage = summaryParts.length > 0 
+      ? `Successfully purged: ${summaryParts.join(", ")} older than ${months} months.`
+      : "No cleanup actions selected.";
 
     return NextResponse.json({
       success: true,
-      message: `Storage cleanup completed successfully! Removed ${deletedSold.deletedCount} sold-out entries, ${deletedExpired.deletedCount} expired batch entries, and ${deletedSales.deletedCount} transaction sales history logs older than 6 months.`
+      message: `Database cleanup execution complete. ${summaryMessage}`
     });
 
   } catch (error) {

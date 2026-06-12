@@ -21,6 +21,11 @@ const MedicineSchema = new mongoose.Schema({
 
 // 🚀 ENTERPRISE SPEED OPTIMIZATION FOR LAKHS OF DATA
 MedicineSchema.index({ userId: 1 });
+MedicineSchema.index({ userId: 1, quantity: 1 });
+MedicineSchema.index({ userId: 1, expiryDate: 1, quantity: 1 });
+MedicineSchema.index({ userId: 1, name: 1 });
+MedicineSchema.index({ userId: 1, barcodeId: 1 });
+MedicineSchema.index({ userId: 1, batch: 1 });
 MedicineSchema.index({ name: 1 }); 
 MedicineSchema.index({ barcodeId: 1 });
 MedicineSchema.index({ distributor: 1 });

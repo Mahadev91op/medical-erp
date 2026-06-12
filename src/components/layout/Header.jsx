@@ -12,6 +12,7 @@ export default function Header() {
 
   // Live Indian Time State and Effect
   const [indianTime, setIndianTime] = useState("");
+  const [expiryWarning, setExpiryWarning] = useState(null);
 
   useEffect(() => {
     const updateTime = () => {
@@ -59,7 +60,12 @@ export default function Header() {
           }
           if (data.subscriptionEnd) {
             const expiry = new Date(data.subscriptionEnd);
-            if (expiry < new Date()) {
+            const today = new Date();
+            const diffTime = expiry - today;
+            const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (expiry < today) {
+              setExpiryWarning(null);
               const currentPath = window.location.pathname;
               const isAllowedPath = 
                 currentPath === "/paused" || 
@@ -74,6 +80,12 @@ export default function Header() {
               const currentPath = window.location.pathname;
               if (currentPath === "/paused") {
                 router.push("/");
+              }
+
+              if (daysLeft >= 0 && daysLeft <= 5) {
+                setExpiryWarning(daysLeft);
+              } else {
+                setExpiryWarning(null);
               }
             }
           }
@@ -168,7 +180,24 @@ export default function Header() {
   if (!session || session?.user?.role === "superadmin" || isAuthOrPausedOrNotFound) return null;
 
   return (
-    <header className="h-16 md:h-20 bg-white/90 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50">
+    <div className="sticky top-0 z-50 w-full flex flex-col">
+      {/* Expiry Warning Banner */}
+      {expiryWarning !== null && (
+        <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white px-4 py-2.5 text-center text-xs font-bold flex items-center justify-center gap-2 shadow-sm animate-in slide-in-from-top duration-300">
+          <AlertTriangle className="w-4 h-4 text-white animate-bounce shrink-0" />
+          <span>
+            Attention: Your pharmacy ERP subscription is expiring in <strong className="underline decoration-2">{expiryWarning === 0 ? "today" : `${expiryWarning} ${expiryWarning === 1 ? 'day' : 'days'}`}</strong>. Please contact administrator for renewal.
+          </span>
+          <button 
+            onClick={() => router.push('/profile')} 
+            className="ml-3 bg-white/20 hover:bg-white/35 text-white border border-white/25 px-2.5 py-1 rounded-lg text-[10px] uppercase font-black tracking-wider transition-all cursor-pointer"
+          >
+            Renew Info
+          </button>
+        </div>
+      )}
+      
+      <header className="h-16 md:h-20 bg-white/90 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between px-4 md:px-8">
       
       {/* 1. Global Quick Search Bar */}
       <div ref={searchRef} className="relative flex flex-1 md:flex-none items-center bg-slate-50 hover:bg-slate-100 px-3 md:px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl md:w-[260px] lg:w-[360px] border border-slate-200/60 transition-all duration-300 mr-4 group focus-within:ring-4 focus-within:ring-blue-50 focus-within:border-blue-200">
@@ -274,5 +303,6 @@ export default function Header() {
         </button>
       </div>
     </header>
+    </div>
   );
 }

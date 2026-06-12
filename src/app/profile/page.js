@@ -27,7 +27,15 @@ import {
   Trash2,
   FileText,
   ScanBarcode,
-  PackageOpen
+  PackageOpen,
+  Laptop,
+  Smartphone,
+  Tablet,
+  Shield,
+  HardDrive,
+  Percent,
+  Activity,
+  ChevronRight
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -106,7 +114,8 @@ export default function Profile() {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [restoreFile, setRestoreFile] = useState(null);
   const [restoreConfirmText, setRestoreConfirmText] = useState("");
-  
+
+  // Advanced configurations
   const [purchaseFormConfig, setPurchaseFormConfig] = useState({
     name: true, batch: true, quantity: true, distributor: true, mrp: true, billNumber: true, purchaseDate: true, expiryDate: true
   });
@@ -116,7 +125,26 @@ export default function Profile() {
   const [reportsPdfConfig, setReportsPdfConfig] = useState({
     showDistributor: true, showBatch: true, showBillNo: true, showQty: true, showExpiryDate: true
   });
+
+  // Active sub-page tabs: "profile", "subHistory", "devices", "databasePurge", "configurations"
   const [activeTab, setActiveTab] = useState("profile");
+
+  // Database metrics
+  const [medicinesCount, setMedicinesCount] = useState(0);
+  const [salesCount, setSalesCount] = useState(0);
+  const [dataSize, setDataSize] = useState(0);
+  const [dataSizeFormatted, setDataSizeFormatted] = useState("0 Bytes");
+
+  // Device Sessions states
+  const [activeSessions, setActiveSessions] = useState([]);
+  const [revokingSessionId, setRevokingSessionId] = useState(null);
+
+  // Database custom cleanup preferences
+  const [cleanupMonths, setCleanupMonths] = useState(6);
+  const [cleanupSoldOut, setCleanupSoldOut] = useState(true);
+  const [cleanupExpired, setCleanupExpired] = useState(true);
+  const [cleanupSales, setCleanupSales] = useState(true);
+
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [cleanupConfirmText, setCleanupConfirmText] = useState("");
   const [cleanupLoading, setCleanupLoading] = useState(false);
@@ -154,7 +182,7 @@ export default function Profile() {
     toast.success("Reports PDF column configurations updated!");
   };
 
-  const handleDatabaseCleanup = async (e) => {
+  const handleCustomDatabaseCleanup = async (e) => {
     e.preventDefault();
     if (cleanupConfirmText !== "CLEANUP") {
       toast.error("Please type CLEANUP to confirm!");
@@ -163,12 +191,23 @@ export default function Profile() {
     setCleanupLoading(true);
     const toastId = toast.loading("Executing storage database cleanup...");
     try {
-      const res = await fetch("/api/cleanup", { method: "POST" });
+      const res = await fetch("/api/cleanup", { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          months: cleanupMonths,
+          cleanSoldOut: cleanupSoldOut,
+          cleanExpired: cleanupExpired,
+          cleanSales: cleanupSales
+        })
+      });
       const data = await res.json();
       if (data.success) {
         toast.success(data.message || "Storage database cleanup executed successfully!", { id: toastId, duration: 6000 });
         setShowCleanupModal(false);
         setCleanupConfirmText("");
+        // Refresh profile stats
+        fetchProfileDetails();
       } else {
         toast.error(data.error || "Database cleanup failed", { id: toastId });
       }
@@ -183,14 +222,21 @@ export default function Profile() {
     try {
       const res = await fetch("/api/user/profile");
       const data = await res.json();
-      if (data.success && data.user) {
-        setProfileData({
-          name: data.user.name || "",
-          shopName: data.user.shopName || "",
-          address: data.user.address || "",
-          phoneNumber: data.user.phoneNumber || "",
-          email: data.user.email || ""
-        });
+      if (data.success) {
+        if (data.user) {
+          setProfileData({
+            name: data.user.name || "",
+            shopName: data.user.shopName || "",
+            address: data.user.address || "",
+            phoneNumber: data.user.phoneNumber || "",
+            email: data.user.email || ""
+          });
+        }
+        setMedicinesCount(data.medicinesCount || 0);
+        setSalesCount(data.salesCount || 0);
+        setDataSize(data.dataSize || 0);
+        setDataSizeFormatted(data.dataSizeFormatted || "0 Bytes");
+        setActiveSessions(data.activeSessions || []);
       }
     } catch (error) {
       console.error("Failed to load profile details:", error);
@@ -217,6 +263,28 @@ export default function Profile() {
     fetchProfileDetails();
     fetchSubscriptionDetails();
   }, []);
+
+  const handleRevokeSession = async (deviceSessionId) => {
+    setRevokingSessionId(deviceSessionId);
+    try {
+      const res = await fetch("/api/user/profile/revoke-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceSessionId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || "Device session logged out successfully!");
+        fetchProfileDetails(); // Refresh sessions list
+      } else {
+        toast.error(data.error || "Failed to log out device.");
+      }
+    } catch (err) {
+      toast.error("Network or server communication error.");
+    } finally {
+      setRevokingSessionId(null);
+    }
+  };
 
   // Triggers OTP request and opens the verification modal
   const handleRequestProfileUpdate = async (e) => {
@@ -371,6 +439,7 @@ export default function Profile() {
             setShowRestoreModal(false);
             setRestoreFile(null);
             setRestoreConfirmText("");
+            fetchProfileDetails(); // Refresh stats
           } else {
             toast.error(data.error || "Failed to restore data.", { id: toastId });
           }
@@ -472,33 +541,169 @@ export default function Profile() {
     };
   };
 
+  const getProfileCompleteness = () => {
+    const fields = [profileData.name, profileData.shopName, profileData.address, profileData.phoneNumber, profileData.email];
+    const filled = fields.filter(f => f && f.trim().length > 0).length;
+    return Math.round((filled / fields.length) * 100);
+  };
+
+  const getSubscriptionTimeline = () => {
+    const timeline = [];
+    if (session?.user?.role === "superadmin") {
+      return [{
+        type: "lifetime",
+        title: "Lifetime Administrator Access Active",
+        description: "Your super admin environment is pre-configured with permanent, unlimited licensing.",
+        startDate: new Date(),
+        endDate: new Date("9999-12-31"),
+        status: "active"
+      }];
+    }
+
+    // Attempt to parse start date
+    let userCreatedAt = subDetails.subscriptionHistory?.[0]?.addedAt 
+      ? new Date(subDetails.subscriptionHistory[0].addedAt) 
+      : (session?.user?.createdAt ? new Date(session.user.createdAt) : new Date());
+
+    const trialEnd = new Date(userCreatedAt);
+    trialEnd.setDate(trialEnd.getDate() + 7);
+
+    timeline.push({
+      type: "trial",
+      title: "7-Day Free Trial Activated",
+      description: "PharmaERP Trial license enabled automatically upon registration.",
+      startDate: userCreatedAt,
+      endDate: trialEnd,
+      status: "completed"
+    });
+
+    let currentExpiration = trialEnd;
+    const history = subDetails.subscriptionHistory || [];
+    const sortedHistory = [...history].sort((a, b) => new Date(a.addedAt) - new Date(b.addedAt));
+
+    sortedHistory.forEach((item) => {
+      const addedAt = new Date(item.addedAt);
+      const newExpirationDate = new Date(item.newExpirationDate);
+
+      // Gap detection: inactive period (paused/band)
+      if (addedAt > currentExpiration) {
+        timeline.push({
+          type: "suspended",
+          title: "ERP License Suspended (Inactive Period)",
+          description: "Access was temporarily locked due to a subscription gap.",
+          startDate: new Date(currentExpiration),
+          endDate: new Date(addedAt),
+          status: "expired"
+        });
+      }
+
+      timeline.push({
+        type: "purchase",
+        title: item.addedMonths === 0 ? "Subscription Terminated" : `Purchased ${item.addedMonths} Month Extension`,
+        description: item.addedMonths === 0
+          ? "ERP License canceled immediately by Administrator command."
+          : `Subscription purchased. License validity successfully pushed forward.`,
+        startDate: addedAt > currentExpiration ? addedAt : currentExpiration,
+        endDate: newExpirationDate,
+        addedMonths: item.addedMonths,
+        addedAt: addedAt,
+        status: item.addedMonths === 0 ? "terminated" : "completed"
+      });
+
+      currentExpiration = newExpirationDate;
+    });
+
+    const now = new Date();
+    if (currentExpiration < now) {
+      timeline.push({
+        type: "suspended",
+        title: "ERP License Currently Suspended",
+        description: "ERP account is locked from performing billing and stock operations. Renew subscription to unlock.",
+        startDate: currentExpiration,
+        endDate: now,
+        status: "expired"
+      });
+    }
+
+    return timeline.reverse(); // Latest events on top
+  };
+
   const subInfo = getSubscriptionInfo();
+  const completeness = getProfileCompleteness();
+  const timelineEvents = getSubscriptionTimeline();
 
   if (profileLoading) {
     return <ProfileSkeleton />;
   }
 
+  // Define tab navigation buttons array
+  const navigationTabs = [
+    { id: "profile", label: "Profile Information", icon: <User className="w-4 h-4" /> },
+    { id: "subHistory", label: "Subscription History", icon: <History className="w-4 h-4" />, hide: session?.user?.role === "superadmin" },
+    { id: "devices", label: "Devices & Sessions", icon: <Laptop className="w-4 h-4" /> },
+    { id: "databasePurge", label: "Storage Cleanup", icon: <Trash2 className="w-4 h-4" />, hide: session?.user?.id === "000000000000000000000000" },
+    { id: "configurations", label: "Preferences & Config", icon: <ScanBarcode className="w-4 h-4" /> },
+  ].filter(t => !t.hide);
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8 select-none">
       
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">Profile & Subscription Panel</h1>
-          <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Manage your account credentials, status logs, and ERP license details.</p>
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight flex items-center gap-2">
+          <Activity className="w-6 h-6 text-blue-500 shrink-0" />
+          Settings & Account Portal
+        </h1>
+        <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">
+          Monitor your pharmacy data statistics, logs, license history, and optimize database usage.
+        </p>
+      </div>
+
+      {/* Quick Dashboard Overview Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-100/70 p-5 rounded-3xl flex items-center justify-between shadow-[0_2px_10px_-4px_rgba(0,0,0,0.01)] transition-all hover:scale-[1.01]">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Active Medicines</span>
+            <p className="text-2xl font-black text-slate-800">{medicinesCount}</p>
+          </div>
+          <div className="w-12 h-12 bg-blue-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-150">
+            <PackageOpen className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-100/70 p-5 rounded-3xl flex items-center justify-between shadow-[0_2px_10px_-4px_rgba(0,0,0,0.01)] transition-all hover:scale-[1.01]">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Total Sales Invoices</span>
+            <p className="text-2xl font-black text-slate-800">{salesCount}</p>
+          </div>
+          <div className="w-12 h-12 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-150">
+            <FileText className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 border border-purple-100/70 p-5 rounded-3xl flex items-center justify-between shadow-[0_2px_10px_-4px_rgba(0,0,0,0.01)] transition-all hover:scale-[1.01]">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-purple-500 uppercase tracking-widest">Estimated Data Size</span>
+            <p className="text-2xl font-black text-slate-800">{dataSizeFormatted}</p>
+          </div>
+          <div className="w-12 h-12 bg-purple-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-purple-150">
+            <HardDrive className="w-6 h-6" />
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Column: Account Details & Password Reset */}
+        {/* Left Column: Account Details & Navigation Tabs */}
         <div className="lg:col-span-1 space-y-6">
           
           {/* User Card */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)]">
+          <div className="bg-white rounded-3xl p-6 border border-slate-150 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50/40 rounded-full blur-2xl pointer-events-none"></div>
+            
             <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100 mb-4">
-                <User className="text-white w-10 h-10" />
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100 mb-4">
+                <User className="text-white w-9 h-9" />
               </div>
               <h2 className="text-lg font-bold text-slate-800 capitalize leading-none mb-1">{session?.user?.name}</h2>
               <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${subInfo.badgeColor} mt-2`}>
@@ -506,39 +711,77 @@ export default function Profile() {
               </span>
             </div>
 
-            <div className="border-t border-slate-50 mt-6 pt-6 space-y-4">
+            {/* Profile Completion Index */}
+            <div className="border-t border-slate-100 mt-6 pt-5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-extrabold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                  <Percent className="w-3.5 h-3.5 text-blue-500" /> Completeness Index
+                </span>
+                <span className="font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{completeness}%</span>
+              </div>
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-700 ${completeness === 100 ? 'bg-emerald-500' : completeness >= 50 ? 'bg-blue-500' : 'bg-amber-500'}`} 
+                  style={{ width: `${completeness}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 mt-5 pt-5 space-y-3">
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Username</p>
-                <p className="text-sm font-bold text-slate-700 mt-0.5">{session?.user?.name}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pharmacy Role</p>
+                <p className="text-sm font-bold text-slate-700 mt-0.5">
+                  {session?.user?.role === "superadmin" ? "System Superadmin" : session?.user?.role === "admin" ? "Pharmacy Owner" : "Staff Pharmacist"}
+                </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Role Access</p>
-                <p className="text-sm font-bold text-slate-700 mt-0.5">
-                  {session?.user?.role === "superadmin" ? "Super Administrator" : session?.user?.role === "admin" ? "Pharmacy Owner" : "Staff Member"}
-                </p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Account ID</p>
+                <p className="text-xs font-mono font-semibold text-slate-500 mt-0.5 break-all select-all">{session?.user?.id}</p>
               </div>
             </div>
           </div>
 
-          {/* Superadmin notification */}
+          {/* Premium Vertical Tab bar Menu */}
+          <div className="bg-white rounded-3xl p-3 border border-slate-150 shadow-sm space-y-1">
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider px-3.5 pt-2 pb-1">Menu Sections</p>
+            {navigationTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl font-bold text-xs uppercase transition-all tracking-wider ${
+                  activeTab === tab.id
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-100"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </div>
+                <ChevronRight className={`w-3.5 h-3.5 transition-transform ${activeTab === tab.id ? 'translate-x-0.5' : 'text-slate-300'}`} />
+              </button>
+            ))}
+          </div>
+
+          {/* Dev System admin alert */}
           {session?.user?.id === "000000000000000000000000" && (
-            <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 text-amber-700 text-xs font-semibold flex gap-2">
+            <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 text-amber-700 text-xs font-semibold flex gap-2.5">
               <ShieldAlert className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
-              <p>Default env-based admin credentials cannot be changed from the UI. Please update your <code>.env</code> file directly.</p>
+              <p>Default local admin profile credentials cannot be modified via UI. Please edit your system <code>.env</code> file directly.</p>
             </div>
           )}
 
         </div>
 
-        {/* Right Column: Profile Edit Form & Detailed Subscription */}
+        {/* Right Column: Tab View Contents */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Profile Edit Panel (For standard users) */}
-          {session?.user?.id !== "000000000000000000000000" && (
-            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)]">
+          {/* PROFILE SETTINGS TAB */}
+          {activeTab === "profile" && (
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-150 shadow-sm animate-in fade-in duration-300">
               <h3 className="text-base font-bold text-slate-800 flex items-center mb-6">
                 <Store className="w-5 h-5 text-blue-500 mr-2.5 shrink-0" />
-                Manage Profile Settings
+                Manage Pharmacy Profile
               </h3>
 
               <form onSubmit={handleRequestProfileUpdate} className="space-y-5">
@@ -550,7 +793,8 @@ export default function Profile() {
                         type="text"
                         required
                         placeholder="Owner Name"
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm"
+                        disabled={session?.user?.id === "000000000000000000000000"}
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm disabled:opacity-60"
                         value={profileData.name}
                         onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
                       />
@@ -559,13 +803,14 @@ export default function Profile() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Shop/Pharmacy Name</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pharmacy Name</label>
                     <div className="relative">
                       <input
                         type="text"
                         required
                         placeholder="Pharmacy Name"
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm"
+                        disabled={session?.user?.id === "000000000000000000000000"}
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm disabled:opacity-60"
                         value={profileData.shopName}
                         onChange={(e) => setProfileData({ ...profileData, shopName: e.target.value })}
                       />
@@ -581,7 +826,8 @@ export default function Profile() {
                       type="text"
                       required
                       placeholder="Pharmacy Address"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm"
+                      disabled={session?.user?.id === "000000000000000000000000"}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm disabled:opacity-60"
                       value={profileData.address}
                       onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
                     />
@@ -597,7 +843,8 @@ export default function Profile() {
                         type="tel"
                         required
                         placeholder="Phone Number"
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm"
+                        disabled={session?.user?.id === "000000000000000000000000"}
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm disabled:opacity-60"
                         value={profileData.phoneNumber}
                         onChange={(e) => setProfileData({ ...profileData, phoneNumber: e.target.value })}
                       />
@@ -612,7 +859,8 @@ export default function Profile() {
                         type="email"
                         required
                         placeholder="Email Address"
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm"
+                        disabled={session?.user?.id === "000000000000000000000000"}
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm disabled:opacity-60"
                         value={profileData.email}
                         onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
                       />
@@ -621,103 +869,379 @@ export default function Profile() {
                   </div>
                 </div>
 
-                <div className="border-t border-slate-100 pt-5 space-y-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <KeyRound className="w-4 h-4 text-slate-400" />
-                    Update Password (Optional)
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">New Password</label>
-                      <div className="relative">
-                        <input
-                          type="password"
-                          placeholder="Enter new password"
-                          className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm"
-                          value={passwords.newPassword}
-                          onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
-                        />
-                        <Lock className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                {session?.user?.id !== "000000000000000000000000" && (
+                  <div className="border-t border-slate-100 pt-5 space-y-4">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <KeyRound className="w-4 h-4 text-slate-400" />
+                      Change Account Password (Optional)
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">New Password</label>
+                        <div className="relative">
+                          <input
+                            type="password"
+                            placeholder="Enter new password"
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm"
+                            value={passwords.newPassword}
+                            onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                          />
+                          <Lock className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                        </div>
                       </div>
-                    </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Confirm Password</label>
-                      <div className="relative">
-                        <input
-                          type="password"
-                          placeholder="Repeat new password"
-                          className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm"
-                          value={passwords.confirmPassword}
-                          onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
-                        />
-                        <Lock className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Confirm Password</label>
+                        <div className="relative">
+                          <input
+                            type="password"
+                            placeholder="Confirm new password"
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-sm"
+                            value={passwords.confirmPassword}
+                            onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                          />
+                          <Lock className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
 
-                <button
-                  type="submit"
-                  disabled={sendingOtp}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-blue-100 flex items-center justify-center gap-2 disabled:opacity-75 text-xs uppercase tracking-wider"
-                >
-                  {sendingOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Profile Details (Sends OTP)"}
-                </button>
+                {session?.user?.id !== "000000000000000000000000" && (
+                  <button
+                    type="submit"
+                    disabled={sendingOtp}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-blue-100 flex items-center justify-center gap-2 disabled:opacity-75 text-xs uppercase tracking-wider"
+                  >
+                    {sendingOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Profile Details (Sends OTP)"}
+                  </button>
+                )}
               </form>
             </div>
           )}
 
-          {/* Backup & Recovery Center */}
-          {session?.user?.id !== "000000000000000000000000" && (
-            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)]">
-              <h3 className="text-base font-bold text-slate-800 flex items-center mb-4">
-                <Database className="w-5 h-5 text-blue-500 mr-2.5 shrink-0" />
-                Data Backup & Recovery
-              </h3>
-              <p className="text-slate-500 text-xs font-semibold mb-6">
-                Save a secure backup of your database as a local JSON file. In case of any issues, you can upload this backup file to restore your inventory and bills data.
-              </p>
+          {/* SUBSCRIPTION TIMELINE HISTORY TAB */}
+          {activeTab === "subHistory" && session?.user?.role !== "superadmin" && (
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-150 shadow-sm space-y-6 animate-in fade-in duration-300">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-200">
+                    {subInfo.icon}
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active ERP License</p>
+                    <h3 className="text-base md:text-lg font-bold text-slate-800">{subInfo.planName}</h3>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border ${subInfo.badgeColor}`}>
+                  {subInfo.statusText}
+                </span>
+              </div>
 
-              {/* Data Utilities Panel */}
-              <div className="border-t border-slate-50 pt-6 mt-6">
-                <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider flex items-center gap-1.5 mb-4">
-                  <Database className="w-4 h-4 text-slate-400" /> Database Backup & Restore Utilities
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Days Remaining</p>
+                  <p className="text-xl md:text-2xl font-black text-slate-700 mt-1">{subInfo.daysLeft}</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">License Expiration</p>
+                  <p className="text-sm md:text-base font-extrabold text-slate-700 mt-2">{subInfo.expiryText}</p>
+                </div>
+              </div>
+
+              {subInfo.percentLeft > 0 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold">
+                    <span className="text-slate-400">LICENSE EXPIRY RATIO</span>
+                    <span className="text-blue-600">{subInfo.percentLeft}% Left</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                    <div className="bg-blue-600 h-full rounded-full transition-all duration-500" style={{ width: `${subInfo.percentLeft}%` }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Enhanced timeline showing both extensions and suspensions */}
+              <div className="pt-4 border-t border-slate-100 space-y-6">
+                <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                  <History className="w-4 h-4 text-slate-400" /> Interactive License History Timeline
                 </h4>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={handleDownloadBackup}
-                    disabled={backupLoading}
-                    className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-sm text-xs uppercase tracking-wider disabled:opacity-50 cursor-pointer"
-                  >
-                    {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    Download Backup (.json)
-                  </button>
 
-                  <label className="flex-1 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 font-bold py-3.5 px-4 rounded-xl transition-all shadow-sm text-xs uppercase tracking-wider cursor-pointer text-center select-none">
-                    <Upload className="w-4 h-4" />
-                    Upload & Restore
-                    <input
-                      type="file"
-                      accept=".json,application/json"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                  </label>
+                {subLoading ? (
+                  <div className="py-8 text-center text-slate-400 flex flex-col items-center justify-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-blue-500 mb-2" />
+                    <p className="text-xs font-semibold">Loading License history timeline...</p>
+                  </div>
+                ) : timelineEvents.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-sm font-semibold bg-slate-50/60 rounded-2xl border border-dashed border-slate-200">
+                    No timeline log logs found. Free trial active. 📦
+                  </div>
+                ) : (
+                  <div className="relative border-l border-slate-100 ml-4 pl-6 space-y-6">
+                    {timelineEvents.map((event, index) => {
+                      const isSuspended = event.type === "suspended";
+                      const isTrial = event.type === "trial";
+                      
+                      return (
+                        <div key={index} className="relative group">
+                          
+                          {/* Timeline Bullet */}
+                          <div className={`absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full border-4 border-white group-hover:scale-115 transition-transform shadow-md ${
+                            isSuspended 
+                              ? "bg-rose-500 shadow-rose-100" 
+                              : isTrial 
+                                ? "bg-amber-500 shadow-amber-100" 
+                                : "bg-blue-500 shadow-blue-100"
+                          }`} />
+                          
+                          <div className={`border rounded-2xl p-4 transition-colors shadow-[0_2px_10px_-4px_rgba(0,0,0,0.01)] ${
+                            isSuspended 
+                              ? "bg-rose-50/30 border-rose-100 hover:border-rose-200" 
+                              : isTrial
+                                ? "bg-amber-50/30 border-amber-100 hover:border-amber-200"
+                                : "bg-slate-50/50 border-slate-100 hover:border-slate-200"
+                          }`}>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                              <div>
+                                <p className={`font-extrabold text-sm ${isSuspended ? "text-rose-800" : "text-slate-800"}`}>
+                                  {event.title}
+                                </p>
+                                <p className="text-xs font-semibold text-slate-500 mt-1">{event.description}</p>
+                                
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-2 flex items-center gap-1">
+                                  <CalendarDays className="w-3.5 h-3.5" />
+                                  Duration: {new Date(event.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                  {" - "}
+                                  {new Date(event.endDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                </p>
+                              </div>
+                              
+                              <div className="sm:text-right mt-1 sm:mt-0">
+                                <span className={`inline-block border px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase ${
+                                  isSuspended 
+                                    ? "bg-rose-100 border-rose-200 text-rose-700" 
+                                    : isTrial 
+                                      ? "bg-amber-100 border-amber-200 text-amber-700" 
+                                      : "bg-blue-50 border-blue-100 text-blue-600"
+                                }`}>
+                                  {isSuspended 
+                                    ? "Suspended Period" 
+                                    : isTrial 
+                                      ? "7-Day Trial" 
+                                      : `+${event.addedMonths} Months`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* DEVICES & ACTIVE SESSIONS TAB */}
+          {activeTab === "devices" && (
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-150 shadow-sm space-y-6 animate-in fade-in duration-300">
+              <div>
+                <h3 className="text-base font-bold text-slate-800 flex items-center">
+                  <Laptop className="w-5 h-5 text-blue-500 mr-2.5 shrink-0" />
+                  Active Sessions & Device Logs
+                </h3>
+                <p className="text-slate-500 text-xs font-semibold mt-1">
+                  Review and manage the devices currently logged into your pharmacy dashboard. Revoke access to instantly log out any unrecognized devices.
+                </p>
+              </div>
+
+              {activeSessions.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 text-sm font-semibold bg-slate-50/60 rounded-2xl border border-dashed border-slate-200">
+                  No active session logs found. Please log in again. 📦
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {activeSessions.map((sess) => {
+                    const isMobile = sess.deviceType === "Mobile";
+                    const isTablet = sess.deviceType === "Tablet";
+                    
+                    return (
+                      <div 
+                        key={sess.deviceSessionId} 
+                        className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                      >
+                        <div className="flex items-start gap-3.5">
+                          <div className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center shrink-0 shadow-sm text-slate-600">
+                            {isMobile ? <Smartphone className="w-5 h-5" /> : isTablet ? <Tablet className="w-5 h-5" /> : <Laptop className="w-5 h-5" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-slate-800 text-sm">{sess.os} • {sess.browser}</span>
+                              {sess.isOnline ? (
+                                <span className="bg-emerald-50 text-emerald-600 border border-emerald-150 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                                  Online
+                                </span>
+                              ) : (
+                                <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider">
+                                  Offline
+                                </span>
+                              )}
+                            </div>
+                            
+                            <p className="text-[10px] text-slate-500 font-semibold mt-1">
+                              IP Address: <span className="font-mono">{sess.ipAddress}</span>
+                            </p>
+                            <p className="text-[10px] text-slate-400 font-semibold">
+                              Last Activity: {new Date(sess.lastActive).toLocaleDateString("en-IN", {
+                                day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center">
+                          <button
+                            onClick={() => handleRevokeSession(sess.deviceSessionId)}
+                            disabled={revokingSessionId === sess.deviceSessionId}
+                            className="w-full sm:w-auto bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-600 hover:text-rose-600 font-bold text-xs uppercase px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
+                          >
+                            {revokingSessionId === sess.deviceSessionId ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Lock className="w-3.5 h-3.5" />
+                            )}
+                            Revoke Access
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DATABASE STORAGE PURGE TAB */}
+          {activeTab === "databasePurge" && session?.user?.id !== "000000000000000000000000" && (
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-150 shadow-sm space-y-6 animate-in fade-in duration-300">
+              <div>
+                <h3 className="text-base font-bold text-slate-800 flex items-center">
+                  <Trash2 className="w-5 h-5 text-rose-500 mr-2.5 shrink-0" />
+                  Database Storage Purge Tool
+                </h3>
+                <p className="text-slate-500 text-xs font-semibold mt-1">
+                  Optimize your database performance by permanently clearing out old, useless historical records. This operation cannot be undone.
+                </p>
+              </div>
+
+              {/* Configurable Purge Form */}
+              <div className="bg-rose-50 border border-rose-100 rounded-3xl p-5 md:p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-600 shrink-0">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-rose-900 leading-tight">Advanced Data Purge Configuration</h4>
+                    <p className="text-[10px] text-rose-600 font-bold uppercase tracking-wider mt-0.5">Customize what useless data to wipe</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-2">
+                  {/* Category options */}
+                  <div className="space-y-3">
+                    <label className="block text-[11px] font-extrabold uppercase text-slate-400 tracking-wider">Select Categories to Purge</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <label className="flex items-center space-x-3 p-3 bg-white border border-rose-100 rounded-xl hover:bg-rose-50/50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={cleanupSoldOut}
+                          onChange={(e) => setCleanupSoldOut(e.target.checked)}
+                          className="w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 cursor-pointer"
+                        />
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-slate-700">Sold-out Stock</p>
+                          <p className="text-[9px] text-slate-400 font-semibold mt-0.5">Quantity is 0</p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center space-x-3 p-3 bg-white border border-rose-100 rounded-xl hover:bg-rose-50/50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={cleanupExpired}
+                          onChange={(e) => setCleanupExpired(e.target.checked)}
+                          className="w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 cursor-pointer"
+                        />
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-slate-700">Expired Batches</p>
+                          <p className="text-[9px] text-slate-400 font-semibold mt-0.5">Expiry date passed</p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center space-x-3 p-3 bg-white border border-rose-100 rounded-xl hover:bg-rose-50/50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={cleanupSales}
+                          onChange={(e) => setCleanupSales(e.target.checked)}
+                          className="w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 cursor-pointer"
+                        />
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-slate-700">Sales Invoices</p>
+                          <p className="text-[9px] text-slate-400 font-semibold mt-0.5">Transaction billing history</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Age threshold */}
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-extrabold uppercase text-slate-400 tracking-wider">Select Age Threshold</label>
+                    <select
+                      value={cleanupMonths}
+                      onChange={(e) => setCleanupMonths(parseInt(e.target.value))}
+                      className="w-full bg-white border border-rose-100 text-slate-700 rounded-xl px-3.5 py-3 focus:outline-none focus:border-rose-400 transition-all font-semibold text-sm cursor-pointer"
+                    >
+                      <option value={3}>Older than 3 Months</option>
+                      <option value={6}>Older than 6 Months (Recommended)</option>
+                      <option value={12}>Older than 12 Months (1 Year)</option>
+                      <option value={24}>Older than 24 Months (2 Years)</option>
+                    </select>
+                  </div>
+
+                  <p className="text-xs text-rose-700/80 leading-relaxed font-semibold bg-white p-3.5 rounded-xl border border-rose-100/50">
+                    ℹ️ Current settings will delete records older than <strong className="text-rose-900">{cleanupMonths} months</strong>. Active stock levels, recent transactions, and non-expired batches will remain fully unaffected.
+                  </p>
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      disabled={!cleanupSoldOut && !cleanupExpired && !cleanupSales}
+                      onClick={() => {
+                        setCleanupConfirmText("");
+                        setShowCleanupModal(true);
+                      }}
+                      className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase px-5 py-3.5 rounded-xl transition-all shadow-md shadow-rose-200/50 flex items-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="w-4 h-4" /> Purge Useless Old Data
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {activeTab === "superSettings" && (
+          {/* CONFIGURATIONS & PREFERENCES TAB */}
+          {activeTab === "configurations" && (
             <div className="space-y-6 animate-in fade-in duration-300">
+              
               {/* Purchase Entry Configuration */}
-              <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm space-y-4">
+              <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-150 shadow-sm space-y-4">
                 <h3 className="text-base font-bold text-slate-800 flex items-center">
                   <PackageOpen className="w-5 h-5 text-blue-500 mr-2.5 shrink-0" />
                   Smart Purchase Form Fields
                 </h3>
-                <p className="text-xs text-slate-400 font-medium">Select which fields should be visible in your Purchase Entry Form. Hidden fields will automatically use pre-configured defaults behind the scenes.</p>
+                <p className="text-xs text-slate-450 font-semibold">Select which fields should be visible in your Purchase Entry Form. Hidden fields will automatically use pre-configured defaults behind the scenes.</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
                   {Object.keys(purchaseFormConfig).map((field) => (
                     <label key={field} className="flex items-center space-x-2.5 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100/50 cursor-pointer transition-colors">
@@ -739,12 +1263,12 @@ export default function Profile() {
               </div>
 
               {/* Barcode Customization */}
-              <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm space-y-4">
+              <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-150 shadow-sm space-y-4">
                 <h3 className="text-base font-bold text-slate-800 flex items-center">
                   <ScanBarcode className="w-5 h-5 text-blue-500 mr-2.5 shrink-0" />
                   Barcode Printed Layout Customization
                 </h3>
-                <p className="text-xs text-slate-400 font-medium">Choose the specific metadata fields that should be printed on your thermal label stickers (50mm x 25mm).</p>
+                <p className="text-xs text-slate-450 font-semibold">Choose the specific metadata fields that should be printed on your thermal label stickers (50mm x 25mm).</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
                   {Object.keys(barcodeConfig).map((field) => (
                     <label key={field} className="flex items-center space-x-2.5 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100/50 cursor-pointer transition-colors">
@@ -766,12 +1290,12 @@ export default function Profile() {
               </div>
 
               {/* Report Export Customization */}
-              <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-sm space-y-4">
+              <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-150 shadow-sm space-y-4">
                 <h3 className="text-base font-bold text-slate-800 flex items-center">
                   <FileText className="w-5 h-5 text-blue-500 mr-2.5 shrink-0" />
                   Reports PDF Columns Export
                 </h3>
-                <p className="text-xs text-slate-400 font-medium">Select the tables columns to export when downloading Expiry Alerts or Low Stock Alerts PDFs.</p>
+                <p className="text-xs text-slate-450 font-semibold">Select the tables columns to export when downloading Expiry Alerts or Low Stock Alerts PDFs.</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
                   {Object.keys(reportsPdfConfig).map((field) => (
                     <label key={field} className="flex items-center space-x-2.5 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100/50 cursor-pointer transition-colors">
@@ -792,137 +1316,41 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Database Cleanup Tool */}
-              <div className="bg-rose-50 border border-rose-100 rounded-3xl p-6 md:p-8 space-y-4 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-600 shrink-0">
-                    <ShieldAlert className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-rose-800">Database Storage Purge Tool</h3>
-                    <p className="text-[10px] text-rose-500 font-bold uppercase tracking-wider mt-0.5">Clear 6-month-old useless records</p>
-                  </div>
-                </div>
-                <p className="text-xs text-rose-700/80 leading-relaxed font-semibold">
-                  This tool safely wipes fully sold-out medicines (quantity 0) older than 6 months, batch products expired for over 6 months, and sales invoice history logs older than 6 months. Active stocks and transactions within the last 6 months will remain fully intact.
-                </p>
-                <div className="pt-2">
-                  <button
-                    onClick={() => {
-                      setCleanupConfirmText("");
-                      setShowCleanupModal(true);
-                    }}
-                    className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase px-5 py-3 rounded-xl transition-all shadow-md shadow-rose-200/50 flex items-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-                  >
-                    <Trash2 className="w-4 h-4" /> Purge Database Storage
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+              {/* Backup & Recovery Center */}
+              {session?.user?.id !== "000000000000000000000000" && (
+                <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-150 shadow-sm space-y-4">
+                  <h3 className="text-base font-bold text-slate-800 flex items-center">
+                    <Database className="w-5 h-5 text-blue-500 mr-2.5 shrink-0" />
+                    Data Backup & Recovery Utilities
+                  </h3>
+                  <p className="text-slate-500 text-xs font-semibold mb-6">
+                    Save a secure backup of your database as a local JSON file. In case of any issues, you can upload this backup file to restore your inventory and bills data.
+                  </p>
 
-          {activeTab === "subHistory" && session?.user?.role !== "superadmin" && (
-            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-150">
-                    {subInfo.icon}
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active ERP License</p>
-                    <h3 className="text-base md:text-lg font-bold text-slate-800">{subInfo.planName}</h3>
-                  </div>
-                </div>
-                <span className={`text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border ${subInfo.badgeColor}`}>
-                  {subInfo.statusText}
-                </span>
-              </div>
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button
+                      onClick={handleDownloadBackup}
+                      disabled={backupLoading}
+                      className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-sm text-xs uppercase tracking-wider disabled:opacity-50 cursor-pointer"
+                    >
+                      {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                      Download Backup (.json)
+                    </button>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-4 rounded-2xl">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Days Remaining</p>
-                  <p className="text-xl md:text-2xl font-black text-slate-700 mt-1">{subInfo.daysLeft}</p>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-2xl">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">License Expiration</p>
-                  <p className="text-sm md:text-base font-extrabold text-slate-700 mt-2">{subInfo.expiryText}</p>
-                </div>
-              </div>
-
-              {/* Extended Extension Meter */}
-              {subInfo.percentLeft > 0 && (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-xs font-bold">
-                    <span className="text-slate-400">LICENSE DURATION INDEX</span>
-                    <span className="text-blue-600">{subInfo.percentLeft}% Left</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-blue-600 h-full rounded-full transition-all duration-500" style={{ width: `${subInfo.percentLeft}%` }} />
+                    <label className="flex-1 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 font-bold py-3.5 px-4 rounded-xl transition-all shadow-sm text-xs uppercase tracking-wider cursor-pointer text-center select-none">
+                      <Upload className="w-4 h-4" />
+                      Upload & Restore
+                      <input
+                        type="file"
+                        accept=".json,application/json"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
                 </div>
               )}
 
-              {/* Renewal extension history */}
-              <div className="pt-4 border-t border-slate-50 space-y-4">
-                <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
-                  <History className="w-4 h-4 text-slate-400" /> Extensions Log History
-                </h4>
-
-                {subLoading ? (
-                  <div className="py-8 text-center text-slate-400 flex flex-col items-center justify-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-blue-500 mb-2" />
-                    <p className="text-xs font-semibold">Loading Extension logs...</p>
-                  </div>
-                ) : !subDetails.subscriptionHistory || subDetails.subscriptionHistory.length === 0 ? (
-                  <div className="py-12 text-center text-slate-400 text-sm font-semibold bg-slate-50/60 rounded-2xl border border-dashed border-slate-200">
-                    No billing history found. Standard trial active. 📦
-                  </div>
-                ) : (
-                  <div className="relative border-l border-slate-100 ml-4 pl-6 space-y-6">
-                    {subDetails.subscriptionHistory.slice().reverse().map((item, index) => {
-                      let additionLabel = `${item.addedMonths} Month extension`;
-                      if (item.addedMonths === 1) additionLabel = "Monthly Subscription Added";
-                      else if (item.addedMonths === 12) additionLabel = "Annual Subscription Renewal";
-                      else if (item.addedMonths === 3) additionLabel = "Quarterly Subscription Renewal";
-                      else if (item.addedMonths === 6) additionLabel = "Half-Yearly Renewal";
-
-                      return (
-                        <div key={index} className="relative group">
-                          
-                          {/* Timeline Bullet */}
-                          <div className="absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full bg-blue-500 border-4 border-white group-hover:scale-110 transition-transform shadow-md" />
-                          
-                          <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 hover:border-slate-200 transition-colors shadow-[0_2px_10px_-4px_rgba(0,0,0,0.01)]">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                              <div>
-                                <p className="font-extrabold text-slate-800 text-sm">{additionLabel}</p>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1">
-                                  <CalendarClock className="w-3.5 h-3.5" /> Added On: {new Date(item.addedAt).toLocaleDateString("en-IN", {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit"
-                                  })}
-                                </p>
-                              </div>
-                              <div className="sm:text-right">
-                                <span className="inline-block bg-blue-50 border border-blue-100 text-blue-600 px-3 py-1 rounded-xl text-[10px] font-extrabold uppercase">
-                                  +{item.addedMonths} Months
-                                </span>
-                                <p className="text-[10px] text-slate-500 font-semibold mt-1">
-                                  Expired date extended to <strong className="text-slate-700">{new Date(item.newExpirationDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</strong>
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
@@ -1043,6 +1471,7 @@ export default function Profile() {
           </div>
         </div>
       )}
+
       {/* Database Cleanup Confirmation Modal */}
       {showCleanupModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -1050,7 +1479,7 @@ export default function Profile() {
             <div className="p-5 border-b border-rose-100 flex items-center justify-between bg-rose-50/50">
               <h2 className="text-base md:text-lg font-bold text-rose-800 flex items-center">
                 <ShieldAlert className="w-5 h-5 mr-2 text-rose-500" />
-                Purge Database Storage
+                Confirm Storage Data Purge
               </h2>
               <button 
                 onClick={() => { setShowCleanupModal(false); }}
@@ -1060,9 +1489,15 @@ export default function Profile() {
               </button>
             </div>
             
-            <form onSubmit={handleDatabaseCleanup} className="p-6 space-y-5">
-              <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold p-4 rounded-xl leading-relaxed">
-                ⚠️ DANGER: This will permanently purge all sold-out medicines, batch products expired for over 6 months, and sales transaction logs older than 6 months. This action cannot be undone!
+            <form onSubmit={handleCustomDatabaseCleanup} className="p-6 space-y-5">
+              <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold p-4 rounded-xl leading-relaxed space-y-1.5">
+                <p className="font-extrabold">⚠️ WARNING: You are purging database storage records older than {cleanupMonths} months:</p>
+                <ul className="list-disc list-inside space-y-1 pl-1 font-semibold text-rose-800">
+                  {cleanupSoldOut && <li>Sold-out medicines (quantity 0)</li>}
+                  {cleanupExpired && <li>Expired medicine batches</li>}
+                  {cleanupSales && <li>Historical transaction sales invoices</li>}
+                </ul>
+                <p className="text-[10px] mt-2 text-rose-600 font-bold uppercase tracking-wider">This action is irreversible!</p>
               </div>
 
               <div>
