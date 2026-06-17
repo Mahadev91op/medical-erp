@@ -8,7 +8,8 @@ const ActiveSessionSchema = new mongoose.Schema({
   os: { type: String, default: "Unknown OS" },
   browser: { type: String, default: "Unknown Browser" },
   deviceType: { type: String, default: "Desktop" },
-  lastActive: { type: Date, default: Date.now }
+  lastActive: { type: Date, default: Date.now },
+  status: { type: String, enum: ['active', 'revoked'], default: 'active' }
 }, { 
   timestamps: true,
   versionKey: false

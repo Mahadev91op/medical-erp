@@ -1,6 +1,6 @@
 "use client";
 import { useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 export default function SessionTracker() {
   const { data: session } = useSession();
@@ -16,11 +16,16 @@ export default function SessionTracker() {
 
     const sendHeartbeat = async () => {
       try {
-        await fetch("/api/user/session-heartbeat", {
+        const res = await fetch("/api/user/session-heartbeat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ deviceSessionId })
         });
+        const data = await res.json();
+        if (res.status === 401 || data.status === "revoked") {
+          await signOut({ redirect: false });
+          window.location.href = "/login?error=revoked";
+        }
       } catch (err) {
         console.error("Heartbeat error:", err);
       }

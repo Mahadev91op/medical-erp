@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
+import Distributor from "@/models/Distributor";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { verifyUser } from "@/lib/verifyUser";
@@ -23,11 +24,13 @@ export async function GET(req) {
 
     const { searchParams } = new URL(req.url);
     const distName = searchParams.get("name");
-    if (!distName) {
-      return NextResponse.json({ error: "Distributor name is required" }, { status: 400 });
-    }
-
+    
     await connectToDatabase();
+
+    if (!distName) {
+      const contacts = await Distributor.find({ userId }).lean();
+      return NextResponse.json({ success: true, contacts });
+    }
     
     let userObjectId = null;
     try {
@@ -163,6 +166,37 @@ export async function DELETE(req) {
       message: `Successfully deleted distributor '${distName}' and purged ${deleteResult.deletedCount} associated medicines.`,
       deletedCount: deleteResult.deletedCount
     });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = session.user.id;
+    const verification = await verifyUser(userId, session.user.role);
+    if (!verification.success) {
+      return NextResponse.json({ error: verification.error }, { status: 403 });
+    }
+
+    await connectToDatabase();
+    const { name, phone = "", address = "" } = await req.json();
+    if (!name) {
+      return NextResponse.json({ error: "Distributor name is required" }, { status: 400 });
+    }
+
+    const escName = name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const updated = await Distributor.findOneAndUpdate(
+      { userId, name: { $regex: new RegExp("^" + escName + "$", "i") } },
+      { name, phone, address, userId },
+      { upsert: true, new: true }
+    ).lean();
+
+    return NextResponse.json({ success: true, distributor: updated });
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

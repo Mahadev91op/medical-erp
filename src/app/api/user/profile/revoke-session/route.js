@@ -20,10 +20,13 @@ export async function POST(req) {
 
     await connectToDatabase();
 
-    // Delete the specific active session for the logged-in user
-    const result = await ActiveSession.deleteOne({ userId, deviceSessionId });
+    // Mark the specific active session for the logged-in user as revoked
+    const result = await ActiveSession.updateOne(
+      { userId, deviceSessionId },
+      { $set: { status: "revoked" } }
+    );
 
-    if (result.deletedCount === 0) {
+    if (result.matchedCount === 0) {
       return NextResponse.json({ success: false, error: "Session not found or already expired" }, { status: 404 });
     }
 

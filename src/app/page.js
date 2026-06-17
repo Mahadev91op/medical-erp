@@ -208,6 +208,100 @@ export default function Dashboard() {
     }
   };
 
+  const [shopInfo, setShopInfo] = useState(null);
+
+  useEffect(() => {
+    const fetchShopInfo = async () => {
+      try {
+        const res = await fetch("/api/user/profile");
+        const data = await res.json();
+        if (data.success) {
+          setShopInfo(data.user);
+        }
+      } catch (err) {
+        console.error("Failed to fetch shop info:", err);
+      }
+    };
+    fetchShopInfo();
+  }, []);
+
+  const handleShareMorningAlert = async () => {
+    const toastId = toast.loading("Preparing WhatsApp summary...");
+    try {
+      const res = await fetch("/api/reports?expiryMonths=3&lowStockThreshold=10");
+      const reportData = await res.json();
+      if (!reportData.success) {
+        toast.error("Failed to fetch inventory alert data");
+        return;
+      }
+      
+      const shopName = shopInfo?.shopName || "MedERP Pharmacy";
+      const shopPhone = shopInfo?.phoneNumber || "";
+      
+      let message = `*🌅 MORNING INVENTORY ALERT 🌅*\n`;
+      message += `-----------------------------\n`;
+      message += `*Store:* ${shopName}\n`;
+      if (shopPhone) message += `*Phone:* ${shopPhone}\n`;
+      message += `*Date:* ${new Date().toLocaleDateString('en-IN')}\n`;
+      message += `-----------------------------\n\n`;
+
+      const lowStockList = reportData.lowStock || [];
+      const expiringSoonList = reportData.expiringSoon || [];
+      const outOfStockList = reportData.outOfStock || [];
+
+      if (outOfStockList.length > 0) {
+        message += `*🚨 OUT OF STOCK ITEMS (${outOfStockList.length})*\n`;
+        outOfStockList.slice(0, 15).forEach((item) => {
+          message += `• ${item.name} (Batch: ${item.batch})\n`;
+        });
+        if (outOfStockList.length > 15) {
+          message += `  _...and ${outOfStockList.length - 15} more_\n`;
+        }
+        message += `\n`;
+      }
+
+      if (lowStockList.length > 0) {
+        message += `*⚠️ LOW STOCK ITEMS (${lowStockList.length})*\n`;
+        lowStockList.slice(0, 15).forEach((item) => {
+          message += `• ${item.name} (${item.quantity} units left)\n`;
+        });
+        if (lowStockList.length > 15) {
+          message += `  _...and ${lowStockList.length - 15} more_\n`;
+        }
+        message += `\n`;
+      }
+
+      if (expiringSoonList.length > 0) {
+        message += `*⏳ EXPIRING SOON (${expiringSoonList.length})*\n`;
+        expiringSoonList.slice(0, 15).forEach((item) => {
+          const expStr = new Date(item.expiryDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+          message += `• ${item.name} (Exp: ${expStr} | Qty: ${item.quantity})\n`;
+        });
+        if (expiringSoonList.length > 15) {
+          message += `  _...and ${expiringSoonList.length - 15} more_\n`;
+        }
+        message += `\n`;
+      }
+
+      message += `-----------------------------\n`;
+      message += `Please reorder low stock/out of stock items and clear expiring inventory. 🏥`;
+
+      const encodedText = encodeURIComponent(message);
+      let ownerPhone = shopInfo?.phoneNumber || "";
+      let cleanedPhone = ownerPhone.replace(/\D/g, "");
+      if (cleanedPhone.length === 10) {
+        cleanedPhone = "91" + cleanedPhone;
+      }
+
+      const waUrl = cleanedPhone ? `https://wa.me/${cleanedPhone}?text=${encodedText}` : `https://wa.me/?text=${encodedText}`;
+      
+      window.open(waUrl, "_blank");
+      toast.success("Alert summary generated!", { id: toastId });
+    } catch (err) {
+      toast.error("Error generating WhatsApp share", { id: toastId });
+    }
+  };
+
   if (status === "loading") {
     return (
       <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
@@ -249,6 +343,34 @@ export default function Dashboard() {
       <div className="mt-[-1rem] md:mt-[-2rem]">
         <DashboardHeader />
       </div>
+
+      {dashboardData && (
+        ((dashboardData.stats?.lowStockCount || 0) > 0 || 
+         (dashboardData.stats?.expiringCount || 0) > 0 ||
+         (dashboardData.stats?.outOfStockCount || 0) > 0 ||
+         (dashboardData.stats?.expiredCount || 0) > 0)
+      ) && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border border-amber-500/20 rounded-2xl md:rounded-3xl p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-500 text-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
+              <AlertTriangle className="w-5 h-5 md:w-6 md:h-6 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-800 text-sm md:text-base leading-tight">Morning Inventory Alert</h3>
+              <p className="text-slate-600 text-xs mt-1 font-semibold leading-relaxed">
+                You have {dashboardData.stats.outOfStockCount || 0} out-of-stock items, {dashboardData.stats.lowStockCount || 0} low stock items, and {dashboardData.stats.expiringCount || 0} expiring items today.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleShareMorningAlert}
+            className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs md:text-sm font-extrabold px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer w-full md:w-auto shrink-0 animate-pulse hover:animate-none"
+          >
+            <Smartphone className="w-4 h-4 text-emerald-200" />
+            Share Alerts to WhatsApp
+          </button>
+        </div>
+      )}
 
       <StatCards stats={dashboardData?.stats} />
 

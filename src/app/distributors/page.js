@@ -45,8 +45,33 @@ export default function Distributors() {
         console.error("Failed to load local contacts:", err);
       }
     }
-    fetchDistributorData();
+    
+    const loadData = async () => {
+      await fetchContactsFromDb();
+      await fetchDistributorData();
+    };
+    loadData();
   }, []);
+
+  const fetchContactsFromDb = async () => {
+    try {
+      const res = await fetch("/api/distributor");
+      const data = await res.json();
+      if (data.success && data.contacts) {
+        const contactMap = {};
+        data.contacts.forEach(c => {
+          contactMap[c.name] = { phone: c.phone, address: c.address };
+        });
+        setContacts(prev => {
+          const merged = { ...prev, ...contactMap };
+          localStorage.setItem("distributor_contacts", JSON.stringify(merged));
+          return merged;
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load DB contacts:", err);
+    }
+  };
 
   const startDelete = (distName) => {
     setDeletingDist(distName);
@@ -163,7 +188,7 @@ export default function Distributors() {
     });
   };
 
-  const saveContact = (distName) => {
+  const saveContact = async (distName) => {
     const updated = {
       ...contacts,
       [distName]: { ...editForm }
@@ -171,7 +196,22 @@ export default function Distributors() {
     setContacts(updated);
     localStorage.setItem("distributor_contacts", JSON.stringify(updated));
     setEditingId(null);
-    toast.success("Distributor contacts updated locally!");
+    
+    try {
+      const res = await fetch("/api/distributor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: distName, phone: editForm.phone, address: editForm.address })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Distributor contacts saved to database successfully!");
+      } else {
+        toast.error("Database sync failed!");
+      }
+    } catch (err) {
+      toast.error("Server error syncing contacts!");
+    }
   };
 
   const filteredDistributors = distributors.filter(d => 

@@ -44,6 +44,11 @@ export async function POST(req) {
 
     await connectToDatabase();
 
+    const existingSession = await ActiveSession.findOne({ userId, deviceSessionId }).lean();
+    if (existingSession && existingSession.status === "revoked") {
+      return NextResponse.json({ success: false, status: "revoked", error: "Session has been revoked" }, { status: 401 });
+    }
+
     const userAgentRaw = req.headers.get("user-agent") || "";
     const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
     const { os, browser, deviceType } = parseUserAgent(userAgentRaw);
@@ -57,17 +62,19 @@ export async function POST(req) {
         os, 
         browser, 
         deviceType, 
-        lastActive: new Date() 
+        lastActive: new Date(),
+        status: "active" // Reset status to active
       },
       { upsert: true, new: true }
     );
 
-    // Fetch all active sessions for this user (last active in past 5 mins)
+    // Fetch all active sessions for this user (last active in past 5 mins, active status only)
     const fiveMinutesAgo = new Date();
     fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
 
     const activeSessions = await ActiveSession.find({
       userId,
+      status: "active",
       lastActive: { $gte: fiveMinutesAgo }
     }).sort({ lastActive: -1 }).lean();
 

@@ -77,6 +77,15 @@ export default function Reports() {
   const [printingInvoice, setPrintingInvoice] = useState(null);
   const [shopInfo, setShopInfo] = useState(null);
   const [modalSearchQuery, setModalSearchQuery] = useState("");
+  const [localSearchQuery, setLocalSearchQuery] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setModalSearchQuery(localSearchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localSearchQuery]);
+
   const [whatsappModalInvoice, setWhatsappModalInvoice] = useState(null);
   const [whatsappModalPhone, setWhatsappModalPhone] = useState("");
 
@@ -1093,7 +1102,7 @@ Thank you! Get well soon. 🏥`;
                 Sales Report ({getSelectedDateLabel()})
               </h2>
               <button 
-                onClick={() => { setShowSoldItemsModal(false); setModalSearchQuery(""); }}
+                onClick={() => { setShowSoldItemsModal(false); setModalSearchQuery(""); setLocalSearchQuery(""); }}
                 className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
               >
                 <X className="w-4 h-4 md:w-5 md:h-5" />
@@ -1103,13 +1112,13 @@ Thank you! Get well soon. 🏥`;
             {/* Tab Selector */}
             <div className="flex border-b border-slate-100 px-4 md:px-6 bg-slate-50/50">
               <button
-                onClick={() => { setActiveReportTab("items"); setModalSearchQuery(""); }}
+                onClick={() => { setActiveReportTab("items"); setModalSearchQuery(""); setLocalSearchQuery(""); }}
                 className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "items" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
               >
                 Sold Medicines
               </button>
               <button
-                onClick={() => { setActiveReportTab("bills"); setModalSearchQuery(""); }}
+                onClick={() => { setActiveReportTab("bills"); setModalSearchQuery(""); setLocalSearchQuery(""); }}
                 className={`py-3 px-4 font-bold text-xs md:text-sm border-b-2 transition-all ${activeReportTab === "bills" ? "border-blue-500 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
               >
                 Receipt Invoices
@@ -1127,13 +1136,13 @@ Thank you! Get well soon. 🏥`;
                       ? "Search by medicine name or receipt number..." 
                       : "Search by invoice, medicine, customer name or phone..."
                   }
-                  value={modalSearchQuery}
-                  onChange={(e) => setModalSearchQuery(e.target.value)}
+                  value={localSearchQuery}
+                  onChange={(e) => setLocalSearchQuery(e.target.value)}
                   className="w-full pl-10 md:pl-12 pr-10 py-2.5 md:py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
                 />
-                {modalSearchQuery && (
+                {localSearchQuery && (
                   <button 
-                    onClick={() => setModalSearchQuery("")}
+                    onClick={() => { setModalSearchQuery(""); setLocalSearchQuery(""); }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
                     <X className="w-4 h-4" />

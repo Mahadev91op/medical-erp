@@ -6,6 +6,36 @@ import CameraScanner from "@/components/sell/CameraScanner";
 import toast, { Toaster } from "react-hot-toast";
 import { useReactToPrint } from "react-to-print";
 
+const invoiceCalculations = (invoice) => {
+  if (!invoice) return { totalTaxable: 0, totalDiscount: 0, totalCGST: 0, totalSGST: 0 };
+  let totalTaxable = 0;
+  let totalDiscount = 0;
+  let totalTax = 0;
+
+  invoice.items.forEach((item) => {
+    const qty = item.sellQuantity || item.quantity || 1;
+    const mrp = item.mrp || 0;
+    const discountPercent = item.discountPercent || 0;
+    const gstPercent = item.gstPercent || 0;
+
+    const originalTotal = mrp * qty;
+    const discountedTotal = originalTotal * (1 - discountPercent / 100);
+    const taxable = discountedTotal / (1 + gstPercent / 100);
+    const tax = discountedTotal - taxable;
+
+    totalTaxable += taxable;
+    totalDiscount += originalTotal - discountedTotal;
+    totalTax += tax;
+  });
+
+  return {
+    totalTaxable: Number(totalTaxable.toFixed(2)),
+    totalDiscount: Number(totalDiscount.toFixed(2)),
+    totalCGST: Number((totalTax / 2).toFixed(2)),
+    totalSGST: Number((totalTax / 2).toFixed(2))
+  };
+};
+
 export default function QuickSell() {
   const [barcode, setBarcode] = useState("");
   const [manualSearch, setManualSearch] = useState("");
@@ -24,6 +54,68 @@ export default function QuickSell() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [waPhone, setWaPhone] = useState("");
+
+  const [searchQtys, setSearchQtys] = useState({});
+  const [isPrescriptionRequired, setIsPrescriptionRequired] = useState(false);
+  const [doctorName, setDoctorName] = useState("");
+  const [doctorRegNo, setDoctorRegNo] = useState("");
+  const [patientAge, setPatientAge] = useState("");
+  const [patientGender, setPatientGender] = useState("Male");
+  
+  const [offlineQueue, setOfflineQueue] = useState([]);
+
+  useEffect(() => {
+    const queue = JSON.parse(localStorage.getItem("offline_sales_queue") || "[]");
+    setOfflineQueue(queue);
+  }, []);
+
+  // Background offline sales sync worker
+  useEffect(() => {
+    const syncOfflineQueue = async () => {
+      if (!navigator.onLine) return;
+      const queue = JSON.parse(localStorage.getItem("offline_sales_queue") || "[]");
+      if (queue.length === 0) return;
+
+      const toastId = toast.loading(`Syncing ${queue.length} offline bills to server...`);
+      let successCount = 0;
+      let remainingQueue = [...queue];
+
+      for (const sale of queue) {
+        try {
+          const res = await fetch("/api/sell", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sale)
+          });
+          const data = await res.json();
+          if (data.success) {
+            successCount++;
+            remainingQueue = remainingQueue.filter(item => item.id !== sale.id);
+            localStorage.setItem("offline_sales_queue", JSON.stringify(remainingQueue));
+            setOfflineQueue(remainingQueue);
+          } else {
+            console.error("Failed to sync offline sale:", data.error);
+          }
+        } catch (err) {
+          console.error("Sync error:", err);
+          break; // Stop syncing if network error happens again
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Synced ${successCount} offline bills to database successfully!`, { id: toastId });
+      } else {
+        toast.dismiss(toastId);
+      }
+    };
+
+    const interval = setInterval(syncOfflineQueue, 10000);
+    window.addEventListener("online", syncOfflineQueue);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("online", syncOfflineQueue);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchShopInfo = async () => {
@@ -97,7 +189,7 @@ export default function QuickSell() {
     setLoading(false);
   };
 
-  const addToCart = (med) => {
+  const addToCart = (med, customQty = 1) => {
     // Expired Medicine Block
     if (med.expiryDate && new Date(med.expiryDate) < new Date()) {
       toast.error(`Cannot sell ${med.name}! This medicine batch has EXPIRED (${formatExpiryDate(med.expiryDate)}).`);
@@ -112,18 +204,24 @@ export default function QuickSell() {
     const existingItem = cart.find(item => item._id === med._id);
     
     if (existingItem) {
-      if (existingItem.sellQuantity < med.quantity) {
-        setCart(cart.map(item => item._id === med._id ? { ...item, sellQuantity: item.sellQuantity + 1 } : item));
+      const newQty = existingItem.sellQuantity + customQty;
+      if (newQty <= med.quantity) {
+        setCart(cart.map(item => item._id === med._id ? { ...item, sellQuantity: newQty } : item));
         toast.success(`Quantity increased for ${med.name}`);
       } else {
-        toast.error("Cannot add more! Insufficient stock.");
+        toast.error(`Cannot add more! Insufficient stock. Available: ${med.quantity}`);
       }
     } else {
-      setCart([...cart, { ...med, sellQuantity: 1 }]);
-      toast.success(`${med.name} added to cart`);
+      if (customQty <= med.quantity) {
+        setCart([...cart, { ...med, sellQuantity: customQty, discountPercent: 0, gstPercent: 0 }]);
+        toast.success(`${med.name} added to cart`);
+      } else {
+        toast.error(`Cannot add! Insufficient stock. Available: ${med.quantity}`);
+      }
     }
     setSearchResults([]);
     setManualSearch("");
+    setSearchQtys({});
   };
 
   const removeItem = (id) => {
@@ -131,7 +229,7 @@ export default function QuickSell() {
     inputRef.current?.focus();
   };
 
-  const totalCartAmount = cart.reduce((total, item) => total + ((item.mrp || 0) * item.sellQuantity), 0);
+  const totalCartAmount = Number(cart.reduce((total, item) => total + ((item.mrp || 0) * item.sellQuantity * (1 - (item.discountPercent || 0) / 100)), 0).toFixed(2));
 
   const triggerWhatsAppSend = (invoice, phone) => {
     let cleanedPhone = phone.replace(/\D/g, "");
@@ -157,22 +255,42 @@ export default function QuickSell() {
     
     let itemsText = "";
     invoice.items.forEach((item) => {
-      itemsText += `• ${item.name} (${item.sellQuantity} x ₹${item.mrp}) = ₹${item.sellQuantity * item.mrp}\n`;
+      const discount = item.discountPercent || 0;
+      const gst = item.gstPercent || 0;
+      const netUnit = item.mrp * (1 - discount / 100);
+      itemsText += `• ${item.name} (${item.sellQuantity} x ₹${item.mrp})`;
+      if (discount > 0 || gst > 0) {
+        itemsText += `\n  _Disc: ${discount}% | GST: ${gst}%_`;
+      }
+      itemsText += ` = ₹${(item.sellQuantity * netUnit).toFixed(2)}\n`;
     });
     
-    const message = `*✨ INVOICE / BILL DETAILS ✨*
------------------------------
-*Store:* ${shopName}
-${shopPhone ? `*Phone:* ${shopPhone}\n` : ""}*Invoice No:* #${billNo}
-*Date:* ${dateStr}
-*Payment Method:* ${payMode}
-${invoice.customerName ? `*Customer Name:* ${invoice.customerName}\n` : ""}
------------------------------
-*Items:*
-${itemsText}-----------------------------
-*Grand Total: ₹${totalAmount}*
+    const cal = invoiceCalculations(invoice);
 
-Thank you! Get well soon. 🏥`;
+    let message = `*✨ INVOICE / BILL DETAILS ✨*\n`;
+    message += `-----------------------------\n`;
+    message += `*Store:* ${shopName}\n`;
+    if (shopPhone) message += `*Phone:* ${shopPhone}\n`;
+    message += `*Invoice No:* #${billNo}\n`;
+    message += `*Date:* ${dateStr}\n`;
+    message += `*Payment Method:* ${payMode}\n`;
+    if (invoice.customerName) message += `*Customer Name:* ${invoice.customerName}\n`;
+    if (invoice.prescriptionDetail?.doctorName) {
+      message += `*Doctor:* ${invoice.prescriptionDetail.doctorName}\n`;
+    }
+    message += `-----------------------------\n`;
+    message += `*Items:*\n`;
+    message += `${itemsText}`;
+    message += `-----------------------------\n`;
+    if (cal.totalDiscount > 0) message += `*Discount Saved:* ₹${cal.totalDiscount}\n`;
+    message += `*Taxable Value:* ₹${cal.totalTaxable}\n`;
+    if (cal.totalCGST > 0) {
+      message += `*CGST:* ₹${cal.totalCGST}\n`;
+      message += `*SGST:* ₹${cal.totalSGST}\n`;
+    }
+    message += `-----------------------------\n`;
+    message += `*Grand Total: ₹${totalAmount}*\n\n`;
+    message += `Thank you! Get well soon. 🏥`;
 
     const encodedText = encodeURIComponent(message);
     const waUrl = `https://wa.me/${cleanedPhone}?text=${encodedText}`;
@@ -183,10 +301,35 @@ Thank you! Get well soon. 🏥`;
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     setCheckoutLoading(true);
+    
+    const mappedItems = cart.map(item => ({
+      _id: item._id,
+      name: item.name,
+      sellQuantity: item.sellQuantity,
+      mrp: item.mrp,
+      batch: item.batch,
+      expiryDate: item.expiryDate,
+      discountPercent: item.discountPercent || 0,
+      gstPercent: item.gstPercent || 0
+    }));
+
+    const prescriptionDetail = isPrescriptionRequired ? {
+      doctorName,
+      doctorRegNo,
+      patientAge: parseInt(patientAge) || null,
+      patientGender
+    } : null;
+
     try {
       const res = await fetch("/api/sell", {
         method: "POST",
-        body: JSON.stringify({ cartItems: cart, paymentMethod, customerName, customerPhone }), 
+        body: JSON.stringify({ 
+          cartItems: mappedItems, 
+          paymentMethod, 
+          customerName, 
+          customerPhone,
+          prescriptionDetail
+        }), 
         headers: { "Content-Type": "application/json" }
       });
       
@@ -196,11 +339,12 @@ Thank you! Get well soon. 🏥`;
         const newInvoice = {
           billNumber: data.saleId ? data.saleId.toString().slice(-6).toUpperCase() : "N/A",
           date: new Date().toISOString(),
-          items: [...cart],
+          items: mappedItems,
           totalAmount: data.totalAmount,
           paymentMethod,
           customerName,
-          customerPhone
+          customerPhone,
+          prescriptionDetail
         };
         
         setCompletedInvoice(newInvoice);
@@ -215,11 +359,61 @@ Thank you! Get well soon. 🏥`;
         setPaymentMethod("Cash");
         setCustomerName("");
         setCustomerPhone("");
+        setIsPrescriptionRequired(false);
+        setDoctorName("");
+        setDoctorRegNo("");
+        setPatientAge("");
+        setPatientGender("Male");
       } else {
         toast.error(data.error || "Error during checkout.");
       }
     } catch (error) {
-      toast.error("Error during checkout.");
+      // Offline fallback
+      const totalAmount = cart.reduce((total, item) => {
+        const discount = item.discountPercent || 0;
+        return total + ((item.mrp || 0) * item.sellQuantity * (1 - discount / 100));
+      }, 0);
+
+      const newInvoice = {
+        billNumber: "OFF-" + Date.now().toString().slice(-6),
+        date: new Date().toISOString(),
+        items: mappedItems,
+        totalAmount: Number(totalAmount.toFixed(2)),
+        paymentMethod,
+        customerName,
+        customerPhone,
+        prescriptionDetail,
+        isOffline: true
+      };
+
+      const currentQueue = JSON.parse(localStorage.getItem("offline_sales_queue") || "[]");
+      const offlineSale = {
+        id: "off_" + Date.now() + "_" + Math.random().toString(36).substring(2),
+        cartItems: mappedItems,
+        paymentMethod,
+        customerName,
+        customerPhone,
+        prescriptionDetail
+      };
+      
+      const newQueue = [...currentQueue, offlineSale];
+      localStorage.setItem("offline_sales_queue", JSON.stringify(newQueue));
+      setOfflineQueue(newQueue);
+
+      toast.success("🔴 Device is Offline! Bill saved locally in offline queue.");
+      
+      setCompletedInvoice(newInvoice);
+      setWaPhone(customerPhone);
+      
+      setCart([]); 
+      setPaymentMethod("Cash");
+      setCustomerName("");
+      setCustomerPhone("");
+      setIsPrescriptionRequired(false);
+      setDoctorName("");
+      setDoctorRegNo("");
+      setPatientAge("");
+      setPatientGender("Male");
     }
     setCheckoutLoading(false);
     inputRef.current?.focus();
@@ -256,6 +450,17 @@ Thank you! Get well soon. 🏥`;
         </button>
       </div>
 
+      {/* Offline sync queue alert */}
+      {offlineQueue.length > 0 && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs md:text-sm font-bold px-4 py-3 rounded-xl flex items-center justify-between shadow-sm animate-pulse">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping shrink-0" />
+            Offline Queue: {offlineQueue.length} sales pending server sync
+          </span>
+          <span className="text-[10px] uppercase font-bold text-rose-500">Syncing automatically when online</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
         <div className="lg:col-span-2 space-y-4 md:space-y-6">
           
@@ -291,7 +496,7 @@ Thank you! Get well soon. 🏥`;
 
           {/* Search Results Display */}
           {searchResults.length > 0 && (
-            <div className="bg-white p-3 md:p-4 rounded-2xl md:rounded-3xl shadow-sm border border-blue-100">
+            <div className="bg-white p-3 md:p-4 rounded-2xl md:rounded-3xl shadow-sm border border-blue-100 animate-in fade-in duration-200">
               <h3 className="text-xs md:text-sm font-bold mb-2 md:mb-3 text-slate-700">Search Results:</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
                 {searchResults.map(med => (
@@ -306,15 +511,58 @@ Thank you! Get well soon. 🏥`;
                         {med.rackNumber && <span className="text-[8px] md:text-[9px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded shadow-sm">Rack: {med.rackNumber}</span>}
                       </div>
                     </div>
-                    {med.quantity <= 0 ? (
-                      <button disabled className="bg-rose-100 text-rose-700 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold shrink-0 opacity-80 cursor-not-allowed border border-rose-200">
-                        Sold Out
-                      </button>
-                    ) : (
-                      <button onClick={() => addToCart(med)} className="bg-blue-100 text-blue-700 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold hover:bg-blue-200 transition-colors shrink-0">
-                        + Add
-                      </button>
-                    )}
+                    
+                    <div className="flex items-center space-x-2 shrink-0">
+                      {med.quantity > 0 && (
+                        <div className="flex items-center border border-slate-200 rounded-lg p-0.5 bg-white shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const current = searchQtys[med._id] || 1;
+                              if (current > 1) {
+                                setSearchQtys({ ...searchQtys, [med._id]: current - 1 });
+                              }
+                            }}
+                            className="w-5 h-5 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded text-xs focus:outline-none"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            max={med.quantity}
+                            value={searchQtys[med._id] || 1}
+                            onChange={(e) => {
+                              const val = Math.max(1, Math.min(med.quantity, parseInt(e.target.value) || 1));
+                              setSearchQtys({ ...searchQtys, [med._id]: val });
+                            }}
+                            className="w-8 text-center font-bold text-slate-800 focus:outline-none text-[10px] bg-transparent border-none p-0"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const current = searchQtys[med._id] || 1;
+                              if (current < med.quantity) {
+                                setSearchQtys({ ...searchQtys, [med._id]: current + 1 });
+                              }
+                            }}
+                            className="w-5 h-5 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded text-xs focus:outline-none"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+
+                      {med.quantity <= 0 ? (
+                        <button disabled className="bg-rose-100 text-rose-700 px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold shrink-0 opacity-80 cursor-not-allowed border border-rose-200">
+                          Sold Out
+                        </button>
+                      ) : (
+                        <button onClick={() => addToCart(med, searchQtys[med._id] || 1)} className="bg-blue-600 text-white px-2.5 py-1.5 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold hover:bg-blue-700 transition-colors shrink-0">
+                          + Add
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -334,70 +582,123 @@ Thank you! Get well soon. 🏥`;
               </div>
             ) : (
               <div className="space-y-2 md:space-y-3">
-                {cart.map((item) => (
-                  <div key={item._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 bg-slate-50/50 rounded-xl md:rounded-2xl border border-slate-100 gap-3 sm:gap-0">
-                    <div className="flex-1 pr-0 sm:pr-4 min-w-0">
-                      <p className="font-bold text-slate-800 text-sm md:text-lg truncate">{item.name}</p>
-                      
-                      <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1 mb-1.5 md:mb-2">
-                        <span className="text-[9px] md:text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Batch: {item.batch}</span>
-                        <span className="text-[9px] md:text-[10px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Exp: {formatExpiryDate(item.expiryDate)}</span>
-                        {item.rackNumber && <span className="text-[9px] md:text-[10px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Rack: {item.rackNumber}</span>}
-                        {item.distributor && <span className="text-[9px] md:text-[10px] font-bold bg-amber-50 border border-amber-100 text-amber-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)] max-w-[100px] md:max-w-[120px] truncate">Dist: {item.distributor}</span>}
+                {cart.map((item) => {
+                  const discPercent = item.discountPercent || 0;
+                  const discountedPrice = (item.mrp || 0) * (1 - discPercent / 100);
+                  const itemTotal = discountedPrice * item.sellQuantity;
+                  
+                  return (
+                    <div key={item._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 bg-slate-50/50 rounded-xl md:rounded-2xl border border-slate-100 gap-3 sm:gap-0 animate-in fade-in duration-200">
+                      <div className="flex-1 pr-0 sm:pr-4 min-w-0">
+                        <p className="font-bold text-slate-800 text-sm md:text-lg truncate">{item.name}</p>
+                        
+                        <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1 mb-1.5 md:mb-2">
+                          <span className="text-[9px] md:text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Batch: {item.batch}</span>
+                          <span className="text-[9px] md:text-[10px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Exp: {formatExpiryDate(item.expiryDate)}</span>
+                          {item.rackNumber && <span className="text-[9px] md:text-[10px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Rack: {item.rackNumber}</span>}
+                          {item.distributor && <span className="text-[9px] md:text-[10px] font-bold bg-amber-50 border border-amber-100 text-amber-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)] max-w-[100px] md:max-w-[120px] truncate">Dist: {item.distributor}</span>}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 mt-2">
+                          {/* Unit price display */}
+                          <div className="text-xs md:text-sm text-blue-600 font-extrabold flex items-center">
+                            {discPercent > 0 ? (
+                              <>
+                                <span className="line-through text-slate-400 mr-1.5 font-semibold">₹{item.mrp || 0}</span>
+                                <span>₹{discountedPrice.toFixed(2)}</span>
+                              </>
+                            ) : (
+                              `₹${item.mrp || 0}`
+                            )} <span className="text-[9px] text-slate-400 font-bold ml-1">/ unit</span>
+                          </div>
+
+                          {/* GST Slab Selector */}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase">GST:</span>
+                            <select
+                              value={item.gstPercent || 0}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 0;
+                                setCart(cart.map(c => c._id === item._id ? { ...c, gstPercent: val } : c));
+                              }}
+                              className="bg-white border border-slate-200 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded focus:outline-none cursor-pointer h-6"
+                            >
+                              <option value={0}>0%</option>
+                              <option value={5}>5%</option>
+                              <option value={12}>12%</option>
+                              <option value={18}>18%</option>
+                            </select>
+                          </div>
+
+                          {/* Discount Input */}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase">Disc %:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              placeholder="0"
+                              value={item.discountPercent || ""}
+                              onChange={(e) => {
+                                const val = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+                                setCart(cart.map(c => c._id === item._id ? { ...c, discountPercent: val } : c));
+                              }}
+                              className="bg-white border border-slate-200 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded focus:outline-none w-10 text-center h-6"
+                            />
+                          </div>
+                        </div>
                       </div>
 
-                      <p className="text-xs md:text-sm text-blue-600 font-extrabold">₹{item.mrp || 0} / unit</p>
-                    </div>
-
-                    <div className="flex items-center justify-between sm:justify-end space-x-3 md:space-x-4 shrink-0 bg-white sm:bg-transparent p-2 sm:p-0 rounded-lg sm:rounded-none border sm:border-none border-slate-100">
-                      <div className="flex items-center space-x-1.5 bg-slate-50 sm:bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (item.sellQuantity > 1) {
-                              setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: c.sellQuantity - 1 } : c));
-                            } else {
-                              removeItem(item._id);
-                            }
-                          }}
-                          className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-lg transition-colors text-sm focus:outline-none"
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          min="1"
-                          max={item.quantity}
-                          value={item.sellQuantity}
-                          onChange={(e) => {
-                            const val = Math.max(1, Math.min(item.quantity, parseInt(e.target.value) || 1));
-                            setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: val } : c));
-                          }}
-                          className="w-10 text-center font-bold text-slate-800 focus:outline-none text-xs md:text-sm bg-transparent border-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (item.sellQuantity < item.quantity) {
-                              setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: c.sellQuantity + 1 } : c));
-                            } else {
-                              toast.error("Cannot add more! Insufficient stock.");
-                            }
-                          }}
-                          className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-lg transition-colors text-sm focus:outline-none"
-                        >
-                          +
+                      <div className="flex items-center justify-between sm:justify-end space-x-3 md:space-x-4 shrink-0 bg-white sm:bg-transparent p-2 sm:p-0 rounded-lg sm:rounded-none border sm:border-none border-slate-100">
+                        <div className="flex items-center space-x-1.5 bg-slate-50 sm:bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (item.sellQuantity > 1) {
+                                setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: c.sellQuantity - 1 } : c));
+                              } else {
+                                removeItem(item._id);
+                              }
+                            }}
+                            className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-lg transition-colors text-sm focus:outline-none"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            max={item.quantity}
+                            value={item.sellQuantity}
+                            onChange={(e) => {
+                              const val = Math.max(1, Math.min(item.quantity, parseInt(e.target.value) || 1));
+                              setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: val } : c));
+                            }}
+                            className="w-10 text-center font-bold text-slate-800 focus:outline-none text-xs md:text-sm bg-transparent border-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (item.sellQuantity < item.quantity) {
+                                setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: c.sellQuantity + 1 } : c));
+                              } else {
+                                toast.error("Cannot add more! Insufficient stock.");
+                              }
+                            }}
+                            className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-lg transition-colors text-sm focus:outline-none"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <div className="font-bold text-base md:text-lg text-slate-800 min-w-[50px] md:min-w-[60px] text-right">
+                          ₹{itemTotal.toFixed(2)}
+                        </div>
+                        <button onClick={() => removeItem(item._id)} className="p-1.5 md:p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg md:rounded-xl transition-colors">
+                          <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                         </button>
                       </div>
-                      <div className="font-bold text-base md:text-lg text-slate-800 min-w-[50px] md:min-w-[60px] text-right">
-                        ₹{(item.mrp || 0) * item.sellQuantity}
-                      </div>
-                      <button onClick={() => removeItem(item._id)} className="p-1.5 md:p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg md:rounded-xl transition-colors">
-                        <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -446,7 +747,7 @@ Thank you! Get well soon. 🏥`;
               />
             </div>
 
-            <div className="mb-2">
+            <div className="mb-4">
               <label className="text-[10px] md:text-xs text-slate-400 uppercase tracking-wider font-bold mb-1.5 md:mb-2 block">Customer Phone (WhatsApp)</label>
               <input
                 type="tel"
@@ -455,6 +756,68 @@ Thank you! Get well soon. 🏥`;
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 className="w-full bg-slate-700 border-none text-white rounded-xl px-3 md:px-4 py-2.5 md:py-3 focus:ring-2 focus:ring-blue-500 outline-none text-xs md:text-sm placeholder-slate-500 font-semibold"
               />
+            </div>
+
+            {/* Prescription Drug Section */}
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer mb-2">
+                <input 
+                  type="checkbox"
+                  checked={isPrescriptionRequired}
+                  onChange={(e) => setIsPrescriptionRequired(e.target.checked)}
+                  className="rounded bg-slate-750 border-none text-blue-500 focus:ring-0 w-4 h-4 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-slate-300 select-none">Schedule H / Rx Details</span>
+              </label>
+
+              {isPrescriptionRequired && (
+                <div className="space-y-2 bg-slate-700/50 p-3 rounded-xl border border-slate-750 animate-in fade-in duration-200">
+                  <div>
+                    <label className="text-[9px] text-slate-400 uppercase tracking-wider font-bold mb-1 block">Doctor Name</label>
+                    <input
+                      type="text"
+                      placeholder="Dr. John Doe"
+                      value={doctorName}
+                      onChange={(e) => setDoctorName(e.target.value)}
+                      className="w-full bg-slate-700 border-none text-white rounded-lg px-2.5 py-1.5 text-xs placeholder-slate-500 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-slate-400 uppercase tracking-wider font-bold mb-1 block">Doctor Reg No.</label>
+                    <input
+                      type="text"
+                      placeholder="Reg No"
+                      value={doctorRegNo}
+                      onChange={(e) => setDoctorRegNo(e.target.value)}
+                      className="w-full bg-slate-700 border-none text-white rounded-lg px-2.5 py-1.5 text-xs placeholder-slate-500 font-semibold"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[9px] text-slate-400 uppercase tracking-wider font-bold mb-1 block">Patient Age</label>
+                      <input
+                        type="number"
+                        placeholder="Age"
+                        value={patientAge}
+                        onChange={(e) => setPatientAge(e.target.value)}
+                        className="w-full bg-slate-700 border-none text-white rounded-lg px-2.5 py-1.5 text-xs placeholder-slate-500 font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-slate-400 uppercase tracking-wider font-bold mb-1 block">Gender</label>
+                      <select
+                        value={patientGender}
+                        onChange={(e) => setPatientGender(e.target.value)}
+                        className="w-full bg-slate-700 border-none text-white rounded-lg px-2 py-1.5 text-xs outline-none cursor-pointer font-semibold"
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -503,20 +866,71 @@ Thank you! Get well soon. 🏥`;
                   <p className="text-[10px]"><span className="text-slate-400">Pay Mode:</span> {completedInvoice.paymentMethod}</p>
                   {completedInvoice.customerName && <p className="text-[10px]"><span className="text-slate-400">Customer:</span> {completedInvoice.customerName}</p>}
                   {completedInvoice.customerPhone && <p className="text-[10px]"><span className="text-slate-400">Phone:</span> {completedInvoice.customerPhone}</p>}
+                  {completedInvoice.prescriptionDetail?.doctorName && (
+                    <div className="text-[9px] text-indigo-650 bg-indigo-50/50 p-1.5 rounded mt-1.5 border border-indigo-100/30">
+                      <p className="font-bold">Rx details (Schedule H)</p>
+                      <p>Dr: {completedInvoice.prescriptionDetail.doctorName} {completedInvoice.prescriptionDetail.doctorRegNo ? `(Reg: ${completedInvoice.prescriptionDetail.doctorRegNo})` : ""}</p>
+                      <p>Patient: {completedInvoice.prescriptionDetail.patientAge ? `${completedInvoice.prescriptionDetail.patientAge}y/` : ""}{completedInvoice.prescriptionDetail.patientGender}</p>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-2 pb-3 mb-3 border-b border-dashed border-slate-300">
-                  <div className="flex justify-between font-bold text-[9px] text-slate-400">
+                  <div className="flex justify-between font-bold text-[9px] text-slate-400 border-b border-dashed border-slate-200 pb-1">
                     <span>Item Name</span>
                     <span>Qty x Price</span>
                   </div>
-                  {completedInvoice.items.map((item, i) => (
-                    <div key={i} className="flex justify-between text-[10px] leading-tight">
-                      <span className="truncate max-w-[150px]">{item.name}</span>
-                      <span>{item.sellQuantity} x ₹{item.mrp}</span>
-                    </div>
-                  ))}
+                  {completedInvoice.items.map((item, i) => {
+                    const discount = item.discountPercent || 0;
+                    const gst = item.gstPercent || 0;
+                    const itemUnitTotal = item.mrp * (1 - discount / 100);
+                    return (
+                      <div key={i} className="text-[10px] leading-tight space-y-0.5">
+                        <div className="flex justify-between">
+                          <span className="truncate max-w-[150px] font-bold">{item.name}</span>
+                          <span>{item.sellQuantity} x ₹{item.mrp}</span>
+                        </div>
+                        {(discount > 0 || gst > 0) && (
+                          <div className="flex justify-between text-[8px] text-slate-400 font-semibold pl-2">
+                            <span>{discount > 0 ? `Disc: ${discount}%` : ""} {gst > 0 ? `GST: ${gst}%` : ""}</span>
+                            <span>Net Unit: ₹{itemUnitTotal.toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
+
+                {/* Split Tax / Discount Summary */}
+                {(() => {
+                  const cal = invoiceCalculations(completedInvoice);
+                  return (
+                    <div className="space-y-1 pb-3 mb-3 border-b border-dashed border-slate-300 text-[10px]">
+                      {cal.totalDiscount > 0 && (
+                        <div className="flex justify-between text-emerald-600 font-bold">
+                          <span>Discount Saved:</span>
+                          <span>-₹{cal.totalDiscount}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span>Taxable Value:</span>
+                        <span>₹{cal.totalTaxable}</span>
+                      </div>
+                      {cal.totalCGST > 0 && (
+                        <>
+                          <div className="flex justify-between">
+                            <span>CGST:</span>
+                            <span>₹{cal.totalCGST}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>SGST:</span>
+                            <span>₹{cal.totalSGST}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
                 
                 <div className="flex justify-between font-extrabold text-xs">
                   <span>Grand Total:</span>
@@ -677,19 +1091,70 @@ Thank you! Get well soon. 🏥`;
                 <p>Payment Mode: {completedInvoice.paymentMethod}</p>
                 {completedInvoice.customerName && <p>Customer: {completedInvoice.customerName}</p>}
                 {completedInvoice.customerPhone && <p>Phone: {completedInvoice.customerPhone}</p>}
+                {completedInvoice.prescriptionDetail?.doctorName && (
+                  <div style={{ fontSize: '8px', border: '0.5px solid black', padding: '2px', marginTop: '4px' }}>
+                    <p style={{ margin: 0, fontWeight: 'bold' }}>Rx details (Schedule H)</p>
+                    <p style={{ margin: 0 }}>Dr: {completedInvoice.prescriptionDetail.doctorName} {completedInvoice.prescriptionDetail.doctorRegNo ? `(Reg: ${completedInvoice.prescriptionDetail.doctorRegNo})` : ""}</p>
+                    <p style={{ margin: 0 }}>Patient: {completedInvoice.prescriptionDetail.patientAge ? `${completedInvoice.prescriptionDetail.patientAge}y/` : ""}{completedInvoice.prescriptionDetail.patientGender}</p>
+                  </div>
+                )}
               </div>
               <div className="items-table">
                 <div className="row head">
                   <span>Item Name</span>
                   <span>Qty x Price</span>
                 </div>
-                {completedInvoice.items.map((item, i) => (
-                  <div key={i} className="row">
-                    <span style={{ maxWidth: '32mm', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                    <span>{item.sellQuantity} x ₹{item.mrp}</span>
-                  </div>
-                ))}
+                {completedInvoice.items.map((item, i) => {
+                  const discount = item.discountPercent || 0;
+                  const gst = item.gstPercent || 0;
+                  const itemUnitTotal = item.mrp * (1 - discount / 100);
+                  return (
+                    <div key={i} style={{ marginBottom: '4px' }}>
+                      <div className="row" style={{ margin: 0 }}>
+                        <span style={{ maxWidth: '32mm', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
+                        <span>{item.sellQuantity} x ₹{item.mrp}</span>
+                      </div>
+                      {(discount > 0 || gst > 0) && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '7px', color: 'gray', paddingLeft: '4px' }}>
+                          <span>{discount > 0 ? `D:${discount}%` : ""} {gst > 0 ? `G:${gst}%` : ""}</span>
+                          <span>Net Unit: ₹{itemUnitTotal.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+
+              {(() => {
+                const cal = invoiceCalculations(completedInvoice);
+                return (
+                  <div style={{ borderBottom: '1px dashed black', paddingBottom: '4px', marginBottom: '6px', fontSize: '9px' }}>
+                    {cal.totalDiscount > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                        <span>Discount Saved:</span>
+                        <span>-₹{cal.totalDiscount}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Taxable Value:</span>
+                      <span>₹{cal.totalTaxable}</span>
+                    </div>
+                    {cal.totalCGST > 0 && (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>CGST:</span>
+                          <span>₹{cal.totalCGST}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>SGST:</span>
+                          <span>₹{cal.totalSGST}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div className="total-row">
                 <span>Grand Total:</span>
                 <span>₹{completedInvoice.totalAmount}</span>

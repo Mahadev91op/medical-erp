@@ -6,7 +6,12 @@ const SaleItemSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   mrp: { type: Number, required: true },
   purchasePrice: { type: Number, default: 0 },
-  total: { type: Number, required: true } 
+  total: { type: Number, required: true },
+  discountPercent: { type: Number, default: 0 },
+  gstPercent: { type: Number, default: 0 },
+  taxableAmount: { type: Number, default: 0 },
+  cgstAmount: { type: Number, default: 0 },
+  sgstAmount: { type: Number, default: 0 }
 }, { _id: false }); 
 
 const SaleSchema = new mongoose.Schema({
@@ -16,7 +21,15 @@ const SaleSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   customerName: { type: String, default: "" },
-  customerPhone: { type: String, default: "" }
+  customerPhone: { type: String, default: "" },
+  prescriptionDetail: {
+    doctorName: { type: String, default: "" },
+    doctorRegNo: { type: String, default: "" },
+    patientAge: { type: Number, default: null },
+    patientGender: { type: String, default: "" }
+  },
+  totalDiscount: { type: Number, default: 0 },
+  totalTax: { type: Number, default: 0 }
 }, { 
     timestamps: true, 
     versionKey: false 

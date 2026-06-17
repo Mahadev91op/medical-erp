@@ -23,7 +23,13 @@ export async function POST(req) {
     let calculatedTotal = 0;
     let newSaleId = null; 
 
-    const { cartItems, paymentMethod = "Cash", customerName = "", customerPhone = "" } = await req.json();
+    const { 
+      cartItems, 
+      paymentMethod = "Cash", 
+      customerName = "", 
+      customerPhone = "",
+      prescriptionDetail = { doctorName: "", doctorRegNo: "", patientAge: null, patientGender: "" }
+    } = await req.json();
 
     // Saari medicines 1 hi baar me le aao
     const itemIds = cartItems.map(item => item._id);
@@ -34,6 +40,8 @@ export async function POST(req) {
 
     const saleItems = [];
     const decrementedItems = []; // Track updates to rollback if something fails
+    let totalDiscount = 0;
+    let totalTax = 0;
 
     try {
       for (let item of cartItems) {
@@ -60,16 +68,36 @@ export async function POST(req) {
           quantity: item.sellQuantity
         });
 
-        const itemTotal = item.sellQuantity * (item.mrp || 0);
+        const discountPercent = Number(item.discountPercent || 0);
+        const gstPercent = Number(item.gstPercent || 0);
+        const itemMrp = item.mrp || 0;
+        
+        const discountedMrp = itemMrp * (1 - discountPercent / 100);
+        const itemTotal = item.sellQuantity * discountedMrp;
         calculatedTotal += itemTotal;
+
+        // Extract tax details
+        const taxableAmount = itemTotal / (1 + gstPercent / 100);
+        const itemTax = itemTotal - taxableAmount;
+        totalTax += itemTax;
+        
+        const cgstAmount = itemTax / 2;
+        const sgstAmount = itemTax / 2;
+        
+        totalDiscount += (itemMrp * item.sellQuantity) - itemTotal;
 
         saleItems.push({
           medicineId: med._id,
           name: med.name,
           quantity: item.sellQuantity,
-          mrp: item.mrp || 0,
+          mrp: itemMrp,
           purchasePrice: med.purchasePrice || 0,
-          total: itemTotal
+          total: itemTotal,
+          discountPercent,
+          gstPercent,
+          taxableAmount,
+          cgstAmount,
+          sgstAmount
         });
       }
 
@@ -80,7 +108,10 @@ export async function POST(req) {
         paymentMethod,
         userId,
         customerName,
-        customerPhone
+        customerPhone,
+        prescriptionDetail,
+        totalDiscount,
+        totalTax
       });
       
       await newSale.save();
