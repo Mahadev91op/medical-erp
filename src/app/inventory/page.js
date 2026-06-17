@@ -84,7 +84,14 @@ export default function Inventory() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Selections
   const [selectedMeds, setSelectedMeds] = useState([]); 
+  const [selectedMedsData, setSelectedMedsData] = useState({});
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [printCopies, setPrintCopies] = useState({}); 
   
@@ -108,10 +115,10 @@ export default function Inventory() {
     isActionActive.current = showBulkModal || !!editMed;
   }, [showBulkModal, editMed]);
 
-  // DEBOUNCED SERVER-SIDE SEARCH
+  // DEBOUNCED SERVER-SIDE SEARCH (resets page to 1)
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      fetchMedicines(false, searchTerm);
+      fetchMedicines(false, searchTerm, 1);
     }, 400);
 
     return () => clearTimeout(delayDebounceFn);
@@ -121,19 +128,23 @@ export default function Inventory() {
   useEffect(() => {
     const interval = setInterval(() => {
       if (!isActionActive.current) {
-        fetchMedicines(true, searchTerm);
+        fetchMedicines(true, searchTerm, currentPage);
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [searchTerm]);
+  }, [searchTerm, currentPage]);
 
-  const fetchMedicines = async (isSilent = false, search = "") => {
+  const fetchMedicines = async (isSilent = false, search = "", page = 1) => {
     if (!isSilent) setLoading(true);
     try {
-      const res = await fetch(`/api/medicine?limit=100&search=${encodeURIComponent(search)}`);
+      const limit = 50; // Performance friendly limit
+      const res = await fetch(`/api/medicine?limit=${limit}&page=${page}&search=${encodeURIComponent(search)}`);
       const data = await res.json();
       if (data.success) {
         setMedicines(data.medicines);
+        setCurrentPage(data.pagination.page || 1);
+        setTotalPages(data.pagination.totalPages || 1);
+        setTotalItems(data.pagination.total || 0);
         
         if (!isSilent) {
           const initialCopies = {};
@@ -157,7 +168,7 @@ export default function Inventory() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchMedicines(true, searchTerm);
+    await fetchMedicines(true, searchTerm, currentPage);
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
@@ -169,6 +180,7 @@ export default function Inventory() {
       setPrintQueue([]);
       setShowBulkModal(false);
       setSelectedMeds([]);
+      setSelectedMedsData({});
     },
     onPrintError: (error) => {
       console.error("Print Error:", error);
@@ -194,7 +206,12 @@ export default function Inventory() {
       if (res.ok) {
         toast.success("Medicine deleted successfully!");
         setSelectedMeds(prev => prev.filter(medId => medId !== id)); 
-        fetchMedicines(true, searchTerm);
+        setSelectedMedsData(prev => {
+          const copy = { ...prev };
+          delete copy[id];
+          return copy;
+        });
+        fetchMedicines(true, searchTerm, currentPage);
       }
     } catch (error) {
       toast.error("Error deleting medicine!");
@@ -210,7 +227,8 @@ export default function Inventory() {
       if (res.ok) {
         toast.success("Selected medicines deleted successfully!");
         setSelectedMeds([]);
-        fetchMedicines(true, searchTerm);
+        setSelectedMedsData({});
+        fetchMedicines(true, searchTerm, currentPage);
       } else {
         toast.error("Failed to delete selected medicines!");
       }
@@ -231,7 +249,7 @@ export default function Inventory() {
       if (res.ok) {
         toast.success("Stock updated successfully!");
         setEditMed(null);
-        fetchMedicines(true, searchTerm);
+        fetchMedicines(true, searchTerm, currentPage);
       }
     } catch (error) {
       toast.error("Update failed!");
@@ -239,21 +257,30 @@ export default function Inventory() {
     setIsUpdating(false);
   };
 
-  const toggleSelection = (id) => {
+  const toggleSelection = (med) => {
+    const id = med._id;
     if (selectedMeds.includes(id)) {
       setSelectedMeds(selectedMeds.filter(medId => medId !== id));
+      setSelectedMedsData(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
     } else {
       setSelectedMeds([...selectedMeds, id]);
+      setSelectedMedsData(prev => ({ ...prev, [id]: med }));
     }
   };
 
   const generateBulkQueue = () => {
     const queue = [];
     selectedMeds.forEach(id => {
-      const med = medicines.find(m => m._id === id);
-      const copies = printCopies[id] || 1;
-      for (let i = 0; i < copies; i++) {
-        queue.push(med);
+      const med = selectedMedsData[id];
+      if (med) {
+        const copies = printCopies[id] || 1;
+        for (let i = 0; i < copies; i++) {
+          queue.push(med);
+        }
       }
     });
     
@@ -350,7 +377,7 @@ export default function Inventory() {
                 <div className="p-4 md:p-6">
                   <div className="flex justify-between items-start gap-4 mb-3 md:mb-4">
                     <div className="flex items-start gap-2.5 md:gap-3 flex-1 min-w-0">
-                      <button onClick={() => toggleSelection(med._id)} className="mt-0.5 md:mt-1 focus:outline-none shrink-0">
+                      <button onClick={() => toggleSelection(med)} className="mt-0.5 md:mt-1 focus:outline-none shrink-0">
                         {isSelected ? 
                           <CheckSquare className="w-4 h-4 md:w-5 md:h-5 text-blue-500" /> : 
                           <Square className="w-4 h-4 md:w-5 md:h-5 text-slate-300 hover:text-blue-400 transition-colors" />
@@ -441,6 +468,63 @@ export default function Inventory() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Premium Pagination Controls */}
+      {medicines.length > 0 && totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white px-6 py-4 rounded-2xl border border-slate-100 shadow-sm mt-4 animate-in fade-in duration-200">
+          <p className="text-xs md:text-sm text-slate-500 font-medium">
+            Showing <span className="font-bold text-slate-800">{medicines.length}</span> of{" "}
+            <span className="font-bold text-slate-800">{totalItems.toLocaleString("en-IN")}</span> medicines
+          </p>
+          
+          <div className="flex items-center gap-1.5 select-none">
+            {/* First Page */}
+            <button
+              onClick={() => fetchMedicines(false, searchTerm, 1)}
+              disabled={currentPage === 1}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600 disabled:hover:border-slate-200 disabled:cursor-not-allowed shrink-0"
+              title="First Page"
+            >
+              First
+            </button>
+            
+            {/* Previous Page */}
+            <button
+              onClick={() => fetchMedicines(false, searchTerm, currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600 disabled:hover:border-slate-200 disabled:cursor-not-allowed shrink-0"
+              title="Previous Page"
+            >
+              Prev
+            </button>
+            
+            {/* Page indicator */}
+            <span className="px-3.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-black tracking-wide shrink-0">
+              Page {currentPage} of {totalPages}
+            </span>
+            
+            {/* Next Page */}
+            <button
+              onClick={() => fetchMedicines(false, searchTerm, currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600 disabled:hover:border-slate-200 disabled:cursor-not-allowed shrink-0"
+              title="Next Page"
+            >
+              Next
+            </button>
+            
+            {/* Last Page */}
+            <button
+              onClick={() => fetchMedicines(false, searchTerm, totalPages)}
+              disabled={currentPage === totalPages}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600 disabled:hover:border-slate-200 disabled:cursor-not-allowed shrink-0"
+              title="Last Page"
+            >
+              Last
+            </button>
+          </div>
         </div>
       )}
 
@@ -568,24 +652,38 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* 🔥 THE FINAL MASTER FIX: Text chipkane wala update */}
+      {/* 🔥 THE FINAL MASTER FIX: 2-column barcode print layout update */}
       <div style={{ position: 'absolute', top: '-10000px', left: '-10000px', overflow: 'hidden' }}>
         <div ref={printRef}>
           <style type="text/css" media="print">
             {`
               @page { 
-                size: 50mm 25mm; 
+                size: 102mm 25mm; 
                 margin: 0mm !important; 
               }
               body { 
                 margin: 0mm !important; 
                 padding: 0mm !important; 
               }
+              .labels-row {
+                width: 102mm !important;
+                height: 25mm !important;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                page-break-after: always;
+                page-break-inside: avoid;
+                box-sizing: border-box;
+                padding: 0;
+                background-color: white;
+                overflow: hidden;
+              }
+              .labels-row:last-child {
+                page-break-after: auto;
+              }
               .thermal-label {
                 width: 50mm !important; 
                 height: 25mm !important; 
-                page-break-after: always; 
-                page-break-inside: avoid;
                 display: flex;
                 flex-direction: column; 
                 justify-content: center; 
@@ -593,8 +691,7 @@ export default function Inventory() {
                 box-sizing: border-box; 
                 background-color: white;
                 overflow: hidden !important; 
-                /* 🔥 Scanner zone ke liye left/right 3mm padding rakhi hai */
-                padding: 1mm 3mm; 
+                padding: 1mm 2mm; 
               }
               
               .barcode-wrapper {
@@ -606,66 +703,72 @@ export default function Inventory() {
               
               .barcode-wrapper svg {
                 max-width: 100% !important; 
-                max-height: 20mm !important; 
+                max-height: 16mm !important; 
                 object-fit: contain;
               }
 
               .text-wrapper {
                 width: 100%;
                 text-align: center;
-                /* 🔥 Barcode ke theek niche text ko satane (chipkane) ke liye margin-top */
                 margin-top: 1px; 
-              }
-
-              .thermal-label:last-child { 
-                page-break-after: auto; 
               }
             `}
           </style>
 
-          {printQueue.map((item, index) => (
-            <div key={`${item._id}-${index}`} className="thermal-label">
-              
-              <div className="barcode-wrapper">
-                <Barcode 
-                  value={item.barcodeId} 
-                  format="CODE128"
-                  renderer="svg"     
-                  width={1.5}        
-                  height={32}        
-                  fontSize={8}      
-                  /* 🔥 margin=0 karne se Barcode ka internal white space khatam ho jayega jisse gap aa raha tha */
-                  margin={0}         
-                  textMargin={1}     
-                  background="#ffffff" 
-                  lineColor="#000000" 
-                  displayValue={barcodeConfig.showBarcodeText} 
-                />
-              </div>
+          {(() => {
+            const chunkedQueue = [];
+            for (let i = 0; i < printQueue.length; i += 2) {
+              chunkedQueue.push(printQueue.slice(i, i + 2));
+            }
+            
+            return chunkedQueue.map((pair, rowIndex) => (
+              <div key={`row-${rowIndex}`} className="labels-row">
+                {pair.map((item, index) => (
+                  <div key={`${item._id}-${rowIndex}-${index}`} className="thermal-label">
+                    <div className="barcode-wrapper">
+                      <Barcode 
+                        value={item.barcodeId} 
+                        format="CODE128"
+                        renderer="svg"     
+                        width={1.4}        
+                        height={28}        
+                        fontSize={8}      
+                        margin={0}         
+                        textMargin={1}     
+                        background="#ffffff" 
+                        lineColor="#000000" 
+                        displayValue={barcodeConfig.showBarcodeText} 
+                      />
+                    </div>
 
-              <div className="text-wrapper flex flex-col items-center leading-none mt-1 space-y-0.5 w-full text-center">
-                {barcodeConfig.showName && (
-                  <p className="text-[9px] font-black text-black uppercase tracking-tight leading-none truncate max-w-full" style={{ fontFamily: 'sans-serif', margin: 0 }}>
-                    {item.name}
-                  </p>
+                    <div className="text-wrapper flex flex-col items-center leading-none mt-1 space-y-0.5 w-full text-center">
+                      {barcodeConfig.showName && (
+                        <p className="text-[9px] font-black text-black uppercase tracking-tight leading-none truncate max-w-full" style={{ fontFamily: 'sans-serif', margin: 0 }}>
+                          {item.name}
+                        </p>
+                      )}
+                      <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none" style={{ fontFamily: 'sans-serif', margin: 0 }}>
+                        {[
+                          barcodeConfig.showBatch && `B: ${item.batch}`,
+                          barcodeConfig.showExpiry && `E: ${formatExpiryDate(item.expiryDate)}`
+                        ].filter(Boolean).join(" | ")}
+                      </p>
+                      <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none" style={{ fontFamily: 'sans-serif', margin: 0 }}>
+                        {[
+                          barcodeConfig.showPrice && `₹${item.mrp}`,
+                          barcodeConfig.showBillNo && `BILL: ${item.billNumber}`,
+                          barcodeConfig.showPurchaseDate && `PUR: ${formatDate(item.purchaseDate)}`
+                        ].filter(Boolean).join(" | ")}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {pair.length === 1 && (
+                  <div className="thermal-label empty-label" style={{ visibility: 'hidden' }} />
                 )}
-                <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none" style={{ fontFamily: 'sans-serif', margin: 0 }}>
-                  {[
-                    barcodeConfig.showBatch && `B: ${item.batch}`,
-                    barcodeConfig.showExpiry && `E: ${formatExpiryDate(item.expiryDate)}`
-                  ].filter(Boolean).join(" | ")}
-                </p>
-                <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none" style={{ fontFamily: 'sans-serif', margin: 0 }}>
-                  {[
-                    barcodeConfig.showPrice && `₹${item.mrp}`,
-                    barcodeConfig.showBillNo && `BILL: ${item.billNumber}`,
-                    barcodeConfig.showPurchaseDate && `PUR: ${formatDate(item.purchaseDate)}`
-                  ].filter(Boolean).join(" | ")}
-                </p>
               </div>
-
-            </div>
-          ))}
+            ));
+          })()}
         </div>
       </div>
     </div>

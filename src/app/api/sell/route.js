@@ -23,7 +23,7 @@ export async function POST(req) {
     let calculatedTotal = 0;
     let newSaleId = null; 
 
-    const { cartItems, paymentMethod = "Cash" } = await req.json();
+    const { cartItems, paymentMethod = "Cash", customerName = "", customerPhone = "" } = await req.json();
 
     // Saari medicines 1 hi baar me le aao
     const itemIds = cartItems.map(item => item._id);
@@ -78,7 +78,9 @@ export async function POST(req) {
         items: saleItems,
         totalAmount: calculatedTotal,
         paymentMethod,
-        userId
+        userId,
+        customerName,
+        customerPhone
       });
       
       await newSale.save();

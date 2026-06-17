@@ -71,7 +71,7 @@ const MobileNav = () => {
           );
         })}
 
-        {isMoreNeeded && (
+        {isMoreNeeded ? (
           <button 
             onClick={() => setShowMore(true)} 
             className="flex flex-col items-center space-y-1 flex-1 text-slate-400 focus:outline-none"
@@ -81,6 +81,21 @@ const MobileNav = () => {
             </div>
             <span className={`text-[10px] font-bold ${showMore ? 'text-slate-800' : 'text-slate-400'}`}>
               More
+            </span>
+          </button>
+        ) : (
+          <button 
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.href = "/login";
+            }}
+            className="flex flex-col items-center space-y-1 flex-1 text-slate-400 focus:outline-none font-sans"
+          >
+            <div className="p-2 rounded-xl text-rose-500 bg-rose-50/50">
+              <LogOut className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-bold text-rose-600">
+              Sign Out
             </span>
           </button>
         )}

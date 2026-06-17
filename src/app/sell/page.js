@@ -21,6 +21,10 @@ export default function QuickSell() {
   const [completedInvoice, setCompletedInvoice] = useState(null);
   const [shopInfo, setShopInfo] = useState(null);
 
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [waPhone, setWaPhone] = useState("");
+
   useEffect(() => {
     const fetchShopInfo = async () => {
       try {
@@ -129,28 +133,88 @@ export default function QuickSell() {
 
   const totalCartAmount = cart.reduce((total, item) => total + ((item.mrp || 0) * item.sellQuantity), 0);
 
+  const triggerWhatsAppSend = (invoice, phone) => {
+    let cleanedPhone = phone.replace(/\D/g, "");
+    if (cleanedPhone.length === 10) {
+      cleanedPhone = "91" + cleanedPhone;
+    }
+    
+    if (cleanedPhone.length < 10) {
+      toast.error("Invalid WhatsApp phone number!");
+      return;
+    }
+    
+    const shopName = shopInfo?.shopName || "MedERP Pharmacy";
+    const shopPhone = shopInfo?.phoneNumber || "";
+    const billNo = invoice.billNumber;
+    const dateStr = new Date(invoice.date).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    const payMode = invoice.paymentMethod;
+    const totalAmount = invoice.totalAmount;
+    
+    let itemsText = "";
+    invoice.items.forEach((item) => {
+      itemsText += `• ${item.name} (${item.sellQuantity} x ₹${item.mrp}) = ₹${item.sellQuantity * item.mrp}\n`;
+    });
+    
+    const message = `*✨ INVOICE / BILL DETAILS ✨*
+-----------------------------
+*Store:* ${shopName}
+${shopPhone ? `*Phone:* ${shopPhone}\n` : ""}*Invoice No:* #${billNo}
+*Date:* ${dateStr}
+*Payment Method:* ${payMode}
+${invoice.customerName ? `*Customer Name:* ${invoice.customerName}\n` : ""}
+-----------------------------
+*Items:*
+${itemsText}-----------------------------
+*Grand Total: ₹${totalAmount}*
+
+Thank you! Get well soon. 🏥`;
+
+    const encodedText = encodeURIComponent(message);
+    const waUrl = `https://wa.me/${cleanedPhone}?text=${encodedText}`;
+    
+    window.open(waUrl, "_blank");
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     setCheckoutLoading(true);
     try {
       const res = await fetch("/api/sell", {
         method: "POST",
-        body: JSON.stringify({ cartItems: cart, paymentMethod }), 
+        body: JSON.stringify({ cartItems: cart, paymentMethod, customerName, customerPhone }), 
         headers: { "Content-Type": "application/json" }
       });
       
       const data = await res.json();
       if (data.success) {
         toast.success(`✅ Sale Complete! Bill: ₹${data.totalAmount}`);
-        setCompletedInvoice({
+        const newInvoice = {
           billNumber: data.saleId ? data.saleId.toString().slice(-6).toUpperCase() : "N/A",
           date: new Date().toISOString(),
           items: [...cart],
           totalAmount: data.totalAmount,
-          paymentMethod
-        });
+          paymentMethod,
+          customerName,
+          customerPhone
+        };
+        
+        setCompletedInvoice(newInvoice);
+        setWaPhone(customerPhone);
+        
+        // Auto WhatsApp send if phone number entered
+        if (customerPhone.trim()) {
+          triggerWhatsAppSend(newInvoice, customerPhone);
+        }
+        
         setCart([]); 
         setPaymentMethod("Cash");
+        setCustomerName("");
+        setCustomerPhone("");
       } else {
         toast.error(data.error || "Error during checkout.");
       }
@@ -286,8 +350,44 @@ export default function QuickSell() {
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end space-x-3 md:space-x-4 shrink-0 bg-white sm:bg-transparent p-2 sm:p-0 rounded-lg sm:rounded-none border sm:border-none border-slate-100">
-                      <div className="bg-slate-50 sm:bg-white border border-slate-200 px-3 py-1 md:px-4 md:py-1.5 rounded-lg md:rounded-xl font-bold text-slate-700 shadow-sm text-xs md:text-base">
-                        Qty: {item.sellQuantity}
+                      <div className="flex items-center space-x-1.5 bg-slate-50 sm:bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (item.sellQuantity > 1) {
+                              setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: c.sellQuantity - 1 } : c));
+                            } else {
+                              removeItem(item._id);
+                            }
+                          }}
+                          className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-lg transition-colors text-sm focus:outline-none"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          max={item.quantity}
+                          value={item.sellQuantity}
+                          onChange={(e) => {
+                            const val = Math.max(1, Math.min(item.quantity, parseInt(e.target.value) || 1));
+                            setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: val } : c));
+                          }}
+                          className="w-10 text-center font-bold text-slate-800 focus:outline-none text-xs md:text-sm bg-transparent border-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (item.sellQuantity < item.quantity) {
+                              setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: c.sellQuantity + 1 } : c));
+                            } else {
+                              toast.error("Cannot add more! Insufficient stock.");
+                            }
+                          }}
+                          className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-lg transition-colors text-sm focus:outline-none"
+                        >
+                          +
+                        </button>
                       </div>
                       <div className="font-bold text-base md:text-lg text-slate-800 min-w-[50px] md:min-w-[60px] text-right">
                         ₹{(item.mrp || 0) * item.sellQuantity}
@@ -304,7 +404,7 @@ export default function QuickSell() {
         </div>
 
         {/* Checkout Sidebar */}
-        <div className="bg-slate-800 p-5 md:p-8 rounded-[24px] md:rounded-3xl shadow-lg flex flex-col justify-between text-white lg:h-[450px] lg:sticky lg:top-24">
+        <div className="bg-slate-800 p-5 md:p-8 rounded-[24px] md:rounded-3xl shadow-lg flex flex-col justify-between text-white lg:h-fit lg:sticky lg:top-24 gap-6">
           <div>
             <h2 className="text-base md:text-lg font-bold text-blue-400 mb-4 md:mb-6 flex items-center border-b border-slate-700 pb-3 md:pb-4">
               <CheckCircle className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" /> Summary
@@ -322,7 +422,7 @@ export default function QuickSell() {
               </span>
             </div>
 
-            <div className="mb-5 md:mb-6">
+            <div className="mb-4">
               <label className="text-[10px] md:text-xs text-slate-400 uppercase tracking-wider font-bold mb-1.5 md:mb-2 block">Payment Method</label>
               <select 
                 value={paymentMethod}
@@ -333,6 +433,28 @@ export default function QuickSell() {
                 <option value="UPI">📱 UPI / PhonePe</option>
                 <option value="Card">💳 Card</option>
               </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="text-[10px] md:text-xs text-slate-400 uppercase tracking-wider font-bold mb-1.5 md:mb-2 block">Customer Name</label>
+              <input
+                type="text"
+                placeholder="Optional Name"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="w-full bg-slate-700 border-none text-white rounded-xl px-3 md:px-4 py-2.5 md:py-3 focus:ring-2 focus:ring-blue-500 outline-none text-xs md:text-sm placeholder-slate-500 font-semibold"
+              />
+            </div>
+
+            <div className="mb-2">
+              <label className="text-[10px] md:text-xs text-slate-400 uppercase tracking-wider font-bold mb-1.5 md:mb-2 block">Customer Phone (WhatsApp)</label>
+              <input
+                type="tel"
+                placeholder="e.g. 9876543210"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                className="w-full bg-slate-700 border-none text-white rounded-xl px-3 md:px-4 py-2.5 md:py-3 focus:ring-2 focus:ring-blue-500 outline-none text-xs md:text-sm placeholder-slate-500 font-semibold"
+              />
             </div>
           </div>
 
@@ -379,6 +501,8 @@ export default function QuickSell() {
                 <div className="space-y-1 pb-3 mb-3 border-b border-dashed border-slate-300">
                   <p className="text-[10px]"><span className="text-slate-400">Invoice:</span> #{completedInvoice.billNumber}</p>
                   <p className="text-[10px]"><span className="text-slate-400">Pay Mode:</span> {completedInvoice.paymentMethod}</p>
+                  {completedInvoice.customerName && <p className="text-[10px]"><span className="text-slate-400">Customer:</span> {completedInvoice.customerName}</p>}
+                  {completedInvoice.customerPhone && <p className="text-[10px]"><span className="text-slate-400">Phone:</span> {completedInvoice.customerPhone}</p>}
                 </div>
                 
                 <div className="space-y-2 pb-3 mb-3 border-b border-dashed border-slate-300">
@@ -404,6 +528,38 @@ export default function QuickSell() {
                   *Medicines once sold cannot be returned.*
                 </div>
               </div>
+
+              {/* WhatsApp Box */}
+              <div className="w-[280px] bg-white border border-slate-200 rounded-xl p-4 mt-4 shadow-sm">
+                <h4 className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                  <span className="text-emerald-500">💬</span> Send Invoice via WhatsApp
+                </h4>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">WhatsApp Phone Number</label>
+                    <input 
+                      type="tel"
+                      placeholder="Enter 10-digit number"
+                      value={waPhone}
+                      onChange={(e) => setWaPhone(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-semibold"
+                    />
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (!waPhone.trim()) {
+                        toast.error("Please enter a valid WhatsApp number.");
+                        return;
+                      }
+                      triggerWhatsAppSend(completedInvoice, waPhone);
+                    }}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg text-xs font-bold transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1"
+                  >
+                    <span>Send via WhatsApp</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="p-4 bg-white border-t border-slate-100 flex gap-3">
@@ -425,7 +581,7 @@ export default function QuickSell() {
       )}
 
       {/* Hidden printable receipt wrapper */}
-      <div style={{ position: 'absolute', top: '-10000px', left: '-10000px', overflow: 'hidden' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }}>
         <div ref={invoicePrintRef}>
           <style type="text/css" media="print">
             {`
@@ -519,6 +675,8 @@ export default function QuickSell() {
               <div className="info">
                 <p>Invoice No: #{completedInvoice.billNumber}</p>
                 <p>Payment Mode: {completedInvoice.paymentMethod}</p>
+                {completedInvoice.customerName && <p>Customer: {completedInvoice.customerName}</p>}
+                {completedInvoice.customerPhone && <p>Phone: {completedInvoice.customerPhone}</p>}
               </div>
               <div className="items-table">
                 <div className="row head">

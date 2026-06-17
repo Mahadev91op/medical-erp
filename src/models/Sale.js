@@ -14,7 +14,9 @@ const SaleSchema = new mongoose.Schema({
   totalAmount: { type: Number, required: true },
   paymentMethod: { type: String, enum: ['Cash', 'UPI', 'Card'], default: 'Cash' },
   date: { type: Date, default: Date.now },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  customerName: { type: String, default: "" },
+  customerPhone: { type: String, default: "" }
 }, { 
     timestamps: true, 
     versionKey: false 
