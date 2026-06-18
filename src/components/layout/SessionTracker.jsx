@@ -31,11 +31,13 @@ export default function SessionTracker() {
       }
     };
 
-    sendHeartbeat();
-
+    const initialTimeout = setTimeout(sendHeartbeat, 3000); // Delay initial heartbeat by 3 seconds
     const interval = setInterval(sendHeartbeat, 60000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
   }, [session]);
 
   return null;

@@ -50,7 +50,7 @@ export default function AIChatBot() {
   useEffect(() => {
     const timer = setTimeout(async () => {
       const q = inputValue.trim();
-      if (q.length >= 1) {
+      if (q.length >= 2) {
         try {
           const res = await fetch(`/api/ai/autocomplete?q=${encodeURIComponent(q)}`);
           const data = await res.json();
@@ -65,7 +65,7 @@ export default function AIChatBot() {
         setSuggestions([]);
         setShowSuggestions(false);
       }
-    }, 200);
+    }, 350);
     return () => clearTimeout(timer);
   }, [inputValue]);
 

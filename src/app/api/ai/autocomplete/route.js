@@ -35,11 +35,17 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get("q") || "").trim().toLowerCase();
 
-    if (!q) {
-      // Return top generic suggestions when empty
+    if (q.length < 2) {
+      // Return static matching suggestions when query is empty or too short (1 character)
+      // to avoid running heavy database queries
+      const matchedPrompts = q
+        ? genericPrompts.filter(p => 
+            p.label.toLowerCase().includes(q) || p.query.toLowerCase().includes(q)
+          )
+        : genericPrompts;
       return NextResponse.json({
         success: true,
-        suggestions: genericPrompts.slice(0, 5)
+        suggestions: matchedPrompts.slice(0, 5)
       });
     }
 

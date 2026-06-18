@@ -40,37 +40,94 @@ export async function GET() {
     startOfToday.setHours(0, 0, 0, 0);
 
     const [
-      totalMedicines,
       stockAggregation,
-      lowStockCount,
-      expiringCount,
       expiringMedicines,
       rawSalesData,
       todaysSalesRaw,
-      outOfStockCount,
-      expiredCount,
       reorderList,
-      activeSessions,
-      dataSizeBytes
+      activeSessions
     ] = await Promise.all([
-      Medicine.countDocuments({ userId: userObjectId, quantity: { $gt: 0 }, expiryDate: { $gt: today } }),
-      
+      // 1. Consolidated Aggregation Query for counts and stock valuation
       Medicine.aggregate([
-        { $match: { userId: userObjectId, quantity: { $gt: 0 }, expiryDate: { $gt: today } } },
-        { $project: { totalValue: { $multiply: ["$quantity", "$mrp"] }, quantity: 1 } },
-        { $group: { _id: null, totalStockValue: { $sum: "$totalValue" }, totalUnits: { $sum: "$quantity" } } }
+        { $match: { userId: userObjectId } },
+        {
+          $group: {
+            _id: null,
+            totalActive: {
+              $sum: {
+                $cond: [
+                  { $and: [ { $gt: ["$quantity", 0] }, { $gt: ["$expiryDate", today] } ] },
+                  1,
+                  0
+                ]
+              }
+            },
+            lowStock: {
+              $sum: {
+                $cond: [
+                  { $and: [ { $lt: ["$quantity", 10] }, { $gt: ["$quantity", 0] }, { $gt: ["$expiryDate", today] } ] },
+                  1,
+                  0
+                ]
+              }
+            },
+            expiring: {
+              $sum: {
+                $cond: [
+                  { $and: [ { $lte: ["$expiryDate", ninetyDaysFromNow] }, { $gt: ["$expiryDate", today] }, { $gt: ["$quantity", 0] } ] },
+                  1,
+                  0
+                ]
+              }
+            },
+            outOfStock: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$quantity", 0] },
+                  1,
+                  0
+                ]
+              }
+            },
+            expired: {
+              $sum: {
+                $cond: [
+                  { $and: [ { $lt: ["$expiryDate", today] }, { $gt: ["$quantity", 0] } ] },
+                  1,
+                  0
+                ]
+              }
+            },
+            totalStockValue: {
+              $sum: {
+                $cond: [
+                  { $and: [ { $gt: ["$quantity", 0] }, { $gt: ["$expiryDate", today] } ] },
+                  { $multiply: ["$quantity", "$mrp"] },
+                  0
+                ]
+              }
+            },
+            totalUnits: {
+              $sum: {
+                $cond: [
+                  { $and: [ { $gt: ["$quantity", 0] }, { $gt: ["$expiryDate", today] } ] },
+                  "$quantity",
+                  0
+                ]
+              }
+            }
+          }
+        }
       ]),
-      
-      Medicine.countDocuments({ userId: userObjectId, quantity: { $lt: 10, $gt: 0 }, expiryDate: { $gt: today } }),
-      
-      Medicine.countDocuments({ userId: userObjectId, expiryDate: { $lte: ninetyDaysFromNow, $gt: today }, quantity: { $gt: 0 } }),
-      
+
+      // 2. Expiring Medicines
       Medicine.find({ userId: userObjectId, expiryDate: { $lte: ninetyDaysFromNow, $gt: today }, quantity: { $gt: 0 } })
               .select("name batch expiryDate quantity mrp barcodeId distributor")
               .sort({ expiryDate: 1 })
               .limit(6)
               .lean(), 
               
+      // 3. Weekly Sales
       Sale.aggregate([
         { $match: { userId: userObjectId, date: { $gte: sevenDaysAgo } } },
         {
@@ -82,29 +139,52 @@ export async function GET() {
         { $sort: { _id: 1 } }
       ]),
 
+      // 4. Today's Sales
       Sale.find({ userId: userObjectId, date: { $gte: startOfToday } })
           .select("totalAmount paymentMethod items")
           .lean(),
 
-      Medicine.countDocuments({ userId: userObjectId, quantity: 0 }),
-
-      Medicine.countDocuments({ userId: userObjectId, expiryDate: { $lt: today }, quantity: { $gt: 0 } }),
-
+      // 5. Reorder List (Out of stock)
       Medicine.find({ userId: userObjectId, quantity: 0 })
               .select("name batch expiryDate quantity mrp barcodeId distributor")
               .sort({ name: 1 })
               .limit(5)
               .lean(),
 
+      // 6. Active Login Sessions
       ActiveSession.find({
         userId: userObjectId
-      }).sort({ lastActive: -1 }).lean(),
-
-      getUserDataSize(userId)
+      }).sort({ lastActive: -1 }).lean()
     ]);
 
-    const totalStockValue = stockAggregation[0]?.totalStockValue || 0;
-    const totalUnits = stockAggregation[0]?.totalUnits || 0;
+    const statsResult = stockAggregation[0] || {
+      totalActive: 0,
+      lowStock: 0,
+      expiring: 0,
+      outOfStock: 0,
+      expired: 0,
+      totalStockValue: 0,
+      totalUnits: 0
+    };
+
+    const totalMedicines = statsResult.totalActive;
+    const lowStockCount = statsResult.lowStock;
+    const expiringCount = statsResult.expiring;
+    const outOfStockCount = statsResult.outOfStock;
+    const expiredCount = statsResult.expired;
+    const totalStockValue = statsResult.totalStockValue;
+    const totalUnits = statsResult.totalUnits;
+
+    // Calculate database user storage dynamically to bypass getUserDataSize call
+    const totalMedsCount = totalMedicines + outOfStockCount + expiredCount;
+    const sessionCount = activeSessions.length;
+    const saleCount = await Sale.countDocuments({ userId: userObjectId });
+
+    const dataSizeBytes = 
+      (totalMedsCount * 350) +
+      (saleCount * 450) +
+      (sessionCount * 150) +
+      300;
 
     let todayRevenue = 0;
     const todayPaymentBreakdown = { Cash: 0, UPI: 0, Card: 0 };

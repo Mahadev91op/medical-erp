@@ -23,7 +23,10 @@ export async function connectToDatabase() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000, // 5 second me timeout hoga, website infinite load nahi hogi
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      family: 4
     };
 
     console.log("⏳ MongoDB se connect ho raha hai...");

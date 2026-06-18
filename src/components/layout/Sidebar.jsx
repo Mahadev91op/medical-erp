@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
@@ -46,12 +46,16 @@ const Sidebar = ({ isCollapsed = false, toggleCollapse }) => {
   ];
 
   // Filter links based on user role
-  const filteredLinks = navLinks.filter(link => 
-    link.roles.includes(session?.user?.role)
-  );
+  const filteredLinks = useMemo(() => {
+    if (!session?.user?.role) return [];
+    return navLinks.filter(link => 
+      link.roles.includes(session.user.role)
+    );
+  }, [session?.user?.role]);
 
   // Prefetch all valid links for this user's role to make tab switching instant
   useEffect(() => {
+    if (filteredLinks.length === 0) return;
     filteredLinks.forEach(link => {
       router.prefetch(link.path);
     });

@@ -335,12 +335,7 @@ export default function Dashboard() {
   }
 
   if (loading) {
-    return (
-      <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
-        <p className="font-medium">Loading Dashboard...</p>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (

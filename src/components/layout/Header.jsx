@@ -95,9 +95,12 @@ export default function Header() {
       }
     };
 
-    checkSubscriptionLive();
-    const interval = setInterval(checkSubscriptionLive, 4000); // Poll every 4 seconds
-    return () => clearInterval(interval);
+    const initialTimeout = setTimeout(checkSubscriptionLive, 2000); // Delay initial check
+    const interval = setInterval(checkSubscriptionLive, 30000); // Poll every 30 seconds
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
   }, [session, router]);
   
   // Real-time Expiry & Low Stock warnings in Header
@@ -121,9 +124,12 @@ export default function Header() {
       }
     };
 
-    fetchAlerts();
+    const initialTimeout = setTimeout(fetchAlerts, 1500); // Delay initial fetch
     const interval = setInterval(fetchAlerts, 60000); 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
   }, [session]);
   
   // Search State
@@ -150,15 +156,10 @@ export default function Header() {
       if (searchTerm.trim().length > 1) {
         setIsSearching(true);
         try {
-          const res = await fetch('/api/medicine?limit=200');
+          const res = await fetch(`/api/medicine?search=${encodeURIComponent(searchTerm.trim())}&limit=5`);
           const data = await res.json();
           if (data.success) {
-            // Filter by name and get top 5 results
-            const found = data.medicines.filter(m => 
-              m.name.toLowerCase().includes(searchTerm.toLowerCase())
-            ).slice(0, 5); 
-            
-            setResults(found);
+            setResults(data.medicines || []);
             setShowDropdown(true);
           }
         } catch (error) {
