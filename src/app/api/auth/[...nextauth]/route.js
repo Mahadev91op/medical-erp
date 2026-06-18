@@ -71,45 +71,19 @@ export const authOptions = {
         token.id = user.id;
         token.status = user.status;
         token.subscriptionEnd = user.subscriptionEnd;
-      } else if (token?.id && token.id !== "000000000000000000000000") {
-        try {
-          await connectToDatabase();
-          const dbUser = await User.findById(token.id).select("status role subscriptionEnd").lean();
-          if (dbUser) {
-            token.role = dbUser.role;
-            token.status = dbUser.status;
-            token.subscriptionEnd = dbUser.subscriptionEnd ? dbUser.subscriptionEnd.toISOString() : null;
-          }
-        } catch (error) {
-          console.error("JWT Sync Error:", error);
-        }
       }
       return token;
     },
     async session({ session, token }) {
       if (session?.user && token) {
-        await connectToDatabase();
-        
-        // Skip DB check for env superadmin
-        if (token.id === "000000000000000000000000") {
-          session.user.role = "superadmin";
-          session.user.id = token.id;
-          session.user.status = "active";
-          session.user.subscriptionEnd = new Date("9999-12-31").toISOString();
-          return session;
-        }
-
-        const dbUser = await User.findById(token.id).select("status role subscriptionEnd").lean();
-        if (!dbUser || dbUser.status === "disabled") {
+        session.user.role = token.role;
+        session.user.id = token.id;
+        session.user.status = token.status;
+        session.user.subscriptionEnd = token.subscriptionEnd;
+        if (token.status === "disabled") {
           session.user = null;
           session.error = "disabled";
-          return session;
         }
-
-        session.user.role = dbUser.role;
-        session.user.id = token.id;
-        session.user.status = dbUser.status;
-        session.user.subscriptionEnd = dbUser.subscriptionEnd ? dbUser.subscriptionEnd.toISOString() : null;
       }
       return session;
     }

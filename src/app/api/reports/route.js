@@ -66,6 +66,26 @@ export async function GET(req) {
 
     const matchUserQuery = { $in: [userObjectId, userId].filter(Boolean) };
 
+    const onlyAlerts = searchParams.get("onlyAlerts") === "true";
+    if (onlyAlerts) {
+      const [expiringCount, lowStockCount] = await Promise.all([
+        Medicine.countDocuments({
+          userId: matchUserQuery,
+          expiryDate: { $lte: expiryLimitDate, $gt: new Date() },
+          quantity: { $gt: 0 }
+        }),
+        Medicine.countDocuments({
+          userId: matchUserQuery,
+          quantity: { $lt: lowStockThreshold, $gt: 0 }
+        })
+      ]);
+      return NextResponse.json({
+        success: true,
+        expiringSoon: Array(expiringCount).fill({}),
+        lowStock: Array(lowStockCount).fill({})
+      });
+    }
+
     const [
       expiringSoon,
       lowStock,

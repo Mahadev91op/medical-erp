@@ -49,46 +49,61 @@ export default function Header() {
 
     if (!session || session?.user?.role === "superadmin") return;
 
+    const handleSubscriptionData = (data) => {
+      if (data.status === "disabled") {
+        signOut({ callbackUrl: "/login" });
+        return;
+      }
+      if (data.subscriptionEnd) {
+        const expiry = new Date(data.subscriptionEnd);
+        const today = new Date();
+        const diffTime = expiry - today;
+        const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (expiry < today) {
+          setExpiryWarning(null);
+          const currentPath = window.location.pathname;
+          const isAllowedPath = 
+            currentPath === "/paused" || 
+            currentPath === "/profile" ||
+            currentPath.startsWith("/api/auth");
+          
+          if (!isAllowedPath) {
+            router.push("/paused");
+          }
+        } else {
+          // Redirect back to home if they are active but currently stuck on the pause screen
+          const currentPath = window.location.pathname;
+          if (currentPath === "/paused") {
+            router.push("/");
+          }
+
+          if (daysLeft >= 0 && daysLeft <= 5) {
+            setExpiryWarning(daysLeft);
+          } else {
+            setExpiryWarning(null);
+          }
+        }
+      }
+    };
+
     const checkSubscriptionLive = async () => {
+      const now = Date.now();
+      const cachedVal = localStorage.getItem("sub_status");
+      const cachedTime = localStorage.getItem("sub_status_time");
+
+      if (cachedVal && cachedTime && (now - Number(cachedTime)) < 120000) {
+        handleSubscriptionData(JSON.parse(cachedVal));
+        return;
+      }
+
       try {
         const res = await fetch("/api/user/subscription");
         const data = await res.json();
         if (data.success) {
-          if (data.status === "disabled") {
-            signOut({ callbackUrl: "/login" });
-            return;
-          }
-          if (data.subscriptionEnd) {
-            const expiry = new Date(data.subscriptionEnd);
-            const today = new Date();
-            const diffTime = expiry - today;
-            const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (expiry < today) {
-              setExpiryWarning(null);
-              const currentPath = window.location.pathname;
-              const isAllowedPath = 
-                currentPath === "/paused" || 
-                currentPath === "/profile" ||
-                currentPath.startsWith("/api/auth");
-              
-              if (!isAllowedPath) {
-                router.push("/paused");
-              }
-            } else {
-              // Redirect back to home if they are active but currently stuck on the pause screen
-              const currentPath = window.location.pathname;
-              if (currentPath === "/paused") {
-                router.push("/");
-              }
-
-              if (daysLeft >= 0 && daysLeft <= 5) {
-                setExpiryWarning(daysLeft);
-              } else {
-                setExpiryWarning(null);
-              }
-            }
-          }
+          localStorage.setItem("sub_status", JSON.stringify(data));
+          localStorage.setItem("sub_status_time", String(now));
+          handleSubscriptionData(data);
         }
       } catch (error) {
         console.error("Subscription watchdog error:", error);
@@ -110,14 +125,26 @@ export default function Header() {
     if (!session || session?.user?.role === "superadmin") return;
 
     const fetchAlerts = async () => {
+      const now = Date.now();
+      const cachedVal = localStorage.getItem("header_alerts");
+      const cachedTime = localStorage.getItem("header_alerts_time");
+
+      if (cachedVal && cachedTime && (now - Number(cachedTime)) < 60000) {
+        setAlerts(JSON.parse(cachedVal));
+        return;
+      }
+
       try {
-        const res = await fetch("/api/reports?expiryMonths=3&lowStockThreshold=10");
+        const res = await fetch("/api/reports?expiryMonths=3&lowStockThreshold=10&onlyAlerts=true");
         const data = await res.json();
         if (data.success) {
-          setAlerts({
+          const newAlerts = {
             lowStock: data.lowStock?.length || 0,
             expiring: data.expiringSoon?.length || 0
-          });
+          };
+          localStorage.setItem("header_alerts", JSON.stringify(newAlerts));
+          localStorage.setItem("header_alerts_time", String(now));
+          setAlerts(newAlerts);
         }
       } catch (err) {
         console.error("Failed to fetch header alerts:", err);
