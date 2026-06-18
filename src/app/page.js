@@ -91,9 +91,29 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   
   // Instant search states
+  const [localSearchTerm, setLocalSearchTerm] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+
+  // Debounced manual search for medicine suggestions as user types
+  useEffect(() => {
+    if (!localSearchTerm.trim()) {
+      setSearchTerm("");
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setSearchTerm(localSearchTerm);
+    }, 250); // 250ms debounce
+    return () => clearTimeout(timer);
+  }, [localSearchTerm]);
+
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      executeSearch(searchTerm);
+    }
+  }, [searchTerm]);
 
   const fetchDashboardData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -113,8 +133,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleSearch = async (val) => {
-    setSearchTerm(val);
+  const executeSearch = async (val) => {
     if (!val.trim()) {
       setSearchResults([]);
       return;
@@ -136,7 +155,7 @@ export default function Dashboard() {
     setIsRefreshing(true);
     await fetchDashboardData(true);
     if (searchTerm.trim()) {
-      await handleSearch(searchTerm);
+      await executeSearch(searchTerm);
     }
     setTimeout(() => setIsRefreshing(false), 500); 
   };
@@ -426,8 +445,8 @@ export default function Dashboard() {
                 type="text" 
                 placeholder="Search medicine name, barcode, batch..." 
                 className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl pl-10 pr-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-xs md:text-sm font-semibold"
-                value={searchTerm}
-                onChange={(e) => handleSearch(e.target.value)}
+                value={localSearchTerm}
+                onChange={(e) => setLocalSearchTerm(e.target.value)}
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               {searching && <Loader2 className="w-4 h-4 text-blue-500 absolute right-3.5 top-3.5 animate-spin" />}

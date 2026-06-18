@@ -410,8 +410,16 @@ export default function Inventory() {
           <p className="text-xs md:text-sm text-slate-400 mt-1">Try a different search term or add a new entry.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {medicines.map((med) => {
+        <div className="relative">
+          {loading && (
+            <div className="absolute inset-0 bg-white/45 backdrop-blur-[1px] z-10 flex items-center justify-center rounded-3xl" style={{ minHeight: '300px' }}>
+              <div className="bg-white/90 p-4 rounded-full shadow-md border border-slate-100/80 flex items-center justify-center animate-in fade-in zoom-in duration-200">
+                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {medicines.map((med) => {
             const isSelected = selectedMeds.includes(med._id);
             const isExpired = med.expiryDate && new Date(med.expiryDate) < new Date();
             const isOutOfStock = med.quantity <= 0;
@@ -546,6 +554,7 @@ export default function Inventory() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 

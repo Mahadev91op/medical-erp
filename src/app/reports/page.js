@@ -73,6 +73,7 @@ export default function Reports() {
   const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [], todayOverview: {} });
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRefetching, setIsRefetching] = useState(false);
   const [activeReportTab, setActiveReportTab] = useState("items");
   const [printingInvoice, setPrintingInvoice] = useState(null);
   const [shopInfo, setShopInfo] = useState(null);
@@ -428,6 +429,7 @@ Thank you! Get well soon. 🏥`;
 
   const fetchReports = async (isSilent = false, currentExpiryMonths = expiryMonths, currentLowStockThreshold = lowStockThreshold, filter = dateFilter) => {
     if (!isSilent) setLoading(true);
+    else setIsRefetching(true);
     try {
       const { startDate, endDate } = getDateRangeForFilter(filter);
       const res = await fetch(`/api/reports?expiryMonths=${currentExpiryMonths}&lowStockThreshold=${currentLowStockThreshold}&startDate=${startDate}&endDate=${endDate}`, { cache: "no-store" });
@@ -437,8 +439,10 @@ Thank you! Get well soon. 🏥`;
       }
     } catch (error) {
       console.error("Error fetching reports:", error);
+    } finally {
+      if (!isSilent) setLoading(false);
+      else setIsRefetching(false);
     }
-    if (!isSilent) setLoading(false);
   };
 
   const handleRefresh = async () => {
@@ -484,7 +488,10 @@ Thank you! Get well soon. 🏥`;
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">Profit & Insights Reports</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight flex items-center gap-2">
+            Profit & Insights Reports
+            {isRefetching && <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />}
+          </h1>
           <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5 md:mt-1">Track distributor performance, prevent losses, and manage stock.</p>
         </div>
         

@@ -66,6 +66,7 @@ export async function GET() {
       Medicine.countDocuments({ userId: userObjectId, expiryDate: { $lte: ninetyDaysFromNow, $gt: today }, quantity: { $gt: 0 } }),
       
       Medicine.find({ userId: userObjectId, expiryDate: { $lte: ninetyDaysFromNow, $gt: today }, quantity: { $gt: 0 } })
+              .select("name batch expiryDate quantity mrp barcodeId distributor")
               .sort({ expiryDate: 1 })
               .limit(6)
               .lean(), 
@@ -81,13 +82,19 @@ export async function GET() {
         { $sort: { _id: 1 } }
       ]),
 
-      Sale.find({ userId: userObjectId, date: { $gte: startOfToday } }).lean(),
+      Sale.find({ userId: userObjectId, date: { $gte: startOfToday } })
+          .select("totalAmount paymentMethod items")
+          .lean(),
 
       Medicine.countDocuments({ userId: userObjectId, quantity: 0 }),
 
       Medicine.countDocuments({ userId: userObjectId, expiryDate: { $lt: today }, quantity: { $gt: 0 } }),
 
-      Medicine.find({ userId: userObjectId, quantity: 0 }).sort({ name: 1 }).limit(5).lean(),
+      Medicine.find({ userId: userObjectId, quantity: 0 })
+              .select("name batch expiryDate quantity mrp barcodeId distributor")
+              .sort({ name: 1 })
+              .limit(5)
+              .lean(),
 
       ActiveSession.find({
         userId: userObjectId

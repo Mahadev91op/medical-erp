@@ -81,12 +81,12 @@ export async function GET(req) {
         userId: matchUserQuery,
         expiryDate: { $lte: expiryLimitDate },
         quantity: { $gt: 0 } 
-      }).sort({ expiryDate: 1 }).lean(), 
+      }).select("name batch expiryDate quantity mrp barcodeId distributor").sort({ expiryDate: 1 }).lean(), 
 
       Medicine.find({
         userId: matchUserQuery,
         quantity: { $lt: lowStockThreshold, $gt: 0 }
-      }).sort({ quantity: 1 }).lean(), 
+      }).select("name batch expiryDate quantity mrp barcodeId distributor").sort({ quantity: 1 }).lean(), 
 
       Medicine.aggregate([
         { $match: { userId: matchUserQuery } },
@@ -157,12 +157,12 @@ export async function GET(req) {
         userId: matchUserQuery,
         expiryDate: { $lt: new Date() },
         quantity: { $gt: 0 }
-      }).sort({ expiryDate: 1 }).lean(),
+      }).select("name batch expiryDate quantity mrp barcodeId distributor").sort({ expiryDate: 1 }).lean(),
 
       Medicine.find({
         userId: matchUserQuery,
         quantity: 0
-      }).sort({ name: 1 }).lean()
+      }).select("name batch expiryDate quantity mrp barcodeId distributor").sort({ name: 1 }).lean()
     ]);
 
     const completeDistributorData = distributorStock.map(stock => {

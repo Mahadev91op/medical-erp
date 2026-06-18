@@ -29,16 +29,8 @@ export async function connectToDatabase() {
     console.log("⏳ MongoDB se connect ho raha hai...");
     
     cached.promise = mongoose.connect(MONGODB_URI, opts)
-      .then(async (m) => {
+      .then((m) => {
         console.log("✅ MongoDB Connected Successfully!");
-        try {
-          await Promise.all([
-            Medicine.updateMany({ userId: { $exists: false } }, { $set: { userId: new m.Types.ObjectId("000000000000000000000000") } }),
-            Sale.updateMany({ userId: { $exists: false } }, { $set: { userId: new m.Types.ObjectId("000000000000000000000000") } })
-          ]);
-        } catch (migErr) {
-          console.error("⚠️ Legacy migration warning:", migErr.message);
-        }
         return m;
       })
       .catch((err) => {
