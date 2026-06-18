@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Search, Package, IndianRupee, X, AlertTriangle, TrendingDown } from "lucide-react";
+import { Search, Package, IndianRupee, X, AlertTriangle, TrendingDown, Sparkles } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import toast from "react-hot-toast";
@@ -255,6 +255,16 @@ export default function Header() {
       {/* 2. Quick Actions & Profile */}
       <div className="flex items-center space-x-3 md:space-x-6 shrink-0">
         
+        {/* MedERP AI Assistant Button */}
+        <button 
+          onClick={() => window.dispatchEvent(new CustomEvent('open-ai-chatbot'))}
+          className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all border border-blue-100/50 hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm shadow-blue-100/20"
+          title="Ask MedERP AI Assistant"
+        >
+          <Sparkles className="w-4 h-4 text-blue-500 animate-pulse shrink-0" />
+          <span className="hidden sm:inline">MedERP AI</span>
+        </button>
+
         {/* Live IST Clock */}
         <div className="hidden lg:flex items-center gap-2 bg-slate-50 border border-slate-200/60 text-slate-700 px-3.5 py-2.5 rounded-xl text-xs font-bold shadow-sm shrink-0">
           <span className="relative flex h-2 w-2">

@@ -63,7 +63,11 @@ const Sidebar = ({ isCollapsed = false, toggleCollapse }) => {
     <aside className={`fixed left-0 top-0 h-screen bg-white border-r border-slate-100 hidden lg:flex flex-col z-[60] transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
       <div className={`${isCollapsed ? 'p-3' : 'p-8'} flex flex-col flex-1 min-h-0 pb-4 transition-all duration-300`}>
         <div className={`flex ${isCollapsed ? 'flex-col items-center gap-4' : 'items-center justify-between'} mb-10 shrink-0`}>
-          <div className="flex items-center space-x-3 min-w-0">
+          <div 
+            onClick={() => window.dispatchEvent(new CustomEvent('open-ai-chatbot'))}
+            className="flex items-center space-x-3 min-w-0 cursor-pointer hover:opacity-80 transition-all select-none hover:scale-[1.03] active:scale-[0.97]"
+            title="Ask MedERP AI"
+          >
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 shrink-0">
               <PackagePlus className="text-white w-6 h-6" />
             </div>

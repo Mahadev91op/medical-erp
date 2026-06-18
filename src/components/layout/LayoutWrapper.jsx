@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import MobileNav from "./MobileNav";
+import AIChatBot from "./AIChatBot";
 
 const validDashboardPaths = ["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns"];
 
@@ -49,6 +50,7 @@ export default function LayoutWrapper({ children }) {
         </main>
         <MobileNav />
       </div>
+      <AIChatBot />
     </div>
   );
 }
