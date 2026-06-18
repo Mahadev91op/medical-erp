@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { 
   Search, ScanBarcode, Camera, Package, AlertCircle, 
-  History, Calendar, User, FileText, Loader2, ArrowRight, X, ShieldAlert
+  History, Calendar, User, FileText, Loader2, ArrowRight, X, ShieldAlert, Mic
 } from "lucide-react";
 import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 import CameraScanner from "@/components/sell/CameraScanner";
@@ -33,6 +33,7 @@ const TableHistorySkeleton = () => {
 
 export default function MedicineLookup() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isListening, setIsListening] = useState(false);
   const [medicines, setMedicines] = useState([]);
   const [selectedMed, setSelectedMed] = useState(null);
   const [salesHistory, setSalesHistory] = useState([]);
@@ -41,6 +42,41 @@ export default function MedicineLookup() {
   const [showCamera, setShowCamera] = useState(false);
 
   const inputRef = useRef(null);
+
+  const startSpeechRecognition = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Voice recognition is not supported in this browser. Please use Chrome/Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "hi-IN";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast.success("Listening... Dawa ka naam bolein");
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      setSearchTerm(text);
+      toast.success(`Searching: "${text}"`);
+    };
+
+    recognition.start();
+  };
 
   // Debounced search for medicines (including out of stock)
   useEffect(() => {
@@ -147,16 +183,24 @@ export default function MedicineLookup() {
       {/* Search Section */}
       <div className="bg-white p-4 md:p-6 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 relative z-30">
         <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Search stock (In Stock & Out of Stock)</label>
-        <div className="relative">
+        <div className="relative flex items-center">
           <input 
             ref={inputRef}
             type="text" 
             placeholder="Type Medicine Name, Batch No, or Barcode ID..." 
-            className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-4 focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all text-sm md:text-base font-semibold shadow-sm"
+            className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-12 py-3 md:py-4 focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all text-sm md:text-base font-semibold shadow-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)} 
           />
           <Search className="absolute left-3.5 md:left-4 top-3.5 md:top-4.5 text-slate-400 w-5 h-5" />
+          <button
+            type="button"
+            onClick={startSpeechRecognition}
+            className={`absolute right-12 p-1.5 rounded-full transition-all ${isListening ? 'text-rose-500 animate-pulse bg-rose-100' : 'text-slate-400 hover:text-indigo-600'}`}
+            title="Voice Search"
+          >
+            <Mic className="w-5 h-5" />
+          </button>
           {loading && <Loader2 className="absolute right-4 top-3.5 md:top-4.5 text-indigo-500 w-5 h-5 animate-spin" />}
         </div>
 
@@ -165,8 +209,10 @@ export default function MedicineLookup() {
           <div className="absolute left-4 right-4 mt-2 bg-white rounded-2xl shadow-[0_10px_30px_-5px_rgba(0,0,0,0.08)] border border-slate-150 overflow-hidden z-40">
             <div className="p-2 space-y-1">
               {medicines.map((med) => {
+                const isExpired = med.expiryDate && new Date(med.expiryDate) < new Date();
                 const isOutOfStock = med.quantity <= 0;
-                const isExpired = new Date(med.expiryDate) < new Date();
+                const isExpiringSoon = !isExpired && med.expiryDate && new Date(med.expiryDate) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+                const isLowStock = !isOutOfStock && med.quantity < 10;
                 return (
                   <div 
                     key={med._id} 
@@ -181,12 +227,16 @@ export default function MedicineLookup() {
                       <p className="text-xs font-bold text-slate-500">₹{med.mrp}</p>
                       <span className={`inline-block text-[9px] font-extrabold px-2 py-0.5 rounded-full mt-1 border ${
                         isExpired 
-                          ? "bg-rose-50 border-rose-100 text-rose-500" 
+                          ? "bg-rose-50 border-rose-200 text-rose-600" 
                           : isOutOfStock 
-                            ? "bg-rose-50 border-rose-100 text-rose-500" 
-                            : "bg-blue-50 border-blue-100 text-blue-600"
+                            ? "bg-rose-50 border-rose-200 text-rose-600 font-black" 
+                            : isExpiringSoon
+                              ? "bg-amber-50 border-amber-200 text-amber-600"
+                              : isLowStock
+                                ? "bg-amber-50 border-amber-200 text-amber-600"
+                                : "bg-emerald-50 border-emerald-200 text-emerald-600"
                       }`}>
-                        {isExpired ? "Expired" : isOutOfStock ? "Out of Stock" : `${med.quantity} in stock`}
+                        {isExpired ? "🔴 Expired" : isOutOfStock ? "🔴 Out of Stock" : isExpiringSoon ? "🟠 Expiring Soon" : isLowStock ? "🟠 Low Stock" : `🟢 ${med.quantity} in stock`}
                       </span>
                     </div>
                   </div>
@@ -228,21 +278,42 @@ export default function MedicineLookup() {
 
               {/* Status Badges */}
               <div className="flex flex-wrap gap-2">
-                {selectedMed.quantity <= 0 ? (
-                  <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-100 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-extrabold uppercase">
-                    <ShieldAlert className="w-3.5 h-3.5" /> Finished (Out of Stock)
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 bg-blue-50 border border-blue-100 text-blue-600 px-3 py-1 rounded-xl text-[10px] font-extrabold uppercase">
-                    <Package className="w-3.5 h-3.5" /> {selectedMed.quantity} Units Available
-                  </span>
-                )}
+                {(() => {
+                  const isExpired = selectedMed.expiryDate && new Date(selectedMed.expiryDate) < new Date();
+                  const isOutOfStock = selectedMed.quantity <= 0;
+                  const isExpiringSoon = !isExpired && selectedMed.expiryDate && new Date(selectedMed.expiryDate) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+                  const isLowStock = !isOutOfStock && selectedMed.quantity < 10;
 
-                {new Date(selectedMed.expiryDate) < new Date() && (
-                  <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-100 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-extrabold uppercase animate-pulse">
-                    <AlertCircle className="w-3.5 h-3.5" /> Expired Stock
-                  </span>
-                )}
+                  return (
+                    <>
+                      {isExpired && (
+                        <span className="inline-flex items-center gap-1 bg-rose-100 border border-rose-200 text-rose-700 px-3 py-1 rounded-xl text-[10px] font-black uppercase animate-pulse">
+                          <AlertCircle className="w-3.5 h-3.5" /> Expired Batch
+                        </span>
+                      )}
+                      {isOutOfStock && (
+                        <span className="inline-flex items-center gap-1 bg-rose-100 border border-rose-200 text-rose-700 px-3 py-1 rounded-xl text-[10px] font-black uppercase">
+                          <ShieldAlert className="w-3.5 h-3.5" /> Out of Stock
+                        </span>
+                      )}
+                      {isExpiringSoon && (
+                        <span className="inline-flex items-center gap-1 bg-amber-100 border border-amber-200 text-amber-700 px-3 py-1 rounded-xl text-[10px] font-black uppercase">
+                          <AlertCircle className="w-3.5 h-3.5" /> Expiring Soon
+                        </span>
+                      )}
+                      {isLowStock && (
+                        <span className="inline-flex items-center gap-1 bg-amber-100 border border-amber-200 text-amber-700 px-3 py-1 rounded-xl text-[10px] font-black uppercase">
+                          <ShieldAlert className="w-3.5 h-3.5" /> Low Stock ({selectedMed.quantity})
+                        </span>
+                      )}
+                      {!isExpired && !isOutOfStock && !isExpiringSoon && !isLowStock && (
+                        <span className="inline-flex items-center gap-1 bg-emerald-100 border border-emerald-200 text-emerald-700 px-3 py-1 rounded-xl text-[10px] font-black uppercase">
+                          <Package className="w-3.5 h-3.5" /> {selectedMed.quantity} Units Safe
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Meta information */}

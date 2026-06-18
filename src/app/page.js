@@ -441,20 +441,44 @@ export default function Dashboard() {
               <p className="text-[10px] md:text-xs text-rose-500 font-medium text-center py-6">No medicine found matching &quot;{searchTerm}&quot;</p>
             ) : (
               <div className="space-y-2 max-h-[120px] overflow-y-auto">
-                {searchResults.map((med) => (
-                  <div key={med._id} className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] md:text-xs hover:border-blue-200 transition-colors">
-                    <div>
-                      <p className="font-bold text-slate-800">{med.name}</p>
-                      <p className="text-[9px] text-slate-400 mt-0.5">Batch: {med.batch} | Exp: {new Date(med.expiryDate).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' })}</p>
+                {searchResults.map((med) => {
+                  const isExpired = med.expiryDate && new Date(med.expiryDate) < new Date();
+                  const isOutOfStock = med.quantity <= 0;
+                  const isExpiringSoon = !isExpired && med.expiryDate && new Date(med.expiryDate) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+                  const isLowStock = !isOutOfStock && med.quantity < 10;
+                  
+                  let badgeStyle = "bg-emerald-100 text-emerald-700 border border-emerald-200";
+                  let label = `${med.quantity} in stock`;
+
+                  if (isExpired) {
+                    badgeStyle = "bg-rose-100 text-rose-700 border border-rose-200 animate-pulse";
+                    label = "Expired";
+                  } else if (isOutOfStock) {
+                    badgeStyle = "bg-rose-100 text-rose-700 border border-rose-200";
+                    label = "Out of stock";
+                  } else if (isExpiringSoon) {
+                    badgeStyle = "bg-amber-100 text-amber-700 border border-amber-200";
+                    label = `Expiring (${med.quantity} left)`;
+                  } else if (isLowStock) {
+                    badgeStyle = "bg-amber-100 text-amber-700 border border-amber-200";
+                    label = `Low Stock (${med.quantity})`;
+                  }
+
+                  return (
+                    <div key={med._id} className="flex justify-between items-center p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] md:text-xs hover:border-blue-200 transition-colors">
+                      <div>
+                        <p className="font-bold text-slate-800">{med.name}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">Batch: {med.batch} | Exp: {new Date(med.expiryDate).toLocaleDateString('en-GB', { month: '2-digit', year: '2-digit' })}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`px-2 py-0.5 font-extrabold rounded-md ${badgeStyle}`}>
+                          {label}
+                        </span>
+                        {med.rackNumber && <p className="text-[9px] text-slate-500 font-medium mt-0.5">Rack: {med.rackNumber}</p>}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className={`px-2 py-0.5 font-extrabold rounded-md ${med.quantity <= 0 ? 'bg-rose-100 text-rose-700' : med.quantity < 10 ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {med.quantity} in stock
-                      </span>
-                      {med.rackNumber && <p className="text-[9px] text-slate-500 font-medium mt-0.5">Rack: {med.rackNumber}</p>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -53,19 +53,19 @@ export async function GET() {
       activeSessions,
       dataSizeBytes
     ] = await Promise.all([
-      Medicine.countDocuments({ userId: userObjectId, quantity: { $gt: 0 } }),
+      Medicine.countDocuments({ userId: userObjectId, quantity: { $gt: 0 }, expiryDate: { $gt: today } }),
       
       Medicine.aggregate([
-        { $match: { userId: userObjectId, quantity: { $gt: 0 } } },
+        { $match: { userId: userObjectId, quantity: { $gt: 0 }, expiryDate: { $gt: today } } },
         { $project: { totalValue: { $multiply: ["$quantity", "$mrp"] }, quantity: 1 } },
         { $group: { _id: null, totalStockValue: { $sum: "$totalValue" }, totalUnits: { $sum: "$quantity" } } }
       ]),
       
-      Medicine.countDocuments({ userId: userObjectId, quantity: { $lt: 10, $gt: 0 } }),
+      Medicine.countDocuments({ userId: userObjectId, quantity: { $lt: 10, $gt: 0 }, expiryDate: { $gt: today } }),
       
-      Medicine.countDocuments({ userId: userObjectId, expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } }),
+      Medicine.countDocuments({ userId: userObjectId, expiryDate: { $lte: ninetyDaysFromNow, $gt: today }, quantity: { $gt: 0 } }),
       
-      Medicine.find({ userId: userObjectId, expiryDate: { $lte: ninetyDaysFromNow }, quantity: { $gt: 0 } })
+      Medicine.find({ userId: userObjectId, expiryDate: { $lte: ninetyDaysFromNow, $gt: today }, quantity: { $gt: 0 } })
               .sort({ expiryDate: 1 })
               .limit(6)
               .lean(), 

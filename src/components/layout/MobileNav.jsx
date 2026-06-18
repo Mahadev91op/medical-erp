@@ -13,7 +13,9 @@ import {
   Search,
   Menu,
   LogOut,
-  LayoutDashboard
+  LayoutDashboard,
+  BookOpen,
+  RotateCcw
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 
@@ -22,7 +24,7 @@ const MobileNav = () => {
   const { data: session } = useSession();
   const [showMore, setShowMore] = useState(false);
 
-  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin"].includes(pathname);
+  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns"].includes(pathname);
   
   useEffect(() => {
     if (session?.error === "disabled") {
@@ -38,6 +40,8 @@ const MobileNav = () => {
     { name: 'Billing', icon: ScanBarcode, path: '/sell', roles: ['admin', 'staff'] },
     { name: 'Inventory', icon: Package, path: '/inventory', roles: ['admin'] },
     { name: 'Lookup', icon: Search, path: '/lookup', roles: ['admin', 'staff'] },
+    { name: 'Khata Book', icon: BookOpen, path: '/khata', roles: ['admin', 'staff'] },
+    { name: 'Returns', icon: RotateCcw, path: '/returns', roles: ['admin'] },
     { name: 'Purchase', icon: PackagePlus, path: '/purchase', roles: ['admin'] },
     { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin'] },
     { name: 'Distributors', icon: Truck, path: '/distributors', roles: ['admin'] },

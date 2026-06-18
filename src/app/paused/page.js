@@ -48,7 +48,7 @@ export default function Paused() {
             <div>
               <p className="text-sm font-bold text-slate-700">License expired or usage paused</p>
               <p className="text-xs text-slate-400 mt-1 leading-relaxed font-medium">
-                An active subscription is required to perform billing, check out-of-stock items, process sales, and download reports. Your pharmacy's database and data records are safe and secure.
+                An active subscription is required to perform billing, check out-of-stock items, process sales, and download reports. Your pharmacy&apos;s database and data records are safe and secure.
               </p>
             </div>
           </div>

@@ -5,7 +5,7 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import MobileNav from "./MobileNav";
 
-const validDashboardPaths = ["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin"];
+const validDashboardPaths = ["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns"];
 
 export default function LayoutWrapper({ children }) {
   const pathname = usePathname();
@@ -14,7 +14,9 @@ export default function LayoutWrapper({ children }) {
   useEffect(() => {
     const saved = localStorage.getItem("sidebar_collapsed");
     if (saved === "true") {
-      setIsCollapsed(true);
+      setTimeout(() => {
+        setIsCollapsed(true);
+      }, 0);
     }
   }, []);
 

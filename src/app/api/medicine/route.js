@@ -40,6 +40,7 @@ export async function GET(req) {
         const query = { userId };
         if (!includeAll) {
             query.quantity = { $gt: 0 };
+            query.expiryDate = { $gt: new Date() };
         }
         
         if (search) {

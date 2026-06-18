@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
+import Customer from "@/models/Customer";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { verifyUser } from "@/lib/verifyUser";
@@ -115,8 +116,35 @@ export async function POST(req) {
       });
       
       await newSale.save();
-      newSaleId = newSale._id; 
+      newSaleId = newSale._id;
 
+      if (paymentMethod === "Udhaar") {
+        if (!customerPhone) {
+          throw new Error("Customer phone number is required for Udhaar (Credit) billing!");
+        }
+        
+        let customer = await Customer.findOne({ userId, phone: customerPhone });
+        if (!customer) {
+          customer = new Customer({
+            name: customerName || "Walk-in Customer",
+            phone: customerPhone,
+            userId,
+            balance: 0,
+            transactions: []
+          });
+        }
+        
+        customer.balance += calculatedTotal;
+        customer.transactions.push({
+          type: "Sale",
+          amount: calculatedTotal,
+          date: new Date(),
+          saleId: newSaleId,
+          note: `Invoice #${newSaleId.toString().slice(-6).toUpperCase()}`
+        });
+        
+        await customer.save();
+      }
     } catch (innerError) {
       // Rollback any stock that was already decremented
       for (let roll of decrementedItems) {
@@ -141,6 +169,36 @@ export async function POST(req) {
 
   } catch (error) {
     console.error("Sell API Error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function GET(req) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = session.user.id;
+    const verification = await verifyUser(userId, session.user.role);
+    if (!verification.success) {
+      return NextResponse.json({ error: verification.error }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const saleId = searchParams.get("saleId");
+    if (!saleId) {
+      return NextResponse.json({ error: "Sale ID is required" }, { status: 400 });
+    }
+
+    await connectToDatabase();
+    const sale = await Sale.findOne({ _id: saleId, userId }).lean();
+    if (!sale) {
+      return NextResponse.json({ error: "Sale not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, sale });
+  } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

@@ -14,7 +14,9 @@ import {
   Search,
   LayoutDashboard,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  BookOpen,
+  RotateCcw
 } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 
@@ -23,7 +25,7 @@ const Sidebar = ({ isCollapsed = false, toggleCollapse }) => {
   const router = useRouter();
   const { data: session } = useSession();
 
-  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin"].includes(pathname);
+  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns"].includes(pathname);
   
   useEffect(() => {
     if (session?.error === "disabled") {
@@ -38,6 +40,8 @@ const Sidebar = ({ isCollapsed = false, toggleCollapse }) => {
     { name: 'Purchase Entry', icon: PackagePlus, path: '/purchase', roles: ['admin'] },
     { name: 'Quick Sell', icon: ScanBarcode, path: '/sell', roles: ['admin', 'staff'] },
     { name: 'Medicine Lookup', icon: Search, path: '/lookup', roles: ['admin', 'staff'] },
+    { name: 'Khata Book (Udhaar)', icon: BookOpen, path: '/khata', roles: ['admin', 'staff'] },
+    { name: 'Distributor Returns', icon: RotateCcw, path: '/returns', roles: ['admin'] },
     { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin'] },
     { name: 'Distributors', icon: Truck, path: '/distributors', roles: ['admin'] },
     { name: 'Profile Settings', icon: UserCog, path: '/profile', roles: ['superadmin', 'admin', 'staff'] },

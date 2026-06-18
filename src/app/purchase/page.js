@@ -82,17 +82,25 @@ export default function PurchaseEntry() {
     if (savedForm) {
       try { 
         activeFormConfig = JSON.parse(savedForm);
-        setFormConfig(activeFormConfig); 
+        setTimeout(() => {
+          setFormConfig(activeFormConfig);
+        }, 0);
       } catch(e) {}
     }
     
     if (!activeFormConfig.expiryDate) {
-      setExpiryDateInput(getOneYearLaterExpiryInput());
+      setTimeout(() => {
+        setExpiryDateInput(getOneYearLaterExpiryInput());
+      }, 0);
     }
 
     const savedBarcode = localStorage.getItem("super_barcode_config");
     if (savedBarcode) {
-      try { setBarcodeConfig(JSON.parse(savedBarcode)); } catch(e) {}
+      try {
+        setTimeout(() => {
+          setBarcodeConfig(JSON.parse(savedBarcode));
+        }, 0);
+      } catch(e) {}
     }
   }, []);
   

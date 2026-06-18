@@ -144,6 +144,7 @@ export default function Profile() {
   const [cleanupSoldOut, setCleanupSoldOut] = useState(true);
   const [cleanupExpired, setCleanupExpired] = useState(true);
   const [cleanupSales, setCleanupSales] = useState(true);
+  const [cleanupKhata, setCleanupKhata] = useState(true);
 
   const [showCleanupModal, setShowCleanupModal] = useState(false);
   const [cleanupConfirmText, setCleanupConfirmText] = useState("");
@@ -198,7 +199,8 @@ export default function Profile() {
           months: cleanupMonths,
           cleanSoldOut: cleanupSoldOut,
           cleanExpired: cleanupExpired,
-          cleanSales: cleanupSales
+          cleanSales: cleanupSales,
+          cleanKhata: cleanupKhata
         })
       });
       const data = await res.json();
@@ -1152,7 +1154,7 @@ export default function Profile() {
                   {/* Category options */}
                   <div className="space-y-3">
                     <label className="block text-[11px] font-extrabold uppercase text-slate-400 tracking-wider">Select Categories to Purge</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                       <label className="flex items-center space-x-3 p-3 bg-white border border-rose-100 rounded-xl hover:bg-rose-50/50 cursor-pointer transition-colors">
                         <input
                           type="checkbox"
@@ -1188,7 +1190,20 @@ export default function Profile() {
                         />
                         <div className="text-left">
                           <p className="text-xs font-bold text-slate-700">Sales Invoices</p>
-                          <p className="text-[9px] text-slate-400 font-semibold mt-0.5">Transaction billing history</p>
+                          <p className="text-[9px] text-slate-400 font-semibold mt-0.5">Billing history</p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center space-x-3 p-3 bg-white border border-rose-100 rounded-xl hover:bg-rose-50/50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={cleanupKhata}
+                          onChange={(e) => setCleanupKhata(e.target.checked)}
+                          className="w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 cursor-pointer"
+                        />
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-slate-700">Settled Khata</p>
+                          <p className="text-[9px] text-slate-400 font-semibold mt-0.5">Credit profiles with 0 dues</p>
                         </div>
                       </label>
                     </div>
@@ -1216,7 +1231,7 @@ export default function Profile() {
                   <div className="pt-2">
                     <button
                       type="button"
-                      disabled={!cleanupSoldOut && !cleanupExpired && !cleanupSales}
+                      disabled={!cleanupSoldOut && !cleanupExpired && !cleanupSales && !cleanupKhata}
                       onClick={() => {
                         setCleanupConfirmText("");
                         setShowCleanupModal(true);
@@ -1496,6 +1511,7 @@ export default function Profile() {
                   {cleanupSoldOut && <li>Sold-out medicines (quantity 0)</li>}
                   {cleanupExpired && <li>Expired medicine batches</li>}
                   {cleanupSales && <li>Historical transaction sales invoices</li>}
+                  {cleanupKhata && <li>Settled credit (Udhaar) profiles with 0 outstanding balance</li>}
                 </ul>
                 <p className="text-[10px] mt-2 text-rose-600 font-bold uppercase tracking-wider">This action is irreversible!</p>
               </div>

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { 
   Package, Search, Printer, Edit, Trash2, 
-  Loader2, X, AlertCircle, CheckSquare, Square, RefreshCw
+  Loader2, X, AlertCircle, CheckSquare, Square, RefreshCw, Mic
 } from "lucide-react";
 import Barcode from "react-barcode";
 import { useReactToPrint } from "react-to-print";
@@ -80,9 +80,45 @@ export default function Inventory() {
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isListening, setIsListening] = useState(false);
   const [editMed, setEditMed] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const startSpeechRecognition = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Voice recognition is not supported in this browser. Please use Chrome/Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "hi-IN";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast.success("Listening... Dawa ka naam ya batch bolein");
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      setSearchTerm(text);
+      toast.success(`Searching: "${text}"`);
+    };
+
+    recognition.start();
+  };
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -346,15 +382,23 @@ export default function Inventory() {
             </>
           )}
 
-          <div className="relative w-full sm:w-80 group">
+          <div className="relative w-full sm:w-80 group flex items-center">
             <input 
               type="text" 
               placeholder="Search Name, Batch or Barcode..." 
-              className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-4 py-3 md:py-3.5 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium shadow-sm"
+              className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl pl-10 md:pl-12 pr-12 py-3 md:py-3.5 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Search className="absolute left-3.5 md:left-4 top-3 md:top-4 text-slate-400 w-4 h-4 md:w-5 md:h-5 group-focus-within:text-blue-500 transition-colors" />
+            <Search className="absolute left-3.5 md:left-4 top-3 md:top-4.5 text-slate-400 w-4 h-4 md:w-5 md:h-5 group-focus-within:text-blue-500 transition-colors" />
+            <button
+              type="button"
+              onClick={startSpeechRecognition}
+              className={`absolute right-3.5 p-1.5 rounded-full transition-all ${isListening ? 'text-rose-500 animate-pulse bg-rose-100' : 'text-slate-400 hover:text-blue-600'}`}
+              title="Voice Search"
+            >
+              <Mic className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -369,10 +413,41 @@ export default function Inventory() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {medicines.map((med) => {
             const isSelected = selectedMeds.includes(med._id);
+            const isExpired = med.expiryDate && new Date(med.expiryDate) < new Date();
+            const isOutOfStock = med.quantity <= 0;
+            const isExpiringSoon = !isExpired && med.expiryDate && new Date(med.expiryDate) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+            const isLowStock = !isOutOfStock && med.quantity < 10;
+            
+            let statusColor = "border-slate-100 hover:border-slate-200";
+            let statusBg = "bg-white";
+            let statusBadge = null;
+            
+            if (isExpired) {
+              statusColor = "border-rose-200 hover:border-rose-400 ring-rose-50/20";
+              statusBg = "bg-rose-50/10";
+              statusBadge = <span className="bg-rose-100 text-rose-700 border border-rose-200 text-[8px] font-black px-2 py-0.5 rounded-full select-none">EXPIRED</span>;
+            } else if (isOutOfStock) {
+              statusColor = "border-rose-200 hover:border-rose-400 ring-rose-50/20";
+              statusBg = "bg-rose-50/10";
+              statusBadge = <span className="bg-rose-100 text-rose-700 border border-rose-200 text-[8px] font-black px-2 py-0.5 rounded-full select-none">OUT OF STOCK</span>;
+            } else if (isExpiringSoon) {
+              statusColor = "border-amber-200 hover:border-amber-400 ring-amber-50/20";
+              statusBg = "bg-amber-50/10";
+              statusBadge = <span className="bg-amber-100 text-amber-700 border border-amber-200 text-[8px] font-black px-2 py-0.5 rounded-full select-none">EXPIRING SOON</span>;
+            } else if (isLowStock) {
+              statusColor = "border-amber-200 hover:border-amber-400 ring-amber-50/20";
+              statusBg = "bg-amber-50/10";
+              statusBadge = <span className="bg-amber-100 text-amber-700 border border-amber-200 text-[8px] font-black px-2 py-0.5 rounded-full select-none">LOW STOCK</span>;
+            } else {
+              statusColor = "border-emerald-200 hover:border-emerald-300 ring-emerald-50/20";
+              statusBg = "bg-emerald-50/10";
+              statusBadge = <span className="bg-emerald-100 text-emerald-700 border border-emerald-200 text-[8px] font-black px-2 py-0.5 rounded-full select-none">SAFE</span>;
+            }
+
             return (
               <div 
                 key={med._id} 
-                className={`bg-white rounded-2xl md:rounded-3xl border shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 overflow-hidden group ${isSelected ? 'border-blue-400 ring-2 ring-blue-50' : 'border-slate-100'}`}
+                className={`rounded-2xl md:rounded-3xl border shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 overflow-hidden group ${isSelected ? 'border-blue-400 ring-2 ring-blue-50 bg-blue-50/5' : `${statusColor} ${statusBg}`}`}
               >
                 <div className="p-4 md:p-6">
                   <div className="flex justify-between items-start gap-4 mb-3 md:mb-4">
@@ -384,7 +459,10 @@ export default function Inventory() {
                         }
                       </button>
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-sm md:text-lg text-slate-800 group-hover:text-blue-600 transition-colors leading-tight truncate" title={med.name}>{med.name}</h3>
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                          <h3 className="font-bold text-sm md:text-lg text-slate-800 group-hover:text-blue-600 transition-colors leading-tight truncate max-w-[130px] md:max-w-[160px]" title={med.name}>{med.name}</h3>
+                          {statusBadge}
+                        </div>
                         <span className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5 md:mt-1">ID: {med.barcodeId}</span>
                       </div>
                     </div>

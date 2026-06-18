@@ -19,6 +19,7 @@ export async function POST(req) {
     let cleanSoldOut = true;
     let cleanExpired = true;
     let cleanSales = true;
+    let cleanKhata = true;
 
     try {
       const body = await req.json();
@@ -27,6 +28,7 @@ export async function POST(req) {
         if (body.cleanSoldOut !== undefined) cleanSoldOut = !!body.cleanSoldOut;
         if (body.cleanExpired !== undefined) cleanExpired = !!body.cleanExpired;
         if (body.cleanSales !== undefined) cleanSales = !!body.cleanSales;
+        if (body.cleanKhata !== undefined) cleanKhata = !!body.cleanKhata;
       }
     } catch (e) {
       // Body may not exist, use defaults
@@ -66,10 +68,22 @@ export async function POST(req) {
       });
     }
 
+    // 4. Delete old settled credit accounts (balance <= 0) older than threshold
+    let deletedKhata = { deletedCount: 0 };
+    if (cleanKhata) {
+      const Customer = (await import("@/models/Customer")).default;
+      deletedKhata = await Customer.deleteMany({
+        userId,
+        balance: { $lte: 0 },
+        updatedAt: { $lt: thresholdDate }
+      });
+    }
+
     let summaryParts = [];
     if (cleanSoldOut) summaryParts.push(`${deletedSold.deletedCount} sold-out inventory items`);
     if (cleanExpired) summaryParts.push(`${deletedExpired.deletedCount} expired medicine batches`);
     if (cleanSales) summaryParts.push(`${deletedSales.deletedCount} transaction invoices`);
+    if (cleanKhata) summaryParts.push(`${deletedKhata.deletedCount} settled credit accounts`);
 
     const summaryMessage = summaryParts.length > 0 
       ? `Successfully purged: ${summaryParts.join(", ")} older than ${months} months.`
