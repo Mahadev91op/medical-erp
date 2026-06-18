@@ -40,11 +40,9 @@ const Sidebar = ({ isCollapsed = false, toggleCollapse }) => {
     { name: 'Purchase Entry', icon: PackagePlus, path: '/purchase', roles: ['admin'] },
     { name: 'Quick Sell', icon: ScanBarcode, path: '/sell', roles: ['admin', 'staff'] },
     { name: 'Medicine Lookup', icon: Search, path: '/lookup', roles: ['admin', 'staff'] },
-    { name: 'Khata Book (Udhaar)', icon: BookOpen, path: '/khata', roles: ['admin', 'staff'] },
+    { name: 'Credit Book', icon: BookOpen, path: '/khata', roles: ['admin', 'staff'] },
     { name: 'Distributor Returns', icon: RotateCcw, path: '/returns', roles: ['admin'] },
     { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin'] },
-    { name: 'Distributors', icon: Truck, path: '/distributors', roles: ['admin'] },
-    { name: 'Profile Settings', icon: UserCog, path: '/profile', roles: ['superadmin', 'admin', 'staff'] },
   ];
 
   // Filter links based on user role
@@ -112,33 +110,24 @@ const Sidebar = ({ isCollapsed = false, toggleCollapse }) => {
 
       <div className={`${isCollapsed ? 'p-3' : 'p-8'} border-t border-slate-50 space-y-4 shrink-0 bg-white transition-all duration-300`}>
         {isCollapsed ? (
-          <div 
-            className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 mx-auto cursor-pointer"
-            title={`${session?.user?.name || 'User'} (${session?.user?.role})`}
+          <Link
+            href="/profile"
+            className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 mx-auto cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors flex"
+            title={`${session?.user?.name || 'User'} (${session?.user?.role}) - Click for Profile Settings`}
           >
             {(session?.user?.name || 'U').charAt(0).toUpperCase()}
-          </div>
+          </Link>
         ) : (
-          <div className="bg-slate-50 p-4 rounded-2xl animate-in fade-in duration-200">
+          <Link 
+            href="/profile" 
+            className="block bg-slate-50 p-4 rounded-2xl animate-in fade-in duration-200 hover:bg-slate-100/80 cursor-pointer border border-transparent hover:border-slate-200/50 transition-all"
+            title="Click for Profile Settings"
+          >
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Logged in as</p>
             <p className="text-sm font-bold text-slate-700 truncate">{session?.user?.name || 'User'}</p>
             <p className="text-[10px] text-blue-600 font-extrabold uppercase">{session?.user?.role}</p>
-          </div>
+          </Link>
         )}
-
-        <button 
-          onClick={async () => {
-            await signOut({ redirect: false });
-            window.location.href = "/login";
-          }}
-          title={isCollapsed ? "Sign Out" : undefined}
-          className={`flex items-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all duration-200 font-medium ${
-            isCollapsed ? 'justify-center p-3 w-full' : 'space-x-3 px-4 py-3 w-full'
-          }`}
-        >
-          <LogOut className="w-5 h-5 shrink-0" />
-          {!isCollapsed && <span className="text-sm">Sign Out</span>}
-        </button>
       </div>
     </aside>
   );

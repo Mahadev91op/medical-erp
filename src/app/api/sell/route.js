@@ -135,12 +135,14 @@ export async function POST(req) {
         }
         
         customer.balance += calculatedTotal;
+        const itemsSummary = saleItems.map(item => item.name).join(", ");
+        const truncatedSummary = itemsSummary.length > 60 ? itemsSummary.slice(0, 57) + "..." : itemsSummary;
         customer.transactions.push({
           type: "Sale",
           amount: calculatedTotal,
           date: new Date(),
           saleId: newSaleId,
-          note: `Invoice #${newSaleId.toString().slice(-6).toUpperCase()}`
+          note: truncatedSummary
         });
         
         await customer.save();

@@ -338,6 +338,7 @@ export default function QuickSell() {
     }
     message += `-----------------------------\n`;
     message += `*Grand Total: ₹${totalAmount}*\n\n`;
+    const waUrl = `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`;
     window.open(waUrl, "_blank");
   };
 
@@ -345,14 +346,21 @@ export default function QuickSell() {
     if (!cust || cust.balance <= 0) return { isLocked: false, reason: "", stars: 5 };
     
     let oldestDebtDays = 0;
+    let oldestDebtDate = null;
     if (cust.transactions && cust.transactions.length > 0) {
       const debts = cust.transactions.filter(tx => tx.type === "Sale" || tx.type === "Debt");
       if (debts.length > 0) {
         const sortedDebts = [...debts].sort((a, b) => new Date(a.date) - new Date(b.date));
-        const oldestDebtDate = new Date(sortedDebts[0].date);
+        oldestDebtDate = new Date(sortedDebts[0].date);
         const diffTime = Math.abs(new Date() - oldestDebtDate);
         oldestDebtDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       }
+    }
+
+    if (!oldestDebtDate && cust.createdAt) {
+      oldestDebtDate = new Date(cust.createdAt);
+      const diffTime = Math.abs(new Date() - oldestDebtDate);
+      oldestDebtDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
     
     let promiseOverdueDays = 0;
@@ -909,7 +917,7 @@ export default function QuickSell() {
                                 <p className="text-[10px] text-slate-400 mt-0.5">Mobile: {c.phone}</p>
                               </div>
                               <span className="text-[10px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full font-extrabold shrink-0">
-                                Dues: ₹{c.balance}
+                                Dues: ₹{c.balance.toLocaleString("en-IN")}
                               </span>
                             </div>
                           );
@@ -957,11 +965,11 @@ export default function QuickSell() {
                     </div>
                     <div className="flex justify-between">
                       <span>Current Outstanding:</span>
-                      <span className="font-extrabold text-white">₹{selectedDbCustomer.balance}</span>
+                      <span className="font-extrabold text-white">₹{selectedDbCustomer.balance.toLocaleString("en-IN")}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Configured Limit:</span>
-                      <span className="font-semibold text-slate-350">₹{selectedDbCustomer.creditLimit || 10000}</span>
+                      <span className="font-semibold text-slate-350">₹{(selectedDbCustomer.creditLimit || 10000).toLocaleString("en-IN")}</span>
                     </div>
                     
                     {/* Utilization Bar */}

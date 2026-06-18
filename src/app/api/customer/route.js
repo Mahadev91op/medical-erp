@@ -62,7 +62,7 @@ export async function POST(req) {
 
     // Case 1: Record Repayment / Jama
     if (body.customerId && body.action === "repayment") {
-      const { customerId, amount, note = "" } = body;
+      const { customerId, amount, note = "", saleId = null } = body;
       const parsedAmount = parseFloat(amount);
       if (isNaN(parsedAmount) || parsedAmount <= 0) {
         return NextResponse.json({ error: "Invalid payment amount" }, { status: 400 });
@@ -82,7 +82,8 @@ export async function POST(req) {
         type: "Payment",
         amount: parsedAmount,
         date: new Date(),
-        note: note || "Jama (Repayment)"
+        saleId: saleId || undefined,
+        note: note || "Payment Received"
       });
 
       await customer.save();
@@ -107,7 +108,7 @@ export async function POST(req) {
         type: "Debt",
         amount: parsedAmount,
         date: new Date(),
-        note: note || "Custom Udhaar / Adjustment"
+        note: note || "Custom Credit / Adjustment"
       });
 
       await customer.save();

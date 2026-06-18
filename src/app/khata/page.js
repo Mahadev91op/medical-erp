@@ -4,7 +4,7 @@ import {
   BookOpen, Search, UserPlus, IndianRupee, Phone, Calendar, 
   ArrowUpRight, ArrowDownLeft, Plus, Loader2, X, FileText, 
   CheckCircle2, Printer, AlertTriangle, Edit3, MessageSquare, ArrowDown, ArrowUp,
-  Trash2
+  Trash2, ArrowLeft
 } from "lucide-react";
 import { formatExpiryDate, formatDate } from "@/lib/formatDate";
 import { useReactToPrint } from "react-to-print";
@@ -53,15 +53,27 @@ const getCustomerStatusDetails = (cust) => {
   }
   
   let oldestDebtDays = 0;
+  let oldestDebtDate = null;
   if (cust.transactions && cust.transactions.length > 0) {
     const debts = cust.transactions.filter(tx => tx.type === "Sale" || tx.type === "Debt");
     if (debts.length > 0) {
       const sortedDebts = [...debts].sort((a, b) => new Date(a.date) - new Date(b.date));
-      const oldestDebtDate = new Date(sortedDebts[0].date);
+      oldestDebtDate = new Date(sortedDebts[0].date);
       const diffTime = Math.abs(new Date() - oldestDebtDate);
       oldestDebtDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
   }
+
+  // Fallback to customer creation date if balance is outstanding but no transactions are logged in the array
+  if (!oldestDebtDate && cust.createdAt) {
+    oldestDebtDate = new Date(cust.createdAt);
+    const diffTime = Math.abs(new Date() - oldestDebtDate);
+    oldestDebtDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  const formattedDate = oldestDebtDate 
+    ? oldestDebtDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    : "N/A";
   
   let promiseOverdueDays = 0;
   if (cust.promiseDate) {
@@ -80,14 +92,14 @@ const getCustomerStatusDetails = (cust) => {
   if (oldestDebtDays > 60) reason = `Outstanding balance is older than ${oldestDebtDays} days (>60 days limit).`;
   else if (promiseOverdueDays > 7) reason = `Repayment promise deadline missed by ${promiseOverdueDays} days (>7 days grace period).`;
   
-  let status = "Active (<30d)";
+  let status = `Active (${formattedDate})`;
   let badgeClass = "bg-blue-50 border-blue-105 text-blue-600";
   
   if (oldestDebtDays > 60) {
-    status = "Critical (>60d)";
+    status = `Critical (${formattedDate})`;
     badgeClass = "bg-rose-50 border-rose-100 text-rose-600 animate-pulse";
   } else if (oldestDebtDays > 30) {
-    status = "Warning (>30d)";
+    status = `Warning (${formattedDate})`;
     badgeClass = "bg-amber-50 border-amber-100 text-amber-600";
   }
   
@@ -109,7 +121,7 @@ export default function KhataBook() {
   
   // List Filters & Sorting
   const [filterType, setFilterType] = useState("all"); // all, pending, settled
-  const [sortBy, setSortBy] = useState("balance"); // balance, name
+  const [sortBy, setSortBy] = useState("balance_desc"); // balance_desc, balance_asc, name_asc, name_desc, date_oldest, date_newest
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -126,6 +138,13 @@ export default function KhataBook() {
   
   const [repaymentAmount, setRepaymentAmount] = useState("");
   const [repaymentNote, setRepaymentNote] = useState("");
+  const [selectedRepaymentSaleId, setSelectedRepaymentSaleId] = useState("");
+
+  useEffect(() => {
+    if (!showPayModal) {
+      setSelectedRepaymentSaleId("");
+    }
+  }, [showPayModal]);
   
   const [debtAmount, setDebtAmount] = useState("");
   const [debtNote, setDebtNote] = useState("");
@@ -237,7 +256,7 @@ export default function KhataBook() {
     const sortedTx = [...cust.transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
     sortedTx.forEach(tx => {
       const txDate = new Date(tx.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-      const sign = tx.type === "Payment" ? "Paid (Jama)" : tx.type === "Debt" ? "Custom Udhaar" : "Udhaar Sale";
+      const sign = tx.type === "Payment" ? "Paid" : tx.type === "Debt" ? "Custom Credit" : "Credit Sale";
       message += `• ${txDate}: ${sign} - ₹${tx.amount}`;
       if (tx.note) message += ` _(${tx.note})_`;
       message += `\n`;
@@ -273,7 +292,8 @@ export default function KhataBook() {
           customerId: selectedCust._id,
           action: "repayment",
           amount: repaymentAmount,
-          note: repaymentNote || "Jama (Cash Received)"
+          note: repaymentNote || "Payment (Cash Received)",
+          saleId: selectedRepaymentSaleId || undefined
         })
       });
       const data = await res.json();
@@ -281,10 +301,11 @@ export default function KhataBook() {
         toast.success(`Success! Recorded repayment of ₹${repaymentAmount}`);
         
         // Send WhatsApp Payment Statement immediately
-        sendRepaymentWhatsApp(data.customer, repaymentAmount, repaymentNote || "Jama (Cash Received)");
+        sendRepaymentWhatsApp(data.customer, repaymentAmount, repaymentNote || "Payment (Cash Received)");
         
         setRepaymentAmount("");
         setRepaymentNote("");
+        setSelectedRepaymentSaleId("");
         setShowPayModal(false);
         await fetchCustomers(true);
       } else {
@@ -445,9 +466,6 @@ export default function KhataBook() {
     message += `Dear *${selectedCust.name}*,\n\n`;
     message += `This is a friendly reminder regarding your outstanding credit balance at our pharmacy:\n`;
     message += `*Total Due Amount: ₹${selectedCust.balance.toLocaleString('en-IN')}*\n`;
-    if (selectedCust.creditLimit) {
-      message += `*Allowed Credit Limit: ₹${selectedCust.creditLimit.toLocaleString('en-IN')}*\n`;
-    }
     if (selectedCust.promiseDate) {
       const pDate = new Date(selectedCust.promiseDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
       const today = new Date();
@@ -527,6 +545,55 @@ export default function KhataBook() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [printData]);
 
+  const getPendingInvoices = (cust) => {
+    if (!cust || !cust.transactions) return [];
+    const invoices = [];
+    cust.transactions.forEach(tx => {
+      if (tx.type === "Sale" || tx.type === "Debt") {
+        invoices.push({
+          saleId: tx.saleId || `custom-${tx.date}`,
+          amount: tx.amount,
+          date: tx.date,
+          note: tx.note || (tx.type === "Sale" ? "Credit" : "Custom Debt"),
+          paymentsSum: 0,
+          originalTx: tx
+        });
+      }
+    });
+
+    cust.transactions.forEach(tx => {
+      if (tx.type === "Payment" && tx.saleId) {
+        const matchedInv = invoices.find(inv => inv.originalTx.saleId && inv.originalTx.saleId.toString() === tx.saleId.toString());
+        if (matchedInv) {
+          matchedInv.paymentsSum += tx.amount;
+        }
+      }
+    });
+
+    return invoices
+      .map(inv => ({
+        ...inv,
+        remaining: inv.amount - inv.paymentsSum
+      }))
+      .filter(inv => inv.remaining > 0);
+  };
+
+  const getOldestDebtDate = (c) => {
+    if (!c.transactions || c.transactions.length === 0) return new Date(c.createdAt || 0);
+    const debts = c.transactions.filter(tx => tx.type === "Sale" || tx.type === "Debt");
+    if (debts.length === 0) return new Date(c.createdAt || 0);
+    const sorted = [...debts].sort((a, b) => new Date(a.date) - new Date(b.date));
+    return new Date(sorted[0].date);
+  };
+
+  const getNewestDebtDate = (c) => {
+    if (!c.transactions || c.transactions.length === 0) return new Date(c.createdAt || 0);
+    const debts = c.transactions.filter(tx => tx.type === "Sale" || tx.type === "Debt");
+    if (debts.length === 0) return new Date(c.createdAt || 0);
+    const sorted = [...debts].sort((a, b) => new Date(b.date) - new Date(a.date));
+    return new Date(sorted[0].date);
+  };
+
   // Filters & Sorting logic
   const filteredCustomers = customers
     .filter(c => {
@@ -540,8 +607,12 @@ export default function KhataBook() {
       return true;
     })
     .sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      return b.balance - a.balance; // balance (highest first)
+      if (sortBy === "name_asc") return a.name.localeCompare(b.name);
+      if (sortBy === "name_desc") return b.name.localeCompare(a.name);
+      if (sortBy === "balance_asc") return a.balance - b.balance;
+      if (sortBy === "date_oldest") return getOldestDebtDate(a) - getOldestDebtDate(b);
+      if (sortBy === "date_newest") return getNewestDebtDate(b) - getNewestDebtDate(a);
+      return b.balance - a.balance; // balance_desc (highest first)
     });
 
   const totalOutstanding = customers.reduce((sum, c) => sum + (c.balance || 0), 0);
@@ -582,7 +653,7 @@ export default function KhataBook() {
             <BookOpen className="w-5 h-5 md:w-6 md:h-6" />
           </div>
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight leading-tight">Advanced Credit Book (Khata Ledger)</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight leading-tight">Advanced Credit Book</h1>
             <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5">Audit customer transaction records, log repayments, adjust credit limits, and print account statements.</p>
           </div>
         </div>
@@ -631,7 +702,7 @@ export default function KhataBook() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left column: customer list and filter controls */}
-        <div className="lg:col-span-1 bg-white p-4 md:p-5 rounded-[24px] md:rounded-3xl border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] space-y-4 flex flex-col max-h-[80vh]">
+        <div className={`lg:col-span-1 bg-white p-4 md:p-5 rounded-[24px] md:rounded-3xl border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] space-y-4 flex-col max-h-[80vh] ${selectedCust ? 'hidden lg:flex' : 'flex'}`}>
           {/* Search */}
           <div className="relative">
             <input 
@@ -671,20 +742,18 @@ export default function KhataBook() {
             {/* Sort Dropdown */}
             <div className="flex items-center justify-between text-[10px] font-extrabold text-slate-400">
               <span>Sort By:</span>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => setSortBy("balance")}
-                  className={`flex items-center gap-0.5 px-2 py-0.5 rounded ${sortBy === "balance" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "hover:text-slate-600"}`}
-                >
-                  Balance <ArrowDown className="w-2.5 h-2.5" />
-                </button>
-                <button 
-                  onClick={() => setSortBy("name")}
-                  className={`flex items-center gap-0.5 px-2 py-0.5 rounded ${sortBy === "name" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "hover:text-slate-600"}`}
-                >
-                  Name A-Z
-                </button>
-              </div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-slate-50 border border-slate-200 text-slate-700 text-[10px] font-extrabold px-2 py-1 rounded-xl focus:outline-none cursor-pointer shadow-sm hover:border-slate-300 transition-colors"
+              >
+                <option value="balance_desc">Dues: High to Low</option>
+                <option value="balance_asc">Dues: Low to High</option>
+                <option value="name_asc">Name: A-Z</option>
+                <option value="name_desc">Name: Z-A</option>
+                <option value="date_oldest">Oldest Pending Dues</option>
+                <option value="date_newest">Newest Pending Dues</option>
+              </select>
             </div>
           </div>
 
@@ -729,7 +798,7 @@ export default function KhataBook() {
                             ? 'bg-rose-50 border border-rose-100 text-rose-600' 
                             : 'bg-emerald-50 border border-emerald-100 text-emerald-600'
                         }`}>
-                          ₹{c.balance}
+                          ₹{c.balance.toLocaleString("en-IN")}
                         </span>
                       </div>
                     </div>
@@ -752,7 +821,7 @@ export default function KhataBook() {
         </div>
 
         {/* Right column: customer details, analytics, and statements */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={`lg:col-span-2 space-y-6 ${selectedCust ? 'block' : 'hidden lg:block'}`}>
           {!selectedCust ? (
             <div className="bg-slate-50 border border-dashed border-slate-300 p-12 md:p-24 rounded-[24px] md:rounded-3xl text-center h-full flex flex-col justify-center items-center">
               <BookOpen className="w-12 h-12 md:w-16 md:h-16 text-slate-200 mx-auto mb-3 opacity-60 animate-pulse" />
@@ -766,6 +835,13 @@ export default function KhataBook() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
+                    <button 
+                      onClick={() => setSelectedCust(null)}
+                      className="lg:hidden p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-xl border border-slate-150 transition-colors mr-1 flex items-center justify-center shrink-0"
+                      title="Back to Customer List"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                    </button>
                     <h3 className="font-extrabold text-lg text-slate-800 capitalize leading-tight">{selectedCust.name}</h3>
                     {(() => {
                       const statusDetails = getCustomerStatusDetails(selectedCust);
@@ -988,7 +1064,10 @@ export default function KhataBook() {
                           const dateStr = dateObj.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
                           const timeStr = dateObj.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
                           
-                          const typeLabel = tx.type === "Sale" ? "Credit Sale" : tx.type === "Debt" ? "Custom Debt" : "Repayment";
+                          let typeLabel = tx.type === "Sale" ? "Credit Sale" : tx.type === "Debt" ? "Custom Debt" : "Repayment";
+                          if (tx.type === "Payment" && tx.saleId) {
+                            typeLabel = `Repayment (Invoice #${tx.saleId.toString().slice(-6).toUpperCase()})`;
+                          }
                           const typeStyle = tx.type === "Payment" 
                             ? "bg-emerald-50 border-emerald-100 text-emerald-600" 
                             : tx.type === "Debt" 
@@ -1086,6 +1165,38 @@ export default function KhataBook() {
               </button>
             </div>
             <form onSubmit={handleRecordRepayment} className="p-6 space-y-4">
+              {selectedCust && (
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Link to Invoice (Optional)</label>
+                  <select
+                    value={selectedRepaymentSaleId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedRepaymentSaleId(val);
+                      if (val) {
+                        const pendingInvoices = getPendingInvoices(selectedCust);
+                        const found = pendingInvoices.find(inv => inv.saleId && inv.saleId.toString() === val);
+                        if (found) {
+                          setRepaymentAmount(found.remaining.toFixed(2));
+                          setRepaymentNote(`Payment for Invoice #${found.saleId.toString().slice(-6).toUpperCase()}`);
+                        }
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500 font-bold text-xs cursor-pointer"
+                  >
+                    <option value="">-- General Account Repayment (No Link) --</option>
+                    {getPendingInvoices(selectedCust).map((inv, index) => {
+                      const billNo = inv.originalTx.saleId ? `#${inv.originalTx.saleId.toString().slice(-6).toUpperCase()}` : "Custom";
+                      const dateStr = new Date(inv.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+                      return (
+                        <option key={index} value={inv.originalTx.saleId || ""}>
+                          Bill {billNo} ({inv.note}) - Due: ₹{inv.remaining.toLocaleString("en-IN")} (Date: {dateStr})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Amount Received (₹) *</label>
                 <input 
@@ -1429,7 +1540,13 @@ export default function KhataBook() {
                         <tr key={idx} className="border-b border-black font-medium">
                           <td className="p-2 border-r border-black text-center">{idx + 1}</td>
                           <td className="p-2 border-r border-black font-bold">
-                            {tx.type === "Sale" ? "Credit Purchase" : tx.type === "Debt" ? "Custom Debt Adjust" : "Repayment"}
+                            {tx.type === "Sale" 
+                              ? "Credit Purchase" 
+                              : tx.type === "Debt" 
+                                ? "Custom Debt Adjust" 
+                                : tx.saleId 
+                                  ? `Repayment (#${tx.saleId.toString().slice(-6).toUpperCase()})` 
+                                  : "Repayment"}
                           </td>
                           <td className="p-2 border-r border-black text-slate-600 truncate max-w-[180px]">{tx.note || (isPayment ? "Repayment" : "Purchase Invoice")}</td>
                           <td className="p-2 border-r border-black text-right text-rose-600 font-bold">{isSale ? `₹${tx.amount.toFixed(2)}` : "-"}</td>

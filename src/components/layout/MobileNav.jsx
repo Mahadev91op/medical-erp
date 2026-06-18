@@ -15,7 +15,8 @@ import {
   LogOut,
   LayoutDashboard,
   BookOpen,
-  RotateCcw
+  RotateCcw,
+  ChevronRight
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 
@@ -40,12 +41,10 @@ const MobileNav = () => {
     { name: 'Billing', icon: ScanBarcode, path: '/sell', roles: ['admin', 'staff'] },
     { name: 'Inventory', icon: Package, path: '/inventory', roles: ['admin'] },
     { name: 'Lookup', icon: Search, path: '/lookup', roles: ['admin', 'staff'] },
-    { name: 'Khata Book', icon: BookOpen, path: '/khata', roles: ['admin', 'staff'] },
+    { name: 'Credit Book', icon: BookOpen, path: '/khata', roles: ['admin', 'staff'] },
     { name: 'Returns', icon: RotateCcw, path: '/returns', roles: ['admin'] },
     { name: 'Purchase', icon: PackagePlus, path: '/purchase', roles: ['admin'] },
     { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin'] },
-    { name: 'Distributors', icon: Truck, path: '/distributors', roles: ['admin'] },
-    { name: 'Profile Settings', icon: UserCog, path: '/profile', roles: ['superadmin', 'admin', 'staff'] },
   ];
 
   const filteredLinks = navLinks.filter(link => 
@@ -88,20 +87,17 @@ const MobileNav = () => {
             </span>
           </button>
         ) : (
-          <button 
-            onClick={async () => {
-              await signOut({ redirect: false });
-              window.location.href = "/login";
-            }}
-            className="flex flex-col items-center space-y-1 flex-1 text-slate-400 focus:outline-none font-sans"
+          <Link 
+            href="/profile"
+            className="flex flex-col items-center space-y-1 flex-1 text-slate-400 focus:outline-none"
           >
-            <div className="p-2 rounded-xl text-rose-500 bg-rose-50/50">
-              <LogOut className="w-5 h-5" />
+            <div className={`p-2 rounded-xl transition-all ${pathname === '/profile' ? 'bg-blue-600 text-white' : 'text-slate-400 bg-slate-50'}`}>
+              <UserCog className="w-5 h-5" />
             </div>
-            <span className="text-[10px] font-bold text-rose-600">
-              Sign Out
+            <span className={`text-[10px] font-bold ${pathname === '/profile' ? 'text-blue-600' : 'text-slate-400'}`}>
+              Profile
             </span>
-          </button>
+          </Link>
         )}
       </div>
 
@@ -122,6 +118,23 @@ const MobileNav = () => {
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 cursor-pointer" onClick={() => setShowMore(false)} />
             
             <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-4 px-2">More Dashboard Actions</h3>
+
+            {/* Clickable Profile Card */}
+            <Link
+              href="/profile"
+              onClick={() => setShowMore(false)}
+              className="flex items-center space-x-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100/80 transition-all mb-4"
+            >
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
+                {(session?.user?.name || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Logged in as</p>
+                <p className="text-sm font-bold text-slate-800 truncate">{session?.user?.name || 'User'}</p>
+                <p className="text-[10px] text-blue-600 font-extrabold uppercase">{session?.user?.role}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </Link>
             
             <div className="grid grid-cols-2 gap-3">
               {secondaryLinks.map((link) => {
@@ -139,19 +152,6 @@ const MobileNav = () => {
                   </Link>
                 );
               })}
-
-              {/* Sign Out Button in Drawer */}
-              <button 
-                onClick={async () => {
-                  setShowMore(false);
-                  await signOut({ redirect: false });
-                  window.location.href = "/login";
-                }}
-                className="flex items-center space-x-3 p-3.5 rounded-2xl border border-rose-100 bg-rose-50/50 text-rose-600 hover:bg-rose-100 transition-all text-left col-span-2 mt-2"
-              >
-                <LogOut className="w-5 h-5 text-rose-500" />
-                <span className="text-xs font-bold">Sign Out</span>
-              </button>
             </div>
           </div>
         </>

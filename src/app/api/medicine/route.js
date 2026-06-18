@@ -34,6 +34,7 @@ export async function GET(req) {
         const page = parseInt(searchParams.get("page")) || 1;
         const limit = parseInt(searchParams.get("limit")) || 100; 
         const search = searchParams.get("search") || "";
+        const distributor = searchParams.get("distributor") || "";
         const skip = (page - 1) * limit;
 
         const includeAll = searchParams.get("all") === "true";
@@ -41,6 +42,10 @@ export async function GET(req) {
         if (!includeAll) {
             query.quantity = { $gt: 0 };
             query.expiryDate = { $gt: new Date() };
+        }
+
+        if (distributor) {
+            query.distributor = { $regex: `^${escapeRegex(distributor)}$`, $options: "i" };
         }
         
         if (search) {

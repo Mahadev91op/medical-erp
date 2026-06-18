@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { 
   Lock, 
   User, 
@@ -8,6 +8,7 @@ import {
   Loader2, 
   CalendarClock, 
   ShieldAlert, 
+  LogOut, 
   History, 
   CalendarDays,
   Sparkles,
@@ -765,9 +766,21 @@ export default function Profile() {
             ))}
           </div>
 
+          {/* Sign Out Button */}
+          <button 
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.href = "/login";
+            }}
+            className="w-full flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider border border-rose-100 bg-rose-50/50 text-rose-600 hover:bg-rose-100 transition-all shadow-sm cursor-pointer mt-3"
+          >
+            <LogOut className="w-4 h-4 text-rose-500 shrink-0" />
+            <span>Sign Out</span>
+          </button>
+
           {/* Dev System admin alert */}
           {session?.user?.id === "000000000000000000000000" && (
-            <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 text-amber-700 text-xs font-semibold flex gap-2.5">
+            <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5 text-amber-700 text-xs font-semibold flex gap-2.5 mt-3">
               <ShieldAlert className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
               <p>Default local admin profile credentials cannot be modified via UI. Please edit your system <code>.env</code> file directly.</p>
             </div>
@@ -1202,7 +1215,7 @@ export default function Profile() {
                           className="w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500 cursor-pointer"
                         />
                         <div className="text-left">
-                          <p className="text-xs font-bold text-slate-700">Settled Khata</p>
+                          <p className="text-xs font-bold text-slate-700">Settled Credit Accounts</p>
                           <p className="text-[9px] text-slate-400 font-semibold mt-0.5">Credit profiles with 0 dues</p>
                         </div>
                       </label>
@@ -1511,7 +1524,7 @@ export default function Profile() {
                   {cleanupSoldOut && <li>Sold-out medicines (quantity 0)</li>}
                   {cleanupExpired && <li>Expired medicine batches</li>}
                   {cleanupSales && <li>Historical transaction sales invoices</li>}
-                  {cleanupKhata && <li>Settled credit (Udhaar) profiles with 0 outstanding balance</li>}
+                  {cleanupKhata && <li>Settled credit profiles with 0 outstanding balance</li>}
                 </ul>
                 <p className="text-[10px] mt-2 text-rose-600 font-bold uppercase tracking-wider">This action is irreversible!</p>
               </div>
