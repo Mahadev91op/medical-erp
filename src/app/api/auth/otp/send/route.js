@@ -44,10 +44,8 @@ export async function POST(req) {
       });
       await newOtpRecord.save();
 
-      // Send OTPs in the background asynchronously to ensure instantaneous response times
-      sendOtpEmail(email, emailOtp, phoneOtp, "signup").catch(err => {
-        console.error("Async Mailer Error:", err);
-      });
+      // Send OTPs and await the email sending to ensure reliability in serverless deployments
+      await sendOtpEmail(email, emailOtp, phoneOtp, "signup");
 
       return NextResponse.json({
         success: true,
@@ -87,10 +85,8 @@ export async function POST(req) {
       });
       await newOtpRecord.save();
 
-      // Send OTP to user's registered email in the background asynchronously
-      sendOtpEmail(userEmail, emailOtp, null, type).catch(err => {
-        console.error("Async Mailer Error:", err);
-      });
+      // Send OTP to user's registered email and await the email sending to ensure reliability in serverless deployments
+      await sendOtpEmail(userEmail, emailOtp, null, type);
 
       return NextResponse.json({
         success: true,
