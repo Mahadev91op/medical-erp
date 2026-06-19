@@ -25,6 +25,7 @@ export default function Signup() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [debugOtps, setDebugOtps] = useState(null);
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
 
     const handleSendOtp = async () => {
         if (!formData.email || !formData.phoneNumber) {
@@ -354,9 +355,27 @@ export default function Signup() {
                         </div>
                     </div>
 
+                    {/* Terms and Conditions Checkbox */}
+                    <div className="flex items-start gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 select-none">
+                        <input
+                            id="terms-checkbox"
+                            type="checkbox"
+                            checked={agreedToTerms}
+                            onChange={(e) => setAgreedToTerms(e.target.checked)}
+                            className="w-4 h-4 text-blue-600 border-slate-350 rounded focus:ring-blue-500 mt-0.5 cursor-pointer"
+                        />
+                        <label htmlFor="terms-checkbox" className="text-xs text-slate-500 font-semibold leading-relaxed cursor-pointer">
+                            I verify that I have read, understood, and agree to the 
+                            <Link href="/legal/terms-conditions" className="text-blue-500 hover:underline font-extrabold mx-1">Terms & Conditions</Link>, 
+                            <Link href="/legal/privacy-policy" className="text-blue-500 hover:underline font-extrabold mx-1">Privacy Policy</Link>, 
+                            and other regulations in the 
+                            <Link href="/legal" className="text-blue-500 hover:underline font-extrabold mx-1">Legal Hub</Link>.
+                        </label>
+                    </div>
+
                     <button
                         type="submit"
-                        disabled={loading || !otpSent}
+                        disabled={loading || !otpSent || !agreedToTerms}
                         className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-150 disabled:text-slate-400 text-white font-bold text-base px-4 py-4 rounded-xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center mt-2 disabled:shadow-none"
                     >
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Register Account"}

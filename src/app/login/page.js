@@ -97,7 +97,15 @@ export default function Login() {
                     </Link>
                 </div>
 
-                <div className="mt-8 text-center text-xs text-slate-400 font-medium flex items-center justify-center">
+                <div className="mt-6 text-center text-[10px] text-slate-400 font-bold uppercase tracking-wider space-x-2 select-none">
+                    <Link href="/legal/terms-conditions" className="hover:text-blue-500 hover:underline">Terms</Link>
+                    <span>•</span>
+                    <Link href="/legal/privacy-policy" className="hover:text-blue-500 hover:underline">Privacy</Link>
+                    <span>•</span>
+                    <Link href="/legal" className="hover:text-blue-500 hover:underline">Legal Hub</Link>
+                </div>
+
+                <div className="mt-6 text-center text-xs text-slate-400 font-medium flex items-center justify-center">
                     <Lock className="w-3 h-3 mr-1" /> Secure & Encrypted Login
                 </div>
             </div>

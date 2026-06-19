@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
+import Link from "next/link";
 import { 
   Lock, 
   User, 
@@ -646,6 +647,7 @@ export default function Profile() {
     { id: "devices", label: "Devices & Sessions", icon: <Laptop className="w-4 h-4" /> },
     { id: "databasePurge", label: "Storage Cleanup", icon: <Trash2 className="w-4 h-4" />, hide: session?.user?.id === "000000000000000000000000" },
     { id: "configurations", label: "Preferences & Config", icon: <ScanBarcode className="w-4 h-4" /> },
+    { id: "legal", label: "Legal Agreements", icon: <Shield className="w-4 h-4" /> },
   ].filter(t => !t.hide);
 
   return (
@@ -1379,6 +1381,77 @@ export default function Profile() {
                 </div>
               )}
 
+            </div>
+          )}
+
+          {/* LEGAL & POLICIES TAB */}
+          {activeTab === "legal" && (
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-150 shadow-sm space-y-6 animate-in fade-in duration-300">
+              <div>
+                <h3 className="text-base font-bold text-slate-800 flex items-center">
+                  <Shield className="w-5 h-5 text-blue-500 mr-2.5 shrink-0" />
+                  Legal Agreements & Compliance
+                </h3>
+                <p className="text-slate-500 text-xs font-semibold mt-1">
+                  Read, review, or print your operational terms, data processing terms, SLA, refund protocols, and privacy policies.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">Consolidated Legal Hub</h4>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">View all 13 documents compiled on a single page with print / download options.</p>
+                </div>
+                <Link
+                  href="/legal"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] uppercase px-4 py-2.5 rounded-xl tracking-wider transition-all shadow-md shadow-blue-500/10 shrink-0 w-full sm:w-auto text-center"
+                >
+                  Open Legal Hub
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { id: "terms-conditions", title: "Terms & Conditions", emoji: "⭐", desc: "Agreement, introduction, and eligibility criteria." },
+                  { id: "privacy-policy", title: "Privacy Policy", emoji: "🔒", desc: "Data collection, sharing, and security protocols." },
+                  { id: "subscription-billing", title: "Subscription & Billing", emoji: "💳", desc: "Free trial rules, launch offers, and pricing." },
+                  { id: "refund-cancellation", title: "Refund & Cancellation", emoji: "↩️", desc: "General refund rules and cancellations." },
+                  { id: "launch-offer", title: "Launch Offer Rules", emoji: "🎁", desc: "100 customers feedback video rules." },
+                  { id: "acceptable-use", title: "Acceptable Use Policy", emoji: "🛡️", desc: "Allowed and prohibited system usage rules." },
+                  { id: "data-backup", title: "Data Backup Policy", emoji: "💾", desc: "Daily backup retention and recovery rules." },
+                  { id: "support-policy", title: "Support Policy", emoji: "📞", desc: "Timing, priority support, and remote help." },
+                  { id: "security-policy", title: "Security Policy", emoji: "🔐", desc: "Passwords, OTP, and session management." },
+                  { id: "disclaimer", title: "Disclaimers", emoji: "⚠️", desc: "AI, GST, medicine, and compatibility disclaimers." },
+                  { id: "cookie-policy", title: "Cookie Policy", emoji: "🍪", desc: "Session tracking and third-party cookies." },
+                  { id: "dpa", title: "Data Processing (DPA)", emoji: "🤝", desc: "Controller vs Processor terms and security." },
+                  { id: "sla", title: "Service Level (SLA)", emoji: "📈", desc: "Uptime, maintenance, and issue priorities." }
+                ].map((item) => (
+                  <div key={item.id} className="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl hover:border-slate-200 transition-colors flex flex-col justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <span>{item.emoji}</span>
+                        <span>{item.title}</span>
+                      </p>
+                      <p className="text-[10px] text-slate-455 font-semibold mt-1 leading-relaxed">{item.desc}</p>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/legal/${item.id}`}
+                        className="flex-1 text-center bg-white border border-slate-200 text-slate-650 hover:bg-slate-50 font-extrabold text-[9px] py-2 rounded-lg transition-all"
+                      >
+                        View Page
+                      </Link>
+                      <Link
+                        href={`/legal#${item.id}`}
+                        className="flex-1 text-center bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-[9px] py-2 rounded-lg transition-all"
+                      >
+                        Read Section
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
