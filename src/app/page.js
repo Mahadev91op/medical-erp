@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { 
   RefreshCw, Loader2, Database, AlertOctagon, 
   Search, ShoppingCart, PackagePlus, FileText, 
   LayoutGrid, Package, AlertTriangle, Banknote, 
-  Smartphone, CreditCard, Award 
+  Smartphone, CreditCard, Award, ShieldCheck 
 } from "lucide-react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import StatCards from "@/components/dashboard/StatCards";
@@ -89,6 +90,8 @@ export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsLoading, setTermsLoading] = useState(false);
   
   // Instant search states
   const [localSearchTerm, setLocalSearchTerm] = useState("");
@@ -123,6 +126,11 @@ export default function Dashboard() {
 
       if (data.success) {
         setDashboardData(data);
+        if (!data.termsAccepted || data.termsVersion !== "v1.0") {
+          setShowTermsModal(true);
+        } else {
+          setShowTermsModal(false);
+        }
       } else {
         toast.error("Failed to load dashboard data");
       }
@@ -130,6 +138,28 @@ export default function Dashboard() {
       toast.error("Network or Server error occurred!");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAcceptTermsUpdate = async () => {
+    setTermsLoading(true);
+    try {
+      const res = await fetch("/api/user/profile/accept-terms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        toast.success("Policies accepted successfully!");
+        setShowTermsModal(false);
+        fetchDashboardData(true);
+      } else {
+        toast.error(resData.error || "Failed to accept terms.");
+      }
+    } catch (err) {
+      toast.error("Connection error. Please try again.");
+    } finally {
+      setTermsLoading(false);
     }
   };
 
@@ -650,6 +680,77 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* ⚠️ MANDATORY TERMS UPDATE ACCEPTANCE OVERLAY MODAL */}
+      {showTermsModal && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 select-none">
+          <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-100/80 p-6 md:p-8 space-y-6 animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-center text-blue-600 mx-auto shadow-sm">
+                <ShieldCheck className="w-8 h-8 animate-pulse" />
+              </div>
+              <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">Policies & Compliance Update</h2>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Required Action for MedERP License Access</p>
+            </div>
+
+            {/* Warning Info */}
+            <div className="bg-blue-50 border border-blue-100/70 text-blue-800 text-xs font-semibold p-4 rounded-2xl leading-relaxed">
+              We have updated the Terms of Service, SLA guidelines, Refund rules, and Privacy directives to maintain full compliance with the 
+              <strong> Indian IT Act, GST regulations, and DPDP Act 2023</strong>. Please review the updated agreements below.
+            </div>
+
+            {/* Scrollable Terms Content */}
+            <div className="flex-1 overflow-y-auto border border-slate-200/60 rounded-2xl p-4 bg-slate-50/50 space-y-4 max-h-[300px]">
+              <h3 className="font-extrabold text-sm text-slate-800">MedERP & DevSamp Terms of Service (Summary)</h3>
+              <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                By clicking "Accept & Proceed", you verify that you are a licensed pharmacist operating under valid drug license formats. You agree that DevSamp Technologies is not liable for wrong drug dosage dispensation or manual GST slab inputs configured on the billing terminal. All customer billing queue databases are encrypted to ensure data confidentiality.
+              </p>
+              <div className="text-xs text-slate-400 font-extrabold space-y-2 pt-2 border-t border-slate-200">
+                <p>1. Terms & Conditions version: v1.0</p>
+                <p>2. DPA (Data Processing) compliance version: v1.0</p>
+                <p>3. SLA Response timelines version: v1.0</p>
+              </div>
+              <p className="text-xs text-slate-550 font-medium">
+                You can review the individual legal pages in detail in the <Link href="/legal" target="_blank" className="text-blue-500 font-bold underline">Legal Hub Portal</Link>.
+              </p>
+            </div>
+
+            {/* Checkbox and Accept Button */}
+            <div className="space-y-4 pt-2">
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  required
+                  id="accept-terms-modal-checkbox"
+                  className="w-4.5 h-4.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 mt-0.5 cursor-pointer"
+                />
+                <span className="text-xs text-slate-500 font-semibold leading-relaxed">
+                  I agree that I have read the terms, understand the liability disclaimers, and accept the legal policies to continue operations.
+                </span>
+              </label>
+
+              <button
+                onClick={async () => {
+                  const cb = document.getElementById("accept-terms-modal-checkbox");
+                  if (!cb || !cb.checked) {
+                    toast.error("Please tick the checkbox to agree before proceeding!");
+                    return;
+                  }
+                  await handleAcceptTermsUpdate();
+                }}
+                disabled={termsLoading}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs uppercase tracking-wider py-4 rounded-2xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {termsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Accept & Proceed"}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

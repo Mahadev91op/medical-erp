@@ -44,10 +44,44 @@ export async function sendOtpEmail(email, emailOtp, phoneOtp = null, type = "sig
         <p style="color: #94a3b8; font-size: 10px; text-align: center;">This is an automated system email, please do not reply.</p>
       </div>
     `;
+  } else if (type === "delete_data") {
+    subject = "⚠️ PharmaERP - WIPE STORE DATA Verification OTP";
+    html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #fecaca; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #dc2626; text-align: center;">⚠️ Store Data Erasure Request</h2>
+        <p style="color: #475569; font-size: 14px;">A request has been made to <strong>permanently WIPE all inventory stocks, medicines, and sales invoice history</strong> from your PharmaERP account. This action cannot be undone.</p>
+        
+        <div style="margin: 20px 0; padding: 15px; background-color: #fef2f2; border-radius: 8px; border: 1px solid #fee2e2;">
+          <p style="margin: 0; font-size: 12px; font-weight: bold; color: #b91c1c; uppercase; tracking-wider;">Data Wipe Verification OTP Code</p>
+          <p style="margin: 5px 0 0; font-size: 28px; font-weight: 800; color: #991b1b; letter-spacing: 2px;">${emailOtp}</p>
+        </div>
+
+        <p style="color: #64748b; font-size: 12px;">This OTP is valid for 10 minutes. If you did not request this data wipe, please secure your account immediately.</p>
+        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
+        <p style="color: #94a3b8; font-size: 10px; text-align: center;">This is an automated system email, please do not reply.</p>
+      </div>
+    `;
+  } else if (type === "delete_account") {
+    subject = "🚨 PharmaERP - DELETE ACCOUNT PROFILE Verification OTP";
+    html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #fecaca; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #dc2626; text-align: center;">🚨 Permanent Account Deletion Request</h2>
+        <p style="color: #475569; font-size: 14px;">A request has been made to <strong>completely delete your user profile account and permanently purge all associated data</strong> from our servers. You will lose access to PharmaERP immediately.</p>
+        
+        <div style="margin: 20px 0; padding: 15px; background-color: #fef2f2; border-radius: 8px; border: 1px solid #fee2e2;">
+          <p style="margin: 0; font-size: 12px; font-weight: bold; color: #b91c1c; uppercase; tracking-wider;">Account Deletion Verification OTP Code</p>
+          <p style="margin: 5px 0 0; font-size: 28px; font-weight: 800; color: #991b1b; letter-spacing: 2px;">${emailOtp}</p>
+        </div>
+
+        <p style="color: #64748b; font-size: 12px;">This OTP is valid for 10 minutes. If you did not initiate account termination, please secure your credentials immediately.</p>
+        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
+        <p style="color: #94a3b8; font-size: 10px; text-align: center;">This is an automated system email, please do not reply.</p>
+      </div>
+    `;
   } else {
     subject = "PharmaERP - Profile Change Authorization Code";
     html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #f1f5f9; rounded: 12px; background-color: #ffffff;">
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #f1f5f9; border-radius: 12px; background-color: #ffffff;">
         <h2 style="color: #3b82f6; text-align: center;">Profile Authorization Request</h2>
         <p style="color: #475569; font-size: 14px;">A request has been made to update details on your PharmaERP profile. Please verify this action using the authorization OTP below.</p>
         

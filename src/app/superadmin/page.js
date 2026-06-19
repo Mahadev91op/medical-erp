@@ -611,7 +611,7 @@ export default function SuperAdmin() {
             <Search className="w-4 h-4 mr-2.5 text-slate-400 shrink-0" />
             <input 
               type="text" 
-              placeholder="Search pharmacy account username..." 
+              placeholder="Search by username, owner, shop, phone or email..." 
               value={searchTerm}
               onChange={handleSearchChange}
               className="bg-transparent border-none outline-none w-full text-xs md:text-sm text-slate-700 font-bold"
@@ -667,7 +667,12 @@ export default function SuperAdmin() {
                           <div>
                             <p className="font-extrabold text-slate-800 capitalize">{user.username}</p>
                             <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{user.role === "admin" ? "Pharmacy Owner" : user.role}</p>
-                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <div className="mt-2 space-y-1 text-[11px] text-slate-500 font-medium">
+                              <p className="flex items-center gap-1.5"><Store className="w-3.5 h-3.5 text-blue-500 shrink-0" /> <span className="font-bold text-slate-700">{user.shopName || "No Shop Name"}</span> ({user.name || "No Owner Name"})</p>
+                              <p className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-indigo-500 shrink-0" /> {user.phoneNumber || "No Phone"} | <Mail className="w-3.5 h-3.5 text-teal-500 shrink-0" /> {user.email || "No Email"}</p>
+                              <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" /> {user.address || "No Address"}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                               {user.isOnline ? (
                                 <>
                                   <span className="relative flex h-2 w-2">

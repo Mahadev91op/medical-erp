@@ -32,7 +32,13 @@ export async function GET(req) {
 
     const query = { role: { $ne: "superadmin" } };
     if (search) {
-      query.username = { $regex: search, $options: "i" };
+      query.$or = [
+        { username: { $regex: search, $options: "i" } },
+        { name: { $regex: search, $options: "i" } },
+        { shopName: { $regex: search, $options: "i" } },
+        { phoneNumber: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } }
+      ];
     }
 
     if (filter === "active") {
@@ -62,14 +68,22 @@ export async function GET(req) {
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const usersWithCounts = await Promise.all(users.map(async (user) => {
-      const [medicinesCount, salesCount, activeSessions, dataSizeBytes] = await Promise.all([
+      const [medicinesCount, salesCount, activeSessions] = await Promise.all([
         Medicine.countDocuments({ userId: user._id }),
         Sale.countDocuments({ userId: user._id }),
         ActiveSession.find({
           userId: user._id
-        }).sort({ lastActive: -1 }).lean(),
-        getUserDataSize(user._id)
+        }).select("deviceSessionId lastActive os browser deviceType ipAddress").lean()
       ]);
+
+      // Calculate storage metrics in-memory directly to save database calls
+      const activeSessionCount = activeSessions.length;
+      const dataSizeBytes = 
+        (medicinesCount * 350) +
+        (salesCount * 450) +
+        (activeSessionCount * 150) +
+        300;
+
       return {
         ...user,
         medicinesCount,

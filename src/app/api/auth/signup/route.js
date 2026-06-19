@@ -59,6 +59,10 @@ export async function POST(req) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Get client IP address dynamically from headers
+    const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1";
+    const primaryIp = ipAddress.split(',')[0].trim();
+
     // Create user
     const newUser = new User({
       username: cleanUsername,
@@ -69,7 +73,11 @@ export async function POST(req) {
       phoneNumber: phoneNumber.trim(),
       email: cleanEmail,
       role: "admin", // Give newly registered users the 'admin' role
-      status: "active"
+      status: "active",
+      termsAccepted: true,
+      termsVersion: "v1.0",
+      consentTimestamp: new Date(),
+      consentIP: primaryIp
     });
 
     await newUser.save();

@@ -86,7 +86,10 @@ export const legalData = [
       <h3>10. Governing Law & Jurisdiction</h3>
       <p>These terms are governed by the laws of India. Any legal actions, conflicts, or claims arising out of this software license must be resolved exclusively within the courts of our registered corporate location in India.</p>
 
-      <h3>11. Changes in Terms</h3>
+      <h3>11. Account & Data Deletion</h3>
+      <p>Users have the right to terminate this agreement at any time by requesting deletion of their data or their entire user ID/profile. Due to the high risk of malicious deletion or data loss, these actions require authentication via a One-Time Password (OTP) sent to the registered email address. Once verified, all associated tenant data (medicines, invoices, distributors, active sessions) will be instantly and permanently purged from active databases.</p>
+
+      <h3>12. Changes in Terms</h3>
       <p>Company reserves the right to update these terms at any time. Active users will receive a dashboard alert. Continued usage of the software after changes are published constitutes agreement to the updated Terms.</p>
     `
   },
@@ -146,12 +149,12 @@ export const legalData = [
       </ul>
       </p>
 
-      <h3>6. User Rights</h3>
+      <h3>6. User Rights & Data Portability</h3>
       <p>You have the absolute right to:
       <ul>
-        <li>Download a complete export of your database in JSON/Excel format at any time.</li>
+        <li><strong>Right to Portability:</strong> Export and download your entire database in JSON format, or download standard, print-ready PDF summaries of all your stock, distributors, and invoices for pen-and-paper operations at any time.</li>
+        <li><strong>Right to Erasure (Forgotten):</strong> Permanently purge all your inventory and sales data, or delete your entire account. For security, data/account deletion requires email verification OTP sent to your registered Gmail address.</li>
         <li>Request correction or updates to your registered business email, address, or phone number.</li>
-        <li>Request permanent deletion of your profile.</li>
       </ul>
       </p>
 

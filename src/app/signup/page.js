@@ -72,6 +72,12 @@ export default function Signup() {
         setLoading(true);
         setError("");
 
+        if (!agreedToTerms) {
+            setError("Please read and accept the Terms & Conditions and Privacy Policy before proceeding.");
+            setLoading(false);
+            return;
+        }
+
         if (!otpSent) {
             setError("Please send and verify OTP codes first!");
             setLoading(false);
@@ -141,22 +147,7 @@ export default function Signup() {
                     </div>
                 )}
 
-                {/* Developer debug notification */}
-                {debugOtps && (
-                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6 text-xs text-amber-800 space-y-2">
-                        <div className="flex items-center gap-1.5 font-bold">
-                            <BadgeHelp className="w-4 h-4 text-amber-600 shrink-0" />
-                            <span>Developer Notice (Free Mock Delivery Mode):</span>
-                        </div>
-                        <p className="font-semibold">
-                            SMTP details are not configured in your <code>.env</code> file. To help you test easily and for free, use these OTP codes:
-                        </p>
-                        <ul className="list-disc list-inside space-y-0.5 font-extrabold">
-                            <li>Email OTP: <span className="underline text-slate-800">{debugOtps.emailOtp}</span></li>
-                            <li>Phone OTP: <span className="underline text-slate-800">{debugOtps.phoneOtp}</span></li>
-                        </ul>
-                    </div>
-                )}
+
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     

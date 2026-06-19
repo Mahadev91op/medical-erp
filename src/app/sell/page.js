@@ -338,6 +338,7 @@ export default function QuickSell() {
     }
     message += `-----------------------------\n`;
     message += `*Grand Total: ₹${totalAmount}*\n\n`;
+    message += `_Disclaimer: This invoice is generated using MedERP. Tax slabs, dosage, and stock parameters are configured and verified by the licensed pharmacist. DevSamp Technologies holds no liability for tax rate errors or wrong drug dispensation._`;
     const waUrl = `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`;
     window.open(waUrl, "_blank");
   };
@@ -1491,7 +1492,10 @@ export default function QuickSell() {
               </div>
               <div className="footer">
                 Thank you! Get well soon.<br/>
-                *Medicines once sold cannot be returned.*
+                *Medicines once sold cannot be returned.*<br/>
+                <span style={{ fontSize: '5.5px', display: 'block', marginTop: '6px', lineHeight: '1.2', color: '#555', fontWeight: 'normal', textTransform: 'none' }}>
+                  This invoice is generated using MedERP. Tax slabs, dosage, and stock parameters are configured and verified by the licensed pharmacist. DevSamp Technologies holds no liability for tax rate errors or wrong drug dispensation.
+                </span>
               </div>
             </div>
           )}

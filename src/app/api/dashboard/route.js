@@ -4,6 +4,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import Medicine from "@/models/Medicine";
 import Sale from "@/models/Sale";
 import ActiveSession from "@/models/ActiveSession";
+import User from "@/models/User";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getUserDataSize, formatBytes } from "@/lib/storageHelper";
@@ -23,9 +24,18 @@ export async function GET() {
       }
     }
     const userId = session.user.id;
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return NextResponse.json({ success: false, error: "Invalid user session identity format" }, { status: 400 });
+    }
     const userObjectId = new mongoose.Types.ObjectId(userId);
 
     await connectToDatabase();
+
+    let userTerms = { termsAccepted: true, termsVersion: "v1.0" };
+    if (userId !== "000000000000000000000000") {
+      const dbUser = await User.findById(userId).select("termsAccepted termsVersion").lean();
+      if (dbUser) userTerms = dbUser;
+    }
 
     const today = new Date();
     const ninetyDaysFromNow = new Date();
@@ -226,6 +236,8 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
+      termsAccepted: userTerms.termsAccepted || false,
+      termsVersion: userTerms.termsVersion || "0.0",
       stats: { 
         totalMedicines, 
         totalUnits, 

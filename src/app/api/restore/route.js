@@ -33,7 +33,14 @@ export async function GET() {
 
         // Read and parse backup file
         const fileContent = fs.readFileSync(filePath, "utf8");
-        const backupData = JSON.parse(fileContent);
+        const rawFileData = JSON.parse(fileContent);
+
+        const { decrypt } = await import("@/lib/encryption");
+        let backupData = rawFileData;
+        if (rawFileData.isEncrypted) {
+            const decryptedString = decrypt(rawFileData.payload);
+            backupData = JSON.parse(decryptedString);
+        }
 
         // Security check: Make sure this backup belongs to this user
         if (backupData.username?.toLowerCase() !== username.toLowerCase()) {
@@ -101,10 +108,21 @@ export async function POST(req) {
     const username = session.user.name;
     const role = session.user.role;
 
-    const { backupData } = await req.json();
+    const { backupData: rawBackupData } = await req.json();
 
-    if (!backupData) {
+    if (!rawBackupData) {
       return NextResponse.json({ success: false, error: "Invalid upload: No backup data found." }, { status: 400 });
+    }
+
+    const { decrypt } = await import("@/lib/encryption");
+    let backupData = rawBackupData;
+    if (rawBackupData.isEncrypted) {
+      try {
+        const decryptedString = decrypt(rawBackupData.payload);
+        backupData = JSON.parse(decryptedString);
+      } catch (decErr) {
+        return NextResponse.json({ success: false, error: "Backup decryption failed. The backup file is corrupted or password secret is mismatch." }, { status: 400 });
+      }
     }
 
     await connectToDatabase();
@@ -169,6 +187,9 @@ export async function POST(req) {
       // In superadmin view, read target userId from backup file
       if (!backupData.userId) {
         return NextResponse.json({ success: false, error: "Invalid backup: Missing target User ID data." }, { status: 400 });
+      }
+      if (!mongoose.Types.ObjectId.isValid(backupData.userId)) {
+        return NextResponse.json({ success: false, error: "Invalid target User ID format in backup file." }, { status: 400 });
       }
       targetUserId = backupData.userId;
       targetUsername = backupData.username || "Selected User";

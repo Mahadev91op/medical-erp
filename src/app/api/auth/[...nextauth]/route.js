@@ -24,8 +24,15 @@ export const authOptions = {
           throw new Error("Server Error: ADMIN_USERNAME or ADMIN_PASSWORD is not set in the .env file!");
         }
 
+        if (!credentials?.username || !credentials?.password) {
+          throw new Error("Please enter both username and password.");
+        }
+
+        const inputUsername = credentials.username.toLowerCase().trim();
+        const inputPassword = credentials.password;
+
         // 2. Pehle check karo ki kya ye Super Admin hai (Seedha .env se)
-        if (credentials.username === envAdminUser && credentials.password === envAdminPass) {
+        if (inputUsername === envAdminUser.toLowerCase().trim() && inputPassword === envAdminPass) {
           return { 
             id: "000000000000000000000000", 
             name: envAdminUser, 
@@ -36,7 +43,7 @@ export const authOptions = {
         }
 
         // 3. Agar admin nahi hai, toh database me doosre users dhundo (Staff ke liye)
-        const user = await User.findOne({ username: credentials.username.toLowerCase().trim() });
+        const user = await User.findOne({ username: inputUsername });
         
         if (!user) {
           throw new Error("User not found or incorrect password.");
@@ -48,7 +55,7 @@ export const authOptions = {
         }
 
         // 4. Agar user database me mil gaya, toh password match karo
-        const isValid = await bcrypt.compare(credentials.password, user.password);
+        const isValid = await bcrypt.compare(inputPassword, user.password);
         if (!isValid) {
           throw new Error("Incorrect password!");
         }

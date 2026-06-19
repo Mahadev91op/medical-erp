@@ -38,7 +38,31 @@ const UserSchema = new mongoose.Schema({
     addedMonths: { type: Number, required: true },
     addedAt: { type: Date, default: Date.now },
     newExpirationDate: { type: Date, required: true }
-  }]
+  }],
+  termsAccepted: {
+    type: Boolean,
+    default: false
+  },
+  termsVersion: {
+    type: String,
+    default: "v1.0"
+  },
+  consentTimestamp: {
+    type: Date
+  },
+  consentIP: {
+    type: String
+  }
 }, { timestamps: true });
+
+UserSchema.index({ username: 1 });
+UserSchema.index({ name: 1 });
+UserSchema.index({ shopName: 1 });
+UserSchema.index({ phoneNumber: 1 });
+UserSchema.index({ email: 1 });
+
+if (mongoose.models.User && !mongoose.models.User.schema.paths.termsAccepted) {
+  delete mongoose.models.User;
+}
 
 export default mongoose.models.User || mongoose.model("User", UserSchema);

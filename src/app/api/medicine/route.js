@@ -48,20 +48,74 @@ export async function GET(req) {
             query.distributor = { $regex: `^${escapeRegex(distributor)}$`, $options: "i" };
         }
         
+        let medicines = [];
+        let total = 0;
+
         if (search) {
             const escapedSearch = escapeRegex(search);
-            query.$or = [
-                { name: { $regex: escapedSearch, $options: "i" } },
-                { batch: { $regex: escapedSearch, $options: "i" } },
-                { barcodeId: { $regex: escapedSearch, $options: "i" } }
-            ];
-        }
+            
+            if (skip === 0) {
+                // 🚀 PREFIX-FIRST PERFORMANCE PATH (O(1) billing autocompletion)
+                const prefixQuery = { 
+                    ...query, 
+                    $or: [
+                        { name: { $regex: `^${escapedSearch}`, $options: "i" } },
+                        { batch: { $regex: `^${escapedSearch}`, $options: "i" } },
+                        { barcodeId: { $regex: `^${escapedSearch}`, $options: "i" } }
+                    ]
+                };
 
-        // 🚀 SPEED OPTIMIZATION: Count queries use active indexes (like quantity & search parameters) for fast lookup
-        const [medicines, total] = await Promise.all([
-            Medicine.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-            Medicine.countDocuments(query)
-        ]);
+                // Fetch prefix matches first (uses indexes directly)
+                medicines = await Medicine.find(prefixQuery).sort({ createdAt: -1 }).limit(limit).lean();
+
+                // If we need more items to fill the limit, fallback to wildcard search
+                if (medicines.length < limit) {
+                    const remainingLimit = limit - medicines.length;
+                    const foundIds = medicines.map(m => m._id);
+                    const wildcardQuery = {
+                        ...query,
+                        _id: { $nin: foundIds },
+                        $or: [
+                            { name: { $regex: escapedSearch, $options: "i" } },
+                            { batch: { $regex: escapedSearch, $options: "i" } },
+                            { barcodeId: { $regex: escapedSearch, $options: "i" } }
+                        ]
+                    };
+
+                    const prefixCount = await Medicine.countDocuments(prefixQuery);
+                    const additionalMeds = await Medicine.find(wildcardQuery)
+                        .sort({ createdAt: -1 })
+                        .limit(remainingLimit)
+                        .lean();
+
+                    medicines = medicines.concat(additionalMeds);
+                    const wildcardCount = await Medicine.countDocuments(wildcardQuery);
+                    total = prefixCount + wildcardCount;
+                } else {
+                    total = await Medicine.countDocuments(prefixQuery);
+                }
+            } else {
+                // STANDARD WILD-CARD PATH FOR PAGINATED SEARCHES (skip > 0)
+                const wildcardQuery = {
+                    ...query,
+                    $or: [
+                        { name: { $regex: escapedSearch, $options: "i" } },
+                        { batch: { $regex: escapedSearch, $options: "i" } },
+                        { barcodeId: { $regex: escapedSearch, $options: "i" } }
+                    ]
+                };
+                [medicines, total] = await Promise.all([
+                    Medicine.find(wildcardQuery).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+                    Medicine.countDocuments(wildcardQuery)
+                ]);
+            }
+        } else {
+            // Fetch all without search
+            [medicines, total] = await Promise.all([
+                Medicine.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+                Medicine.countDocuments(query)
+            ]);
+        }
 
         return NextResponse.json({
             success: true,

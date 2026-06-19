@@ -44,19 +44,19 @@ export async function POST(req) {
       });
       await newOtpRecord.save();
 
-      // Send OTPs
-      const mailRes = await sendOtpEmail(email, emailOtp, phoneOtp, "signup");
+      // Send OTPs in the background asynchronously to ensure instantaneous response times
+      sendOtpEmail(email, emailOtp, phoneOtp, "signup").catch(err => {
+        console.error("Async Mailer Error:", err);
+      });
 
       return NextResponse.json({
         success: true,
-        message: "OTPs sent successfully!",
-        // Return OTPs in response ONLY in development mode for easy developer testing without setting SMTP
-        ...(process.env.NODE_ENV === "development" ? { debug: { emailOtp, phoneOtp } } : {})
+        message: "OTPs sent successfully!"
       });
     }
 
-    if (type === "profile") {
-      // Profile update OTP requires a logged in session
+    if (type === "profile" || type === "delete_data" || type === "delete_account") {
+      // Profile update/deletion OTP requires a logged in session
       const session = await getServerSession(authOptions);
       if (!session || !session.user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -87,13 +87,14 @@ export async function POST(req) {
       });
       await newOtpRecord.save();
 
-      // Send OTP to user's registered email
-      const mailRes = await sendOtpEmail(userEmail, emailOtp, null, "profile");
+      // Send OTP to user's registered email in the background asynchronously
+      sendOtpEmail(userEmail, emailOtp, null, type).catch(err => {
+        console.error("Async Mailer Error:", err);
+      });
 
       return NextResponse.json({
         success: true,
-        message: "Verification OTP sent to your registered email!",
-        ...(process.env.NODE_ENV === "development" ? { debug: { emailOtp } } : {})
+        message: "Verification OTP sent to your registered email!"
       });
     }
 

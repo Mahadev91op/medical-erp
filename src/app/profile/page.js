@@ -152,6 +152,21 @@ export default function Profile() {
   const [cleanupConfirmText, setCleanupConfirmText] = useState("");
   const [cleanupLoading, setCleanupLoading] = useState(false);
 
+  // Data Portability & Erasure states
+  const [rawExportLoading, setRawExportLoading] = useState(false);
+  const [showWipeDataModal, setShowWipeDataModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [wipeDataOtp, setWipeDataOtp] = useState("");
+  const [deleteAccountOtp, setDeleteAccountOtp] = useState("");
+  const [sendingWipeOtp, setSendingWipeOtp] = useState(false);
+  const [sendingDeleteOtp, setSendingDeleteOtp] = useState(false);
+  const [wipeOtpSent, setWipeOtpSent] = useState(false);
+  const [deleteOtpSent, setDeleteOtpSent] = useState(false);
+  const [wipingDataLoading, setWipingDataLoading] = useState(false);
+  const [deletingAccountLoading, setDeletingAccountLoading] = useState(false);
+  const [wipeOtpDebug, setWipeOtpDebug] = useState(null);
+  const [deleteOtpDebug, setDeleteOtpDebug] = useState(null);
+
   useEffect(() => {
     const savedForm = localStorage.getItem("super_purchase_form_config");
     if (savedForm) {
@@ -246,6 +261,164 @@ export default function Profile() {
       console.error("Failed to load profile details:", error);
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const handleDownloadRawData = async () => {
+    setRawExportLoading(true);
+    const toastId = toast.loading("Assembling raw database records...");
+    try {
+      const res = await fetch("/api/user/profile/export-raw");
+      const data = await res.json();
+      if (data.success) {
+        const payload = {
+          shopName: data.user.shopName,
+          ownerName: data.user.name,
+          email: data.user.email,
+          phoneNumber: data.user.phoneNumber,
+          address: data.user.address,
+          exportedAt: new Date().toISOString(),
+          medicines: data.medicines,
+          sales: data.sales
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `store_data_portability_${data.user.username.toLowerCase()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        toast.success("🎉 Raw store database exported successfully!", { id: toastId });
+      } else {
+        toast.error(data.error || "Failed to compile raw database", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Network or server connection failed.", { id: toastId });
+    } finally {
+      setRawExportLoading(false);
+    }
+  };
+
+  const handleRequestWipeOtp = async () => {
+    setSendingWipeOtp(true);
+    setWipeOtpDebug(null);
+    const toastId = toast.loading("Sending verification OTP to your registered email...");
+    try {
+      const res = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "delete_data" })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setWipeOtpSent(true);
+        toast.success("OTP sent! Please check your registered email.", { id: toastId });
+        if (data.debug) {
+          setWipeOtpDebug(data.debug.emailOtp);
+        }
+      } else {
+        toast.error(data.error || "Failed to dispatch OTP", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Communication error", { id: toastId });
+    } finally {
+      setSendingWipeOtp(false);
+    }
+  };
+
+  const handleRequestDeleteOtp = async () => {
+    setSendingDeleteOtp(true);
+    setDeleteOtpDebug(null);
+    const toastId = toast.loading("Sending verification OTP to your registered email...");
+    try {
+      const res = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "delete_account" })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDeleteOtpSent(true);
+        toast.success("OTP sent! Please check your registered email.", { id: toastId });
+        if (data.debug) {
+          setDeleteOtpDebug(data.debug.emailOtp);
+        }
+      } else {
+        toast.error(data.error || "Failed to dispatch OTP", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Communication error", { id: toastId });
+    } finally {
+      setSendingDeleteOtp(false);
+    }
+  };
+
+  const handleWipeAllData = async (e) => {
+    e.preventDefault();
+    if (!wipeDataOtp.trim()) {
+      toast.error("Please enter the verification OTP code!");
+      return;
+    }
+    setWipingDataLoading(true);
+    const toastId = toast.loading("Purging all store database records...");
+    try {
+      const res = await fetch("/api/user/profile/delete-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otp: wipeDataOtp })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || "Store data has been purged successfully!", { id: toastId, duration: 6000 });
+        setShowWipeDataModal(false);
+        setWipeDataOtp("");
+        setWipeOtpSent(false);
+        setWipeOtpDebug(null);
+        fetchProfileDetails();
+      } else {
+        toast.error(data.error || "Purge execution failed", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Server communication error", { id: toastId });
+    } finally {
+      setWipingDataLoading(false);
+    }
+  };
+
+  const handleDeleteMyAccount = async (e) => {
+    e.preventDefault();
+    if (!deleteAccountOtp.trim()) {
+      toast.error("Please enter the verification OTP code!");
+      return;
+    }
+    setDeletingAccountLoading(true);
+    const toastId = toast.loading("Deleting your account profile...");
+    try {
+      const res = await fetch("/api/user/profile/delete-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otp: deleteAccountOtp })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("🎉 Profile deleted. Signing you out.", { id: toastId });
+        setShowDeleteAccountModal(false);
+        setDeleteAccountOtp("");
+        setDeleteOtpSent(false);
+        setDeleteOtpDebug(null);
+        // Force signout and redirect
+        setTimeout(() => {
+          signOut({ callbackUrl: "/login" });
+        }, 1500);
+      } else {
+        toast.error(data.error || "Account deletion failed", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Server communication error", { id: toastId });
+    } finally {
+      setDeletingAccountLoading(false);
     }
   };
 
@@ -1258,6 +1431,81 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
+
+              {/* Data Portability (Export Options) */}
+              <div className="bg-slate-50 border border-slate-200/60 rounded-3xl p-5 md:p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100 shrink-0">
+                    <Download className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 leading-tight">Data Portability & Porting Ledger</h4>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Download your database locally for pen-and-paper or custom formats</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <button
+                    onClick={handleDownloadRawData}
+                    disabled={rawExportLoading}
+                    className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 px-4 text-xs uppercase tracking-wider disabled:opacity-50 rounded-xl transition-all shadow-sm cursor-pointer"
+                  >
+                    {rawExportLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    Download Raw Data (.json)
+                  </button>
+
+                  <a
+                    href="/profile/export-print"
+                    target="_blank"
+                    className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 text-xs uppercase tracking-wider text-center select-none rounded-xl transition-all shadow-sm cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-blue-200" /> Download Print PDF Book
+                  </a>
+                </div>
+              </div>
+
+              {/* Data Erasure & Account Deletion */}
+              <div className="bg-rose-50/50 border border-rose-100/70 rounded-3xl p-5 md:p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-600 shrink-0">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-rose-900 leading-tight">Permanent Deletion & Erasure Center</h4>
+                    <p className="text-[10px] text-rose-600 font-bold uppercase tracking-wider mt-0.5">DPDP Rights: Request full erasure of data or account profile</p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                  Under naye compliance acts, you hold the right to be forgotten. Wiping data or deleting your profile requires security authorization code sent to your registered Gmail.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      setWipeDataOtp("");
+                      setWipeOtpSent(false);
+                      setWipeOtpDebug(null);
+                      setShowWipeDataModal(true);
+                    }}
+                    className="flex items-center justify-center gap-2 border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold py-3.5 px-4 text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" /> Wipe All Store Data
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setDeleteAccountOtp("");
+                      setDeleteOtpSent(false);
+                      setDeleteOtpDebug(null);
+                      setShowDeleteAccountModal(true);
+                    }}
+                    className="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold py-3.5 px-4 text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" /> Delete Account Profile
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1478,20 +1726,7 @@ export default function Profile() {
             
             <form onSubmit={handleSaveProfileChanges} className="p-6 space-y-5">
               <p className="text-xs text-slate-500 font-medium">To authorize updates to your profile details, enter the 6-digit security code sent to your registered email address (<strong className="text-slate-700">{profileData.email}</strong>).</p>
-              
-              {/* Developer debug notification */}
-              {debugOtp && (
-                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-800 space-y-2">
-                  <div className="flex items-center gap-1.5 font-bold">
-                    <BadgeHelp className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Developer Notice (Mock OTP Delivery):</span>
-                  </div>
-                  <p className="font-semibold">
-                    SMTP details are not configured in your <code>.env</code>. To help you test for free locally, use this code:
-                  </p>
-                  <p className="font-extrabold text-sm underline text-slate-800">OTP Code: {debugOtp.emailOtp}</p>
-                </div>
-              )}
+
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">Authorization OTP</label>
@@ -1631,6 +1866,152 @@ export default function Profile() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Wipe Store Data Modal */}
+      {showWipeDataModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
+            <div className="p-5 border-b border-rose-100 flex items-center justify-between bg-rose-50/50">
+              <h2 className="text-base md:text-lg font-bold text-rose-800 flex items-center">
+                <ShieldAlert className="w-5 h-5 mr-2 text-rose-500 animate-pulse" />
+                ⚠️ DANGER: Wipe Store Data
+              </h2>
+              <button 
+                onClick={() => { setShowWipeDataModal(false); }}
+                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-5">
+              <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold p-4 rounded-xl leading-relaxed">
+                ⚠️ WARNING: Wiping store data will permanently purge all medicines, inventory batches, barcodes, and transaction invoices. This action cannot be undone!
+              </div>
+
+              {!wipeOtpSent ? (
+                <div className="space-y-4">
+                  <p className="text-xs text-slate-500 font-medium">To proceed with data erasure, you must request and verify a security code sent to your registered Gmail (<strong className="text-slate-700">{profileData.email}</strong>).</p>
+                  <button
+                    onClick={handleRequestWipeOtp}
+                    disabled={sendingWipeOtp}
+                    className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl transition-all shadow-md text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {sendingWipeOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Verification OTP"}
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleWipeAllData} className="space-y-5">
+
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">Enter Deletion OTP</label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      placeholder="6-digit code"
+                      value={wipeDataOtp}
+                      onChange={(e) => setWipeDataOtp(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-rose-400 font-bold text-lg tracking-widest"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setWipeOtpSent(false)}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold py-3 rounded-xl transition-all text-xs uppercase cursor-pointer"
+                    >
+                      Resend Code
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={wipingDataLoading}
+                      className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-rose-100 text-xs uppercase flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    >
+                      {wipingDataLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify & Wipe Data"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Modal */}
+      {showDeleteAccountModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
+            <div className="p-5 border-b border-rose-100 flex items-center justify-between bg-rose-50/50">
+              <h2 className="text-base md:text-lg font-bold text-rose-800 flex items-center">
+                <ShieldAlert className="w-5 h-5 mr-2 text-rose-500 animate-pulse" />
+                🚨 CRITICAL: Delete Account Profile
+              </h2>
+              <button 
+                onClick={() => { setShowDeleteAccountModal(false); }}
+                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-5">
+              <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold p-4 rounded-xl leading-relaxed">
+                🚨 DANGER: Account deletion will permanently erase your profile credentials, billing shop details, and purge all your medicines, invoices, and active login sessions. This action is irreversible!
+              </div>
+
+              {!deleteOtpSent ? (
+                <div className="space-y-4">
+                  <p className="text-xs text-slate-500 font-medium">To proceed with profile deletion, you must request and verify a security code sent to your registered Gmail (<strong className="text-slate-700">{profileData.email}</strong>).</p>
+                  <button
+                    onClick={handleRequestDeleteOtp}
+                    disabled={sendingDeleteOtp}
+                    className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {sendingDeleteOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Verification OTP"}
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleDeleteMyAccount} className="space-y-5">
+                  
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">Enter Deletion OTP</label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      placeholder="Enter 6-digit code"
+                      value={deleteAccountOtp}
+                      onChange={(e) => setDeleteAccountOtp(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 text-center focus:outline-none focus:border-rose-400 font-bold text-lg tracking-widest"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteOtpSent(false)}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-750 font-bold py-3 rounded-xl transition-all text-xs uppercase cursor-pointer"
+                    >
+                      Resend Code
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={deletingAccountLoading}
+                      className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-rose-100 text-xs uppercase flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    >
+                      {deletingAccountLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify & Delete Profile"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}
