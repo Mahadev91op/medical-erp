@@ -705,7 +705,7 @@ export default function Dashboard() {
             <div className="flex-1 overflow-y-auto border border-slate-200/60 rounded-2xl p-4 bg-slate-50/50 space-y-4 max-h-[300px]">
               <h3 className="font-extrabold text-sm text-slate-800">MedERP & DevSamp Terms of Service (Summary)</h3>
               <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                By clicking "Accept & Proceed", you verify that you are a licensed pharmacist operating under valid drug license formats. You agree that DevSamp Technologies is not liable for wrong drug dosage dispensation or manual GST slab inputs configured on the billing terminal. All customer billing queue databases are encrypted to ensure data confidentiality.
+                By clicking &quot;Accept &amp; Proceed&quot;, you verify that you are a licensed pharmacist operating under valid drug license formats. You agree that DevSamp Technologies is not liable for wrong drug dosage dispensation or manual GST slab inputs configured on the billing terminal. All customer billing queue databases are encrypted to ensure data confidentiality.
               </p>
               <div className="text-xs text-slate-400 font-extrabold space-y-2 pt-2 border-t border-slate-200">
                 <p>1. Terms & Conditions version: v1.0</p>

@@ -20,6 +20,18 @@ import {
 } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 
+// Navigation Links definition
+const navLinks = [
+  { name: 'Dashboard', icon: LayoutDashboard, path: '/', roles: ['superadmin', 'admin', 'staff'] },
+  { name: 'Inventory', icon: Package, path: '/inventory', roles: ['admin'] },
+  { name: 'Purchase Entry', icon: PackagePlus, path: '/purchase', roles: ['admin'] },
+  { name: 'Quick Sell', icon: ScanBarcode, path: '/sell', roles: ['admin', 'staff'] },
+  { name: 'Medicine Lookup', icon: Search, path: '/lookup', roles: ['admin', 'staff'] },
+  { name: 'Credit Book', icon: BookOpen, path: '/khata', roles: ['admin', 'staff'] },
+  { name: 'Distributor Returns', icon: RotateCcw, path: '/returns', roles: ['admin'] },
+  { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin'] },
+];
+
 const Sidebar = ({ isCollapsed = false, toggleCollapse }) => {
   const pathname = usePathname();
   const router = useRouter();
@@ -33,25 +45,13 @@ const Sidebar = ({ isCollapsed = false, toggleCollapse }) => {
     }
   }, [session]);
 
-  // Navigation Links definition
-  const navLinks = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/', roles: ['superadmin', 'admin', 'staff'] },
-    { name: 'Inventory', icon: Package, path: '/inventory', roles: ['admin'] },
-    { name: 'Purchase Entry', icon: PackagePlus, path: '/purchase', roles: ['admin'] },
-    { name: 'Quick Sell', icon: ScanBarcode, path: '/sell', roles: ['admin', 'staff'] },
-    { name: 'Medicine Lookup', icon: Search, path: '/lookup', roles: ['admin', 'staff'] },
-    { name: 'Credit Book', icon: BookOpen, path: '/khata', roles: ['admin', 'staff'] },
-    { name: 'Distributor Returns', icon: RotateCcw, path: '/returns', roles: ['admin'] },
-    { name: 'Reports', icon: BarChart3, path: '/reports', roles: ['admin'] },
-  ];
-
   // Filter links based on user role
   const filteredLinks = useMemo(() => {
     if (!session?.user?.role) return [];
     return navLinks.filter(link => 
       link.roles.includes(session.user.role)
     );
-  }, [session?.user?.role]);
+  }, [session]);
 
   // Prefetch all valid links for this user's role to make tab switching instant
   useEffect(() => {

@@ -141,6 +141,26 @@ export async function POST(req) {
 
         await connectToDatabase();
         const data = await req.json();
+
+        // 🚀 BULK INSERTION PATH FOR CSV/EXCEL IMPORTS
+        if (Array.isArray(data)) {
+            const medicinesToSave = data.map((item, idx) => {
+                // Ensure unique barcodes even when created rapidly in bulk
+                const uniqueBarcode = `MED-${(Date.now() + idx).toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
+                return {
+                    ...item,
+                    userId,
+                    barcodeId: item.barcodeId || uniqueBarcode,
+                    quantity: Number(item.quantity),
+                    mrp: Number(item.mrp),
+                    purchasePrice: Number(item.purchasePrice || item.mrp)
+                };
+            });
+            const inserted = await Medicine.insertMany(medicinesToSave);
+            return NextResponse.json({ success: true, count: inserted.length }, { status: 201 });
+        }
+
+        // 📝 SINGLE INSERTION PATH
         const uniqueBarcode = `MED-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
         const newMedicine = new Medicine({
             ...data,
