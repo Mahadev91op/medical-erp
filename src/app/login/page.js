@@ -40,7 +40,7 @@ export default function Login() {
                     <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100 mb-4">
                         <Activity className="text-white w-7 h-7" />
                     </div>
-                    <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Pharma<span className="text-blue-500">ERP</span></h1>
+                    <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Med<span className="text-blue-500">ERP</span></h1>
                     <p className="text-slate-500 text-sm font-medium mt-1">Staff & Admin Login Portal</p>
                 </div>
 
