@@ -45,7 +45,7 @@ export default function LayoutWrapper({ children }) {
       <Sidebar isCollapsed={isCollapsed} toggleCollapse={toggleCollapse} />
       <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isCollapsed ? "lg:ml-20" : "lg:ml-64"}`}>
         <Header />
-        <main className="flex-1 p-4 md:p-8 lg:p-10 pb-28 lg:pb-10 transition-all duration-300">
+        <main className="flex-1 p-3 sm:p-5 md:p-8 lg:p-10 pb-28 lg:pb-10 transition-all duration-300 w-full max-w-full overflow-x-hidden">
           {children}
         </main>
         <MobileNav />

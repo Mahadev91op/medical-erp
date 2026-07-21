@@ -58,16 +58,16 @@ const MobileNav = () => {
   return (
     <div className="lg:hidden">
       {/* Bottom Navigation Bar for Mobile */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-4 py-2.5 flex justify-between items-center z-[80] shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)] pb-safe">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-100/80 px-2 sm:px-4 py-2 flex justify-between items-center z-[80] shadow-[0_-4px_25px_-5px_rgba(0,0,0,0.08)] pb-safe">
         {primaryLinks.map((link) => {
           const Icon = link.icon;
           const isActive = pathname === link.path;
           return (
-            <Link key={link.path} href={link.path} className="flex flex-col items-center space-y-1 flex-1">
-              <div className={`p-2 rounded-xl transition-all ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-400'}`}>
+            <Link key={link.path} href={link.path} className="flex flex-col items-center space-y-1 flex-1 touch-active py-0.5">
+              <div className={`p-2 rounded-xl transition-all duration-200 ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-300 scale-105' : 'text-slate-400 hover:text-slate-600'}`}>
                 <Icon className="w-5 h-5" />
               </div>
-              <span className={`text-[10px] font-bold ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
+              <span className={`text-[10px] font-bold tracking-tight ${isActive ? 'text-blue-600 font-extrabold' : 'text-slate-400'}`}>
                 {link.name}
               </span>
             </Link>
@@ -77,24 +77,24 @@ const MobileNav = () => {
         {isMoreNeeded ? (
           <button 
             onClick={() => setShowMore(true)} 
-            className="flex flex-col items-center space-y-1 flex-1 text-slate-400 focus:outline-none"
+            className="flex flex-col items-center space-y-1 flex-1 text-slate-400 focus:outline-none touch-active py-0.5 cursor-pointer"
           >
-            <div className={`p-2 rounded-xl transition-all ${showMore ? 'bg-slate-800 text-white' : 'text-slate-400'}`}>
+            <div className={`p-2 rounded-xl transition-all duration-200 ${showMore ? 'bg-slate-800 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>
               <Menu className="w-5 h-5" />
             </div>
-            <span className={`text-[10px] font-bold ${showMore ? 'text-slate-800' : 'text-slate-400'}`}>
+            <span className={`text-[10px] font-bold tracking-tight ${showMore ? 'text-slate-800 font-extrabold' : 'text-slate-400'}`}>
               More
             </span>
           </button>
         ) : (
           <Link 
             href="/profile"
-            className="flex flex-col items-center space-y-1 flex-1 text-slate-400 focus:outline-none"
+            className="flex flex-col items-center space-y-1 flex-1 text-slate-400 focus:outline-none touch-active py-0.5"
           >
-            <div className={`p-2 rounded-xl transition-all ${pathname === '/profile' ? 'bg-blue-600 text-white' : 'text-slate-400 bg-slate-50'}`}>
+            <div className={`p-2 rounded-xl transition-all duration-200 ${pathname === '/profile' ? 'bg-blue-600 text-white shadow-md shadow-blue-300 scale-105' : 'text-slate-400 bg-slate-50'}`}>
               <UserCog className="w-5 h-5" />
             </div>
-            <span className={`text-[10px] font-bold ${pathname === '/profile' ? 'text-blue-600' : 'text-slate-400'}`}>
+            <span className={`text-[10px] font-bold tracking-tight ${pathname === '/profile' ? 'text-blue-600 font-extrabold' : 'text-slate-400'}`}>
               Profile
             </span>
           </Link>
@@ -112,28 +112,31 @@ const MobileNav = () => {
           
           {/* Bottom Sheet Card */}
           <div 
-            className={`fixed bottom-0 left-0 right-0 bg-white rounded-t-[32px] border-t border-slate-100 p-6 z-[100] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-out transform pb-12 ${showMore ? 'translate-y-0' : 'translate-y-full'}`}
+            className={`fixed bottom-0 left-0 right-0 bg-white rounded-t-[32px] border-t border-slate-100 p-5 sm:p-6 z-[100] shadow-[0_-10px_40px_rgba(0,0,0,0.15)] transition-transform duration-300 ease-out transform pb-12 ${showMore ? 'translate-y-0' : 'translate-y-full'}`}
           >
             {/* Grabber indicator bar (Native mobile look) */}
-            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 cursor-pointer" onClick={() => setShowMore(false)} />
+            <div className="w-12 h-1.5 bg-slate-200 hover:bg-slate-300 rounded-full mx-auto mb-5 cursor-pointer touch-active" onClick={() => setShowMore(false)} />
             
-            <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-4 px-2">More Dashboard Actions</h3>
+            <div className="flex items-center justify-between mb-4 px-2">
+              <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">More Dashboard Actions</h3>
+              <button onClick={() => setShowMore(false)} className="text-xs text-slate-400 font-bold hover:text-slate-600">Close</button>
+            </div>
 
             {/* Clickable Profile Card */}
             <Link
               href="/profile"
               onClick={() => setShowMore(false)}
-              className="flex items-center space-x-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100/80 transition-all mb-4"
+              className="flex items-center space-x-3 p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100/80 transition-all mb-4 touch-active"
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-sm shrink-0">
                 {(session?.user?.name || 'U').charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Logged in as</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Logged in as</p>
                 <p className="text-sm font-bold text-slate-800 truncate">{session?.user?.name || 'User'}</p>
                 <p className="text-[10px] text-blue-600 font-extrabold uppercase">{session?.user?.role}</p>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
+              <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
             </Link>
             
             <div className="grid grid-cols-2 gap-3">
@@ -145,10 +148,10 @@ const MobileNav = () => {
                     key={link.path} 
                     href={link.path}
                     onClick={() => setShowMore(false)}
-                    className={`flex items-center space-x-3 p-3.5 rounded-2xl border transition-all ${isActive ? 'bg-blue-600 border-blue-600 text-white font-bold shadow-md shadow-blue-100' : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'}`}
+                    className={`flex items-center space-x-3 p-3.5 rounded-2xl border transition-all touch-active ${isActive ? 'bg-blue-600 border-blue-600 text-white font-bold shadow-md shadow-blue-100' : 'bg-slate-50 border-slate-100 text-slate-700 hover:bg-slate-100'}`}
                   >
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                    <span className="text-xs font-bold">{link.name}</span>
+                    <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <span className="text-xs font-bold truncate">{link.name}</span>
                   </Link>
                 );
               })}

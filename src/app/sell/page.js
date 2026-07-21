@@ -1153,14 +1153,37 @@ export default function QuickSell() {
           </div>
 
           <button 
+            id="main-checkout-btn"
             onClick={handleCheckout} 
             disabled={cart.length === 0 || checkoutLoading}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm md:text-lg px-4 py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all shadow-lg shadow-blue-500/30 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm md:text-lg px-4 py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all shadow-lg shadow-blue-500/30 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {checkoutLoading ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : "Complete Sale"}
           </button>
         </div>
       </div>
+
+      {/* Sticky Mobile Checkout Quick Bar */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-[52px] left-0 right-0 bg-slate-900/95 backdrop-blur-xl text-white px-4 py-2.5 z-[70] border-t border-slate-700/60 shadow-[0_-6px_25px_rgba(0,0,0,0.3)] flex items-center justify-between animate-in slide-in-from-bottom duration-300">
+          <div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cart Total ({cart.reduce((t, i) => t + i.sellQuantity, 0)} items)</span>
+            <span className="text-lg font-black text-blue-400 flex items-center">
+              <IndianRupee className="w-4 h-4 mr-0.5" /> {totalCartAmount}
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              const btn = document.getElementById("main-checkout-btn");
+              if (btn) btn.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <span>Checkout</span>
+            <CheckCircle className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* 5. Thermal Receipt Print Modal */}
       {completedInvoice && (

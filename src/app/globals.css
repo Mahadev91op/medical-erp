@@ -1,26 +1,69 @@
 @import "tailwindcss";
 
-/* Native App Jaisa Feel Dene Ke Liye CSS */
+/* Native App Feel & Mobile Responsive Enhancements */
 html, body {
-  /* Pull-to-refresh disable karega mobile browser me */
+  /* Prevent pull-to-refresh on mobile browsers */
   overscroll-behavior-y: none; 
-  /* Faltu tap highlights hatayega mobile me */
+  /* Remove tap highlight flash on touch devices */
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  /* Text selection ko rokenge (Sirf inputs aur textareas me allow karenge) */
   -webkit-user-select: none;
   user-select: none;
+  /* Prevent font rendering shift */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Lekin inputs aur forms me text select hona chahiye */
-input, textarea {
+/* Allow text selection in inputs, textareas, and user-selectable elements */
+input, textarea, [contenteditable="true"], .aria-selectable {
   -webkit-user-select: auto;
   user-select: auto;
 }
 
-/* Notch aur Home-indicator phones ke liye safe area padding utility */
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 12px);
+/* Prevent auto-zoom on iOS/Mobile browsers when focusing input fields (< 16px triggers zoom) */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
+
+/* Safe area padding for iPhones with notch / home bar */
+.pb-safe {
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+}
+
+.pt-safe {
+  padding-top: max(12px, env(safe-area-inset-top, 12px));
+}
+
+/* Custom smooth horizontal touch scrollbars for tables on mobile */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 5px;
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.6);
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.5);
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.8);
+}
+
+/* Touch active feedback utility */
+.touch-active {
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.touch-active:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
