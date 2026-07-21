@@ -495,14 +495,44 @@ Thank you! Get well soon. 🏥`;
           <p className="text-slate-500 text-[10px] md:text-sm font-medium mt-0.5 md:mt-1">Track distributor performance, prevent losses, and manage stock.</p>
         </div>
         
-        <button 
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="flex items-center justify-center text-xs md:text-sm font-bold bg-white border border-slate-200 text-slate-600 px-3 py-2 md:px-4 md:py-2.5 rounded-xl shadow-sm hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all focus:outline-none w-full md:w-auto shrink-0"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
-          {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
-        </button>
+        <div className="flex items-center gap-2.5 w-full md:w-auto">
+          <button 
+            onClick={async () => {
+              const { startDate, endDate } = getDateRangeForFilter(dateFilter);
+              toast.loading("Generating GST Return Excel File...", { id: "gst-toast" });
+              try {
+                const url = `/api/reports/gst-export?startDate=${startDate}&endDate=${endDate}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("Export failed");
+                const blob = await res.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = downloadUrl;
+                a.download = `GST_Return_Export_${dateFilter}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                toast.success("✅ GST Return Excel Downloaded!", { id: "gst-toast" });
+              } catch (err) {
+                toast.error("Failed to download GST Excel report", { id: "gst-toast" });
+              }
+            }}
+            className="flex items-center justify-center text-xs md:text-sm font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 md:px-4 md:py-2.5 rounded-xl shadow-md shadow-emerald-500/20 transition-all focus:outline-none flex-1 md:flex-none cursor-pointer"
+            title="Download GSTR-1, GSTR-3B & HSN Excel File"
+          >
+            <Receipt className="w-4 h-4 mr-1.5 shrink-0" />
+            <span>Export GST Excel</span>
+          </button>
+
+          <button 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center justify-center text-xs md:text-sm font-bold bg-white border border-slate-200 text-slate-600 px-3 py-2 md:px-4 md:py-2.5 rounded-xl shadow-sm hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all focus:outline-none flex-1 md:flex-none shrink-0 cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* Today's Flash Report (Daily Insights) */}

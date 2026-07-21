@@ -81,12 +81,66 @@ export default function QuickSell() {
     }
   };
 
+  const [isOnline, setIsOnline] = useState(true);
+
   useEffect(() => {
     const queue = JSON.parse(localStorage.getItem("offline_sales_queue") || "[]");
     setTimeout(() => {
       setOfflineQueue(queue);
+      setIsOnline(navigator.onLine);
     }, 0);
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
   }, []);
+
+  const manualSyncOfflineQueue = async () => {
+    if (!navigator.onLine) {
+      toast.error("Device is still offline. Reconnect to internet first!");
+      return;
+    }
+    const queue = JSON.parse(localStorage.getItem("offline_sales_queue") || "[]");
+    if (queue.length === 0) {
+      toast.success("No offline bills pending sync!");
+      return;
+    }
+
+    const toastId = toast.loading(`Syncing ${queue.length} offline bills to server...`);
+    let successCount = 0;
+    let remainingQueue = [...queue];
+
+    for (const sale of queue) {
+      try {
+        const res = await fetch("/api/sell", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sale)
+        });
+        const data = await res.json();
+        if (data.success) {
+          successCount++;
+          remainingQueue = remainingQueue.filter(item => item.id !== sale.id);
+          localStorage.setItem("offline_sales_queue", JSON.stringify(remainingQueue));
+          setOfflineQueue(remainingQueue);
+        }
+      } catch (err) {
+        console.error("Sync error:", err);
+        break;
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success(`Synced ${successCount} offline bills to database successfully!`, { id: toastId });
+    } else {
+      toast.error("Failed to sync offline bills", { id: toastId });
+    }
+  };
 
   // Background offline sales sync worker
   useEffect(() => {
@@ -95,7 +149,6 @@ export default function QuickSell() {
       const queue = JSON.parse(localStorage.getItem("offline_sales_queue") || "[]");
       if (queue.length === 0) return;
 
-      const toastId = toast.loading(`Syncing ${queue.length} offline bills to server...`);
       let successCount = 0;
       let remainingQueue = [...queue];
 
@@ -112,19 +165,14 @@ export default function QuickSell() {
             remainingQueue = remainingQueue.filter(item => item.id !== sale.id);
             localStorage.setItem("offline_sales_queue", JSON.stringify(remainingQueue));
             setOfflineQueue(remainingQueue);
-          } else {
-            console.error("Failed to sync offline sale:", data.error);
           }
         } catch (err) {
-          console.error("Sync error:", err);
-          break; // Stop syncing if network error happens again
+          break;
         }
       }
 
       if (successCount > 0) {
-        toast.success(`Synced ${successCount} offline bills to database successfully!`, { id: toastId });
-      } else {
-        toast.dismiss(toastId);
+        toast.success(`Auto-synced ${successCount} offline bills to database!`);
       }
     };
 
@@ -424,6 +472,9 @@ export default function QuickSell() {
     } : null;
 
     try {
+      if (!navigator.onLine) {
+        throw new Error("Device is Offline");
+      }
       const res = await fetch("/api/sell", {
         method: "POST",
         body: JSON.stringify({ 
@@ -555,14 +606,25 @@ export default function QuickSell() {
         </button>
       </div>
 
-      {/* Offline sync queue alert */}
-      {offlineQueue.length > 0 && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs md:text-sm font-bold px-4 py-3 rounded-xl flex items-center justify-between shadow-sm animate-pulse">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping shrink-0" />
-            Offline Queue: {offlineQueue.length} sales pending server sync
-          </span>
-          <span className="text-[10px] uppercase font-bold text-rose-500">Syncing automatically when online</span>
+      {/* Network Status & Offline sync queue alert */}
+      {(!isOnline || offlineQueue.length > 0) && (
+        <div className={`border text-xs md:text-sm font-bold px-4 py-3 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2 shadow-sm transition-all ${!isOnline ? 'bg-amber-500/10 border-amber-500/30 text-amber-900' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
+          <div className="flex items-center gap-2">
+            <span className={`w-3 h-3 rounded-full shrink-0 ${!isOnline ? 'bg-amber-500 animate-ping' : 'bg-rose-500 animate-pulse'}`} />
+            <div>
+              <span className="font-extrabold">{!isOnline ? '🔴 Device is Offline' : '⚡ Pending Offline Bills'}</span>
+              <span className="opacity-80 text-xs ml-2">({offlineQueue.length} {offlineQueue.length === 1 ? 'bill' : 'bills'} in queue)</span>
+            </div>
+          </div>
+          
+          {offlineQueue.length > 0 && (
+            <button
+              onClick={manualSyncOfflineQueue}
+              className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow transition-all cursor-pointer hover:scale-105"
+            >
+              Sync Offline Bills Now
+            </button>
+          )}
         </div>
       )}
 
