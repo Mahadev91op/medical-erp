@@ -21,8 +21,9 @@ const CustomerSchema = new mongoose.Schema({
   versionKey: false 
 });
 
-// Compound index to ensure quick customer lookups per shop user
+// Compound indexes to ensure sub-10ms customer lookups per shop user
 CustomerSchema.index({ userId: 1, phone: 1 }, { unique: true });
 CustomerSchema.index({ userId: 1, name: 1 });
+CustomerSchema.index({ userId: 1, balance: -1 });
 
 export default mongoose.models.Customer || mongoose.model("Customer", CustomerSchema);

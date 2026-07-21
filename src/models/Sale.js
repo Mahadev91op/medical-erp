@@ -35,9 +35,11 @@ const SaleSchema = new mongoose.Schema({
     versionKey: false 
 });
 
-// 🚀 SPEED OPTIMIZATION FOR REPORTS
-SaleSchema.index({ userId: 1 });
+// 🚀 SPEED & SCALE OPTIMIZATION FOR CRORES OF SALES DATA
 SaleSchema.index({ userId: 1, date: -1 });
+SaleSchema.index({ userId: 1, createdAt: -1 });
+SaleSchema.index({ userId: 1, paymentMethod: 1 });
+SaleSchema.index({ userId: 1, customerPhone: 1 });
 SaleSchema.index({ date: -1 });
 SaleSchema.index({ "items.medicineId": 1 });
 

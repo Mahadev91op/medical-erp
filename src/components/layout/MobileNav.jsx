@@ -20,8 +20,11 @@ import {
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 
+import { useRouter } from 'next/navigation';
+
 const MobileNav = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const [showMore, setShowMore] = useState(false);
 
@@ -32,6 +35,14 @@ const MobileNav = () => {
       signOut({ callbackUrl: "/login" });
     }
   }, [session]);
+
+  // Prefetch all links for instant mobile tab navigation
+  useEffect(() => {
+    const validPaths = ["/", "/sell", "/inventory", "/lookup", "/khata", "/returns", "/purchase", "/reports", "/profile"];
+    validPaths.forEach(path => {
+      router.prefetch(path);
+    });
+  }, [router]);
 
   if (isAuthOrPausedOrNotFound) return null;
 

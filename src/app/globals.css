@@ -66,4 +66,18 @@ input, textarea, [contenteditable="true"], .aria-selectable {
 .touch-active:active {
   transform: scale(0.97);
   opacity: 0.9;
-}
+}
+
+/* GPU Hardware Acceleration for 60fps Smooth Transitions & Scrolling */
+.gpu-accel {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Smooth Touch Scrolling Container */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
