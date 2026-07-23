@@ -374,27 +374,27 @@ export default function PurchaseEntry() {
         setSheetHeaders(headers);
         setSheetData(rows);
 
-        // Smart Mapping heuristic guesses
+        // Smart Mapping heuristic guesses (supports Marg ERP, Tally, Busy, PharmSoft, etc.)
         const mapping = { name: "", batch: "", expiryDate: "", quantity: "", mrp: "", purchasePrice: "", billNumber: "", distributor: "", purchaseDate: "" };
         headers.forEach((h) => {
           const lower = h.toLowerCase();
-          if (lower.includes("name") || lower.includes("med") || lower.includes("product") || lower.includes("description") || lower === "item") {
+          if (lower.includes("name") || lower.includes("med") || lower.includes("product") || lower.includes("description") || lower.includes("particular") || lower === "item" || lower === "item_name") {
             if (!mapping.name) mapping.name = h;
-          } else if (lower.includes("batch") || lower.includes("b.no") || lower.includes("bno") || lower === "b") {
+          } else if (lower.includes("batch") || lower.includes("b.no") || lower.includes("b_no") || lower.includes("bno") || lower === "b") {
             if (!mapping.batch) mapping.batch = h;
-          } else if (lower.includes("exp") || lower.includes("valid") || lower.includes("expiry")) {
+          } else if (lower.includes("exp") || lower.includes("valid") || lower.includes("expiry") || lower.includes("exp_date")) {
             if (!mapping.expiryDate) mapping.expiryDate = h;
-          } else if (lower.includes("qty") || lower.includes("quantity") || lower.includes("stock") || lower === "units" || lower === "pcs") {
+          } else if (lower.includes("qty") || lower.includes("quantity") || lower.includes("stock") || lower.includes("bal") || lower.includes("closing") || lower === "units" || lower === "pcs") {
             if (!mapping.quantity) mapping.quantity = h;
-          } else if (lower.includes("mrp") || lower.includes("retail") || lower.includes("selling") || lower === "price" || lower === "rate") {
-            if (lower.includes("purchase") || lower.includes("cost") || lower.includes("cp") || lower.includes("buying") || lower.includes("pur")) {
+          } else if (lower.includes("mrp") || lower.includes("m.r.p") || lower.includes("retail") || lower.includes("s.rate") || lower.includes("s_rate") || lower.includes("selling") || lower === "price" || lower === "rate") {
+            if (lower.includes("purchase") || lower.includes("cost") || lower.includes("cp") || lower.includes("buying") || lower.includes("p.rate") || lower.includes("p_rate") || lower.includes("pur")) {
               if (!mapping.purchasePrice) mapping.purchasePrice = h;
             } else {
               if (!mapping.mrp) mapping.mrp = h;
             }
           } else if (lower.includes("bill") || lower.includes("invoice") || lower.includes("inv") || lower.includes("billno")) {
             if (!mapping.billNumber) mapping.billNumber = h;
-          } else if (lower.includes("distributor") || lower.includes("agency") || lower.includes("supplier") || lower.includes("party") || lower.includes("vendor")) {
+          } else if (lower.includes("distributor") || lower.includes("agency") || lower.includes("supplier") || lower.includes("party") || lower.includes("vendor") || lower.includes("mfg")) {
             if (!mapping.distributor) mapping.distributor = h;
           } else if (lower.includes("purchase date") || lower.includes("pur date") || lower === "date" || lower.includes("billing date")) {
             if (!mapping.purchaseDate) mapping.purchaseDate = h;
@@ -880,13 +880,15 @@ export default function PurchaseEntry() {
         <div className="space-y-6 animate-in fade-in duration-300">
 
           {/* Top Info Banner */}
-          <div className="bg-blue-50/50 border border-blue-100 rounded-3xl p-4 md:p-5 flex gap-3 text-blue-800 text-xs md:text-sm leading-relaxed">
+          <div className="bg-blue-50/70 border border-blue-100 rounded-3xl p-4 md:p-5 flex gap-3 text-blue-900 text-xs md:text-sm leading-relaxed shadow-sm">
             <ClipboardCheck className="w-5 h-5 shrink-0 text-blue-600 mt-0.5" />
             <div>
-              <p className="font-extrabold uppercase text-[10px] md:text-xs tracking-wider mb-1">100% Accurate Mapping Engine</p>
+              <p className="font-extrabold uppercase text-[10px] md:text-xs tracking-wider mb-1 text-blue-700">
+                1-Click Migration Engine (Marg ERP, Tally, Busy & Custom Excel)
+              </p>
               <p className="font-medium text-slate-600">
-                Apni distributor Excel/CSV file upload karein. System columns detect karke aapse verify karwayega.
-                Invalid dates aur numerical errors automatically clean ho jayengi. Khali Name ya Batch number wale line automatic skip ho jayenge.
+                Marg ERP ya kisi purane software se export kiya gaya Excel/CSV yahan Upload karein.
+                Smart AI engine <strong className="text-slate-800">Item Name, Batch (B.No), Expiry (Exp), MRP (M.R.P.), Purchase Rate (P.Rate), Stock Qty, aur Supplier</strong> auto-detect kar lega!
               </p>
             </div>
           </div>
