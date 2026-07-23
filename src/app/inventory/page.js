@@ -493,22 +493,42 @@ export default function Inventory() {
 
                   <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4 md:mb-5 pl-7 md:pl-8">
                     <div className="bg-slate-50 p-2 rounded-xl">
-                      <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5 tracking-wider">Stock Qty</p>
-                      <p className={`text-sm md:text-base font-extrabold ${med.quantity < 10 ? 'text-rose-500' : 'text-slate-700'}`}>
-                        {med.quantity} <span className="text-[8px] font-medium text-slate-400">Pcs</span>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5 tracking-wider">
+                        {med.isLoose ? "Stock (Str/Tab)" : "Stock Qty"}
                       </p>
+                      {med.isLoose ? (
+                        <div>
+                          <p className={`text-xs md:text-sm font-extrabold ${med.quantity < 10 ? 'text-rose-500' : 'text-slate-800'}`}>
+                            {Math.floor(med.quantity / (med.tabletsPerStrip || 1))} Str {med.quantity % (med.tabletsPerStrip || 1) > 0 ? `+ ${med.quantity % (med.tabletsPerStrip || 1)} Tab` : ''}
+                          </p>
+                          <p className="text-[9px] font-bold text-slate-400">{med.quantity} Tabs Total</p>
+                        </div>
+                      ) : (
+                        <p className={`text-sm md:text-base font-extrabold ${med.quantity < 10 ? 'text-rose-500' : 'text-slate-700'}`}>
+                          {med.quantity} <span className="text-[8px] font-medium text-slate-400">Pcs</span>
+                        </p>
+                      )}
                     </div>
                     <div className="bg-slate-50 p-2 rounded-xl">
                       <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5 tracking-wider">Cost Price</p>
                       <p className="text-sm md:text-base font-extrabold text-slate-700">
-                        ₹{med.purchasePrice || 0}
+                        ₹{med.purchasePrice ? (med.isLoose ? (med.purchasePrice * (med.tabletsPerStrip || 1)).toFixed(2) + '/Str' : med.purchasePrice) : 0}
                       </p>
                     </div>
                     <div className="bg-slate-50 p-2 rounded-xl">
                       <p className="text-[8px] font-bold text-slate-400 uppercase mb-0.5 tracking-wider">MRP</p>
-                      <p className="text-sm md:text-base font-extrabold text-blue-600">
-                        ₹{med.mrp}
-                      </p>
+                      {med.isLoose ? (
+                        <div>
+                          <p className="text-xs md:text-sm font-extrabold text-blue-600">
+                            ₹{med.stripMrp || (med.mrp * (med.tabletsPerStrip || 1)).toFixed(2)}/Str
+                          </p>
+                          <p className="text-[9px] font-bold text-emerald-600">₹{med.mrp.toFixed(2)}/Tab</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm md:text-base font-extrabold text-blue-600">
+                          ₹{med.mrp}
+                        </p>
+                      )}
                     </div>
                   </div>
 

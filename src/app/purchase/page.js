@@ -1,11 +1,11 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Barcode from "react-barcode";
-import { 
-  PackagePlus, Printer, CheckCircle2, Loader2, Upload, 
-  FileSpreadsheet, Database, AlertTriangle, RefreshCw, X, ArrowRight, ClipboardCheck 
+import {
+  PackagePlus, Printer, CheckCircle2, Loader2, Upload,
+  FileSpreadsheet, Database, AlertTriangle, RefreshCw, X, ArrowRight, ClipboardCheck
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast"; 
+import toast, { Toaster } from "react-hot-toast";
 import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 import { useReactToPrint } from "react-to-print";
 import * as XLSX from "xlsx";
@@ -21,7 +21,7 @@ const getTodayInputString = () => {
 const formatPurchaseDateInput = (value) => {
   let clean = value.replace(/\D/g, "");
   if (clean.length > 6) clean = clean.slice(0, 6);
-  
+
   if (clean.length <= 2) {
     return clean;
   }
@@ -34,7 +34,7 @@ const formatPurchaseDateInput = (value) => {
 const formatExpiryDateInput = (value) => {
   let clean = value.replace(/\D/g, "");
   if (clean.length > 4) clean = clean.slice(0, 4);
-  
+
   if (clean.length <= 2) {
     return clean;
   }
@@ -76,7 +76,12 @@ export default function PurchaseEntry() {
   const [expiryDateInput, setExpiryDateInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedMed, setSavedMed] = useState(null);
-  
+
+  // 📦 Solution B: Loose Medicine State Management
+  const [isLoose, setIsLoose] = useState(false);
+  const [tabletsPerStrip, setTabletsPerStrip] = useState("");
+  const [stripMrp, setStripMrp] = useState("");
+
   const [formConfig, setFormConfig] = useState({
     name: true, batch: true, quantity: true, distributor: true, mrp: true, billNumber: true, purchaseDate: true, expiryDate: true
   });
@@ -92,12 +97,12 @@ export default function PurchaseEntry() {
   const [columnMapping, setColumnMapping] = useState({
     name: "", batch: "", expiryDate: "", quantity: "", mrp: "", purchasePrice: "", billNumber: "", distributor: "", purchaseDate: ""
   });
-  
+
   // Global overrides for items that may not be in spreadsheet
   const [globalDistributor, setGlobalDistributor] = useState("");
   const [globalBillNumber, setGlobalBillNumber] = useState("");
   const [globalPurchaseDate, setGlobalPurchaseDate] = useState(getTodayDateString());
-  
+
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
@@ -105,14 +110,14 @@ export default function PurchaseEntry() {
     const savedForm = localStorage.getItem("super_purchase_form_config");
     let activeFormConfig = { name: true, batch: true, quantity: true, distributor: true, mrp: true, billNumber: true, purchaseDate: true, expiryDate: true };
     if (savedForm) {
-      try { 
+      try {
         activeFormConfig = JSON.parse(savedForm);
         setTimeout(() => {
           setFormConfig(activeFormConfig);
         }, 0);
-      } catch(e) {}
+      } catch (e) { }
     }
-    
+
     if (!activeFormConfig.expiryDate) {
       setTimeout(() => {
         setExpiryDateInput(getOneYearLaterExpiryInput());
@@ -125,7 +130,7 @@ export default function PurchaseEntry() {
         setTimeout(() => {
           setBarcodeConfig(JSON.parse(savedBarcode));
         }, 0);
-      } catch(e) {}
+      } catch (e) { }
     }
   }, []);
 
@@ -136,7 +141,7 @@ export default function PurchaseEntry() {
       const reorderDistributor = params.get("reorderDistributor");
       const reorderBatch = params.get("reorderBatch");
       const reorderMrp = params.get("reorderMrp");
-      
+
       if (reorderName) {
         setFormData(prev => ({
           ...prev,
@@ -149,15 +154,15 @@ export default function PurchaseEntry() {
       }
     }
   }, []);
-  
+
   const printRef = useRef(null);
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: "Barcode_Label",
   });
-  
+
   const [distributors, setDistributors] = useState([]);
-  const nameInputRef = useRef(null); 
+  const nameInputRef = useRef(null);
 
   useEffect(() => {
     const fetchDistributors = async () => {
@@ -177,7 +182,7 @@ export default function PurchaseEntry() {
   // ---------------------------------------------------------------------------
   // DATA PARSING UTILITIES FOR BULK IMPORT
   // ---------------------------------------------------------------------------
-  
+
   // Clean text and extract numbers (e.g. "Rs 50" -> 50, "100 units" -> 100)
   const parseNumber = (val) => {
     if (val === undefined || val === null) return 0;
@@ -191,7 +196,7 @@ export default function PurchaseEntry() {
   const parseExpiryDate = (val) => {
     if (!val) return null;
     const str = String(val).trim();
-    
+
     // Excel Serial Number detection (e.g. 45398)
     if (/^\d{5}$/.test(str)) {
       const serial = Number(str);
@@ -304,11 +309,11 @@ export default function PurchaseEntry() {
       const purchasePriceValue = getValue("purchasePrice");
       const quantityValue = getValue("quantity");
       const expiryDateValue = getValue("expiryDate");
-      
+
       const mrp = parseNumber(mrpValue);
       const purchasePrice = purchasePriceValue ? parseNumber(purchasePriceValue) : mrp;
       const quantity = parseNumber(quantityValue) || 1;
-      
+
       const parsedExpiry = parseExpiryDate(expiryDateValue);
       const purchaseDateValue = getValue("purchaseDate");
       const parsedPurchase = parseExpiryDate(purchaseDateValue) || globalPurchaseDate || getTodayDateString();
@@ -342,7 +347,7 @@ export default function PurchaseEntry() {
   // ---------------------------------------------------------------------------
   // HANDLERS
   // ---------------------------------------------------------------------------
-  
+
   const handleFileLoad = (file) => {
     if (!file) return;
     setFileName(file.name);
@@ -395,7 +400,7 @@ export default function PurchaseEntry() {
             if (!mapping.purchaseDate) mapping.purchaseDate = h;
           }
         });
-        
+
         setColumnMapping(mapping);
         toast.success("Spreadsheet loaded! Map your columns to verify records.");
       } catch (err) {
@@ -434,7 +439,7 @@ export default function PurchaseEntry() {
 
     setImporting(true);
     const toastId = toast.loading(`Uploading ${list.length} stock items to database...`);
-    
+
     try {
       const res = await fetch("/api/medicine", {
         method: "POST",
@@ -442,7 +447,7 @@ export default function PurchaseEntry() {
         headers: { "Content-Type": "application/json" }
       });
       const data = await res.json();
-      
+
       if (data.success) {
         toast.success(`Successfully imported ${data.count} items!`, { id: toastId, duration: 6000 });
         setImportResult({
@@ -465,7 +470,7 @@ export default function PurchaseEntry() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (formConfig.distributor && !formData.distributor.trim()) {
       toast.error("Please enter Distributor / Agency name!");
       return;
@@ -506,26 +511,40 @@ export default function PurchaseEntry() {
     }
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-    
+    today.setHours(0, 0, 0, 0);
+
     if (eDateObj <= today) {
       toast.error("Expiry date cannot be today or in the past!");
       return;
     }
 
+    if (isLoose) {
+      if (!tabletsPerStrip || Number(tabletsPerStrip) <= 1) {
+        toast.error("Please enter valid Tablets/Units per strip (must be greater than 1)!");
+        return;
+      }
+      if (!stripMrp || Number(stripMrp) <= 0) {
+        toast.error("Please enter a valid Strip MRP Price!");
+        return;
+      }
+    }
+
     setLoading(true);
-    
+
     try {
       const payload = {
         name: formConfig.name ? formData.name : (formData.name || "Unnamed Medicine"),
         batch: formConfig.batch ? formData.batch : (formData.batch || "B-GEN"),
         quantity: formConfig.quantity ? Number(formData.quantity) : 1,
         distributor: formConfig.distributor ? formData.distributor : (formData.distributor || "Generic Distributor"),
-        mrp: formConfig.mrp ? Number(formData.mrp) : 0,
+        mrp: isLoose ? 0 : (formConfig.mrp ? Number(formData.mrp) : 0),
         purchasePrice: Number(formData.purchasePrice || formData.mrp || 0),
         billNumber: formConfig.billNumber ? formData.billNumber : (formData.billNumber || "BILL-GEN"),
         purchaseDate: formConfig.purchaseDate ? parsedPurchaseDate : getTodayDateString(),
-        expiryDate: formConfig.expiryDate ? parsedExpiryDate : getOneYearLaterDateString()
+        expiryDate: formConfig.expiryDate ? parsedExpiryDate : getOneYearLaterDateString(),
+        isLoose,
+        tabletsPerStrip: isLoose ? Number(tabletsPerStrip) : 1,
+        stripMrp: isLoose ? Number(stripMrp) : 0
       };
 
       const res = await fetch("/api/medicine", {
@@ -533,16 +552,16 @@ export default function PurchaseEntry() {
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" }
       });
-      
+
       const data = await res.json();
       if (data.success) {
         setSavedMed(data.medicine);
-        toast.success(`${data.medicine.name} saved to database successfully!`); 
+        toast.success(`${data.medicine.name} saved to database successfully!`);
 
         if (formData.distributor && !distributors.includes(formData.distributor)) {
           setDistributors([...distributors, formData.distributor]);
         }
-        
+
         setFormData(prev => ({
           name: "",
           batch: "",
@@ -555,6 +574,9 @@ export default function PurchaseEntry() {
           purchaseDate: ""
         }));
         setExpiryDateInput("");
+        setIsLoose(false);
+        setTabletsPerStrip("");
+        setStripMrp("");
         nameInputRef.current?.focus();
       } else {
         toast.error("Error: " + data.error);
@@ -570,8 +592,8 @@ export default function PurchaseEntry() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
-      <Toaster position="top-center" reverseOrder={false} /> 
-      
+      <Toaster position="top-center" reverseOrder={false} />
+
       {/* Header with Mode Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div className="flex items-center">
@@ -588,21 +610,19 @@ export default function PurchaseEntry() {
         <div className="flex bg-slate-100/80 backdrop-blur-sm p-1 rounded-2xl border border-slate-200/40 self-start sm:self-center select-none shadow-inner">
           <button
             onClick={() => setImportMode("manual")}
-            className={`px-4 py-2 rounded-xl text-xs uppercase font-extrabold tracking-wider transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
-              importMode === 'manual' 
-                ? 'bg-white text-blue-600 shadow-sm font-black' 
+            className={`px-4 py-2 rounded-xl text-xs uppercase font-extrabold tracking-wider transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${importMode === 'manual'
+                ? 'bg-white text-blue-600 shadow-sm font-black'
                 : 'text-slate-500 hover:text-slate-700'
-            }`}
+              }`}
           >
             Manual Entry
           </button>
           <button
             onClick={() => setImportMode("bulk")}
-            className={`px-4 py-2 rounded-xl text-xs uppercase font-extrabold tracking-wider transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
-              importMode === 'bulk' 
-                ? 'bg-white text-blue-600 shadow-sm font-black' 
+            className={`px-4 py-2 rounded-xl text-xs uppercase font-extrabold tracking-wider transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${importMode === 'bulk'
+                ? 'bg-white text-blue-600 shadow-sm font-black'
                 : 'text-slate-500 hover:text-slate-700'
-            }`}
+              }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             Excel/CSV Import
@@ -615,22 +635,87 @@ export default function PurchaseEntry() {
           ----------------------------------------------------------------------- */}
       {importMode === "manual" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8 animate-in fade-in duration-300">
-          
+
           <div className="bg-white p-4 md:p-6 lg:p-8 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100">
             <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
-              
+
               {formConfig.name && (
                 <div>
                   <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Medicine Name</label>
-                  <input 
-                    type="text" 
-                    required 
+                  <input
+                    type="text"
+                    required
                     placeholder="e.g. Paracetamol 500mg"
                     ref={nameInputRef}
                     className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
-                    value={formData.name} 
-                    onChange={(e) => setFormData({...formData, name: e.target.value})} 
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
+                </div>
+              )}
+
+              {/* Loose Medicine Support Checkbox */}
+              <div className="bg-blue-50/50 border border-blue-100 p-3.5 rounded-2xl flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="isLooseCheckbox"
+                  checked={isLoose}
+                  onChange={(e) => setIsLoose(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                />
+                <label htmlFor="isLooseCheckbox" className="text-xs font-bold text-slate-700 cursor-pointer select-none flex-1">
+                  Enable Loose Piece/Tablet Sales Support (Strips/Loose conversion)
+                </label>
+              </div>
+
+              {isLoose && (
+                <div className="space-y-3 bg-amber-50/40 border border-amber-200/80 p-4 rounded-2xl animate-in slide-in-from-top-1 duration-200">
+                  <div className="grid grid-cols-2 gap-3 md:gap-4">
+                    <div>
+                      <label className="block text-[10px] md:text-xs font-bold text-amber-800 uppercase tracking-wider mb-1.5">Tablets / Units per Strip</label>
+                      <input
+                        type="number"
+                        required
+                        placeholder="e.g. 10"
+                        min="2"
+                        className="w-full bg-white border border-amber-200 text-slate-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-50/50 transition-all text-xs md:text-sm font-medium"
+                        value={tabletsPerStrip}
+                        onChange={(e) => setTabletsPerStrip(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] md:text-xs font-bold text-amber-800 uppercase tracking-wider mb-1.5">Total Strip MRP ₹</label>
+                      <input
+                        type="number"
+                        required
+                        placeholder="e.g. 120"
+                        min="0.1"
+                        step="0.01"
+                        className="w-full bg-white border border-amber-200 text-slate-700 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-50/50 transition-all text-xs md:text-sm font-medium"
+                        value={stripMrp}
+                        onChange={(e) => setStripMrp(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {Number(tabletsPerStrip) > 1 && Number(stripMrp) > 0 && (
+                    <div className="bg-white/80 border border-amber-200 p-3 rounded-xl text-[11px] md:text-xs text-amber-900 space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-slate-600">Total Tablets Added to Stock:</span>
+                        <span className="font-black text-blue-700">{Number(formData.quantity || 1) * Number(tabletsPerStrip)} Tablets ({formData.quantity || 1} Strips)</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-slate-600">Calculated Selling Rate per Tablet:</span>
+                        <span className="font-black text-emerald-700">₹{(Number(stripMrp) / Number(tabletsPerStrip)).toFixed(2)} / tablet</span>
+                      </div>
+                      {Number(formData.purchasePrice) > 0 && (
+                        <div className="flex justify-between items-center pt-1 border-t border-amber-100 text-slate-500">
+                          <span>Calculated Cost Price per Tablet:</span>
+                          <span className="font-bold text-slate-700">₹{(Number(formData.purchasePrice) / Number(tabletsPerStrip)).toFixed(2)} / tablet</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -640,15 +725,17 @@ export default function PurchaseEntry() {
                     <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Batch No.</label>
                     <input type="text" required placeholder="e.g. B-1029"
                       className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
-                      value={formData.batch} onChange={(e) => setFormData({...formData, batch: e.target.value})} />
+                      value={formData.batch} onChange={(e) => setFormData({ ...formData, batch: e.target.value })} />
                   </div>
                 )}
                 {formConfig.quantity && (
                   <div>
-                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Quantity</label>
+                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">
+                      {isLoose ? "Quantity (No. of Strips)" : "Quantity"}
+                    </label>
                     <input type="number" required placeholder="0" min="1"
                       className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
-                      value={formData.quantity} onChange={(e) => setFormData({...formData, quantity: e.target.value})} />
+                      value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
                   </div>
                 )}
               </div>
@@ -659,7 +746,7 @@ export default function PurchaseEntry() {
                     <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Dist. Bill Number</label>
                     <input type="text" required placeholder="e.g. INV-1002"
                       className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
-                      value={formData.billNumber} onChange={(e) => setFormData({...formData, billNumber: e.target.value})} />
+                      value={formData.billNumber} onChange={(e) => setFormData({ ...formData, billNumber: e.target.value })} />
                   </div>
                 )}
                 {formConfig.purchaseDate && (
@@ -673,19 +760,21 @@ export default function PurchaseEntry() {
               </div>
 
               <div className="grid grid-cols-3 gap-3 md:gap-4">
-                {formConfig.mrp && (
+                {!isLoose && formConfig.mrp && (
                   <div>
                     <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">MRP Price ₹</label>
                     <input type="number" required placeholder="0.00" min="0" step="0.01"
                       className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-2 md:px-3 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-xs md:text-sm font-medium"
-                      value={formData.mrp} onChange={(e) => setFormData({...formData, mrp: e.target.value})} />
+                      value={formData.mrp} onChange={(e) => setFormData({ ...formData, mrp: e.target.value })} />
                   </div>
                 )}
-                <div>
-                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Cost Price ₹</label>
+                <div className={isLoose ? "col-span-2" : ""}>
+                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">
+                    {isLoose ? "Total Strip Cost Price ₹" : "Cost Price ₹"}
+                  </label>
                   <input type="number" required placeholder="0.00" min="0" step="0.01"
                     className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-2 md:px-3 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-xs md:text-sm font-medium"
-                    value={formData.purchasePrice} onChange={(e) => setFormData({...formData, purchasePrice: e.target.value})} />
+                    value={formData.purchasePrice} onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })} />
                 </div>
                 {formConfig.expiryDate && (
                   <div>
@@ -700,13 +789,13 @@ export default function PurchaseEntry() {
               {formConfig.distributor && (
                 <div>
                   <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Distributor / Agency</label>
-                  <input 
+                  <input
                     type="text" required placeholder="e.g. Cipla / SunPharma"
                     list="distributor-suggestions"
                     autoComplete="off"
                     className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
-                    value={formData.distributor} 
-                    onChange={(e) => setFormData({...formData, distributor: e.target.value})} 
+                    value={formData.distributor}
+                    onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
                   />
                   <datalist id="distributor-suggestions">
                     {distributors.map((dist, index) => (
@@ -735,20 +824,20 @@ export default function PurchaseEntry() {
                   <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" />
                   Entry Saved Successfully!
                 </div>
-                
+
                 <div className="bg-white shadow-xl shadow-slate-200 rounded-lg md:rounded-xl p-3 md:p-4 mb-4 md:mb-6 scale-[0.85] md:scale-100 origin-center">
                   <div className="bg-white flex flex-col items-center justify-center overflow-hidden" style={{ width: '50mm', height: '25mm', padding: '1.5mm 2mm' }}>
-                    <Barcode 
-                      value={savedMed.barcodeId} 
-                      width={1.2} 
-                      height={30} 
-                      fontSize={8} 
-                      margin={0} 
-                      background="#ffffff" 
-                      lineColor="#000000" 
-                      displayValue={barcodeConfig.showBarcodeText} 
+                    <Barcode
+                      value={savedMed.barcodeId}
+                      width={1.2}
+                      height={30}
+                      fontSize={8}
+                      margin={0}
+                      background="#ffffff"
+                      lineColor="#000000"
+                      displayValue={barcodeConfig.showBarcodeText}
                     />
-                    
+
                     <div className="w-full text-center mt-1 space-y-0.5 leading-none">
                       {barcodeConfig.showName && (
                         <p className="text-[9px] font-black text-black uppercase tracking-tight leading-none truncate max-w-full">
@@ -771,8 +860,8 @@ export default function PurchaseEntry() {
                     </div>
                   </div>
                 </div>
-                
-                <button 
+
+                <button
                   onClick={handlePrint}
                   className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs md:text-sm px-5 py-3 rounded-xl md:rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] w-full max-w-[200px]"
                 >
@@ -789,14 +878,14 @@ export default function PurchaseEntry() {
           ----------------------------------------------------------------------- */}
       {importMode === "bulk" && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          
+
           {/* Top Info Banner */}
           <div className="bg-blue-50/50 border border-blue-100 rounded-3xl p-4 md:p-5 flex gap-3 text-blue-800 text-xs md:text-sm leading-relaxed">
             <ClipboardCheck className="w-5 h-5 shrink-0 text-blue-600 mt-0.5" />
             <div>
               <p className="font-extrabold uppercase text-[10px] md:text-xs tracking-wider mb-1">100% Accurate Mapping Engine</p>
               <p className="font-medium text-slate-600">
-                Apni distributor Excel/CSV file upload karein. System columns detect karke aapse verify karwayega. 
+                Apni distributor Excel/CSV file upload karein. System columns detect karke aapse verify karwayega.
                 Invalid dates aur numerical errors automatically clean ho jayengi. Khali Name ya Batch number wale line automatic skip ho jayenge.
               </p>
             </div>
@@ -812,7 +901,7 @@ export default function PurchaseEntry() {
               <p className="text-xs text-slate-600 font-semibold leading-relaxed">
                 🎉 Total **{importResult.successCount}** stock items successfully parsed, saved to inventory database, and barcodes assigned!
               </p>
-              
+
               {importResult.skipped.length > 0 && (
                 <div className="pt-2 border-t border-emerald-200/50">
                   <p className="text-xs text-rose-700 font-bold flex items-center gap-1 mb-2">
@@ -832,43 +921,42 @@ export default function PurchaseEntry() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
+
             {/* Left Column: Drag & Drop zone and Mapping settings */}
             <div className="lg:col-span-1 space-y-6">
-              
+
               {/* Uploader Box */}
-              <div 
-                className={`bg-white rounded-3xl p-6 border-2 border-dashed text-center cursor-pointer transition-all ${
-                  dragOver 
-                    ? "border-blue-500 bg-blue-50/30 scale-[0.99]" 
-                    : fileName 
-                      ? "border-emerald-300 bg-emerald-50/10" 
+              <div
+                className={`bg-white rounded-3xl p-6 border-2 border-dashed text-center cursor-pointer transition-all ${dragOver
+                    ? "border-blue-500 bg-blue-50/30 scale-[0.99]"
+                    : fileName
+                      ? "border-emerald-300 bg-emerald-50/10"
                       : "border-slate-200 hover:border-slate-350"
-                }`}
+                  }`}
                 onDragEnter={handleDrag}
                 onDragOver={handleDrag}
                 onDragLeave={handleDrag}
                 onDrop={handleDrop}
                 onClick={() => document.getElementById("file-loader-input").click()}
               >
-                <input 
-                  id="file-loader-input" 
-                  type="file" 
-                  accept=".csv,.xlsx,.xls" 
-                  className="hidden" 
+                <input
+                  id="file-loader-input"
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  className="hidden"
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
                       handleFileLoad(e.target.files[0]);
                     }
-                  }} 
+                  }}
                 />
-                
+
                 {fileName ? (
                   <div className="space-y-2">
                     <FileSpreadsheet className="w-12 h-12 text-emerald-500 mx-auto" />
                     <p className="font-extrabold text-sm text-slate-700 truncate max-w-full px-4">{fileName}</p>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">File Loaded Successfully</p>
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setFileName("");
@@ -895,34 +983,34 @@ export default function PurchaseEntry() {
                 <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] space-y-4">
                   <h3 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Global Invoice Settings</h3>
                   <p className="text-[10px] text-slate-400 font-medium">Excel columns me agar inki detail na ho, toh in settings se dynamic auto-fill ho jayegi.</p>
-                  
+
                   <div className="space-y-3">
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Distributor Agency</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. Cipla Labs" 
-                        value={globalDistributor} 
-                        onChange={(e) => setGlobalDistributor(e.target.value)} 
+                      <input
+                        type="text"
+                        placeholder="e.g. Cipla Labs"
+                        value={globalDistributor}
+                        onChange={(e) => setGlobalDistributor(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 focus:outline-none text-xs font-semibold"
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Distributor Bill Number</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. BILL-9901" 
-                        value={globalBillNumber} 
-                        onChange={(e) => setGlobalBillNumber(e.target.value)} 
+                      <input
+                        type="text"
+                        placeholder="e.g. BILL-9901"
+                        value={globalBillNumber}
+                        onChange={(e) => setGlobalBillNumber(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 focus:outline-none text-xs font-semibold"
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Purchase Date</label>
-                      <input 
-                        type="date" 
-                        value={globalPurchaseDate} 
-                        onChange={(e) => setGlobalPurchaseDate(e.target.value)} 
+                      <input
+                        type="date"
+                        value={globalPurchaseDate}
+                        onChange={(e) => setGlobalPurchaseDate(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2 focus:outline-none text-xs font-semibold"
                       />
                     </div>
@@ -933,7 +1021,7 @@ export default function PurchaseEntry() {
 
             {/* Middle & Right Column: Field column mapping & Preview table */}
             <div className="lg:col-span-2 space-y-6">
-              
+
               {sheetData.length === 0 ? (
                 <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl p-16 text-center text-slate-400 h-full min-h-[300px] flex flex-col justify-center items-center">
                   <Database className="w-12 h-12 text-slate-350 mb-3 opacity-50" />
@@ -942,7 +1030,7 @@ export default function PurchaseEntry() {
                 </div>
               ) : (
                 <div className="bg-white p-5 md:p-6 rounded-[24px] md:rounded-3xl border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] space-y-6">
-                  
+
                   {/* Dynamic Column Mapping */}
                   <div className="space-y-4">
                     <div className="flex justify-between items-center border-b border-slate-50 pb-3">
@@ -956,15 +1044,15 @@ export default function PurchaseEntry() {
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      
+
                       {/* Name */}
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
                           Medicine Name <span className="text-rose-500">*</span>
                         </label>
-                        <select 
-                          value={columnMapping.name} 
-                          onChange={(e) => setColumnMapping({...columnMapping, name: e.target.value})}
+                        <select
+                          value={columnMapping.name}
+                          onChange={(e) => setColumnMapping({ ...columnMapping, name: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none focus:border-blue-400 cursor-pointer"
                         >
                           <option value="">-- Skip/None --</option>
@@ -977,9 +1065,9 @@ export default function PurchaseEntry() {
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
                           Batch Number <span className="text-rose-500">*</span>
                         </label>
-                        <select 
-                          value={columnMapping.batch} 
-                          onChange={(e) => setColumnMapping({...columnMapping, batch: e.target.value})}
+                        <select
+                          value={columnMapping.batch}
+                          onChange={(e) => setColumnMapping({ ...columnMapping, batch: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none focus:border-blue-400 cursor-pointer"
                         >
                           <option value="">-- Skip/None --</option>
@@ -992,9 +1080,9 @@ export default function PurchaseEntry() {
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
                           Quantity <span className="text-rose-500">*</span>
                         </label>
-                        <select 
-                          value={columnMapping.quantity} 
-                          onChange={(e) => setColumnMapping({...columnMapping, quantity: e.target.value})}
+                        <select
+                          value={columnMapping.quantity}
+                          onChange={(e) => setColumnMapping({ ...columnMapping, quantity: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none focus:border-blue-400 cursor-pointer"
                         >
                           <option value="">-- Skip/None --</option>
@@ -1007,9 +1095,9 @@ export default function PurchaseEntry() {
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
                           Expiry Date <span className="text-rose-500">*</span>
                         </label>
-                        <select 
-                          value={columnMapping.expiryDate} 
-                          onChange={(e) => setColumnMapping({...columnMapping, expiryDate: e.target.value})}
+                        <select
+                          value={columnMapping.expiryDate}
+                          onChange={(e) => setColumnMapping({ ...columnMapping, expiryDate: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none focus:border-blue-400 cursor-pointer"
                         >
                           <option value="">-- Skip/None --</option>
@@ -1022,9 +1110,9 @@ export default function PurchaseEntry() {
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
                           MRP Price ₹ <span className="text-rose-500">*</span>
                         </label>
-                        <select 
-                          value={columnMapping.mrp} 
-                          onChange={(e) => setColumnMapping({...columnMapping, mrp: e.target.value})}
+                        <select
+                          value={columnMapping.mrp}
+                          onChange={(e) => setColumnMapping({ ...columnMapping, mrp: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none focus:border-blue-400 cursor-pointer"
                         >
                           <option value="">-- Skip/None --</option>
@@ -1035,9 +1123,9 @@ export default function PurchaseEntry() {
                       {/* Purchase Cost */}
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Cost Price ₹</label>
-                        <select 
-                          value={columnMapping.purchasePrice} 
-                          onChange={(e) => setColumnMapping({...columnMapping, purchasePrice: e.target.value})}
+                        <select
+                          value={columnMapping.purchasePrice}
+                          onChange={(e) => setColumnMapping({ ...columnMapping, purchasePrice: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none focus:border-blue-400 cursor-pointer"
                         >
                           <option value="">-- Use MRP as Cost --</option>
@@ -1048,9 +1136,9 @@ export default function PurchaseEntry() {
                       {/* Optional Distributor Column */}
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Distributor Column</label>
-                        <select 
-                          value={columnMapping.distributor} 
-                          onChange={(e) => setColumnMapping({...columnMapping, distributor: e.target.value})}
+                        <select
+                          value={columnMapping.distributor}
+                          onChange={(e) => setColumnMapping({ ...columnMapping, distributor: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none focus:border-blue-400 cursor-pointer"
                         >
                           <option value="">-- Use Global Setting --</option>
@@ -1061,9 +1149,9 @@ export default function PurchaseEntry() {
                       {/* Optional Bill No Column */}
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Bill Number Column</label>
-                        <select 
-                          value={columnMapping.billNumber} 
-                          onChange={(e) => setColumnMapping({...columnMapping, billNumber: e.target.value})}
+                        <select
+                          value={columnMapping.billNumber}
+                          onChange={(e) => setColumnMapping({ ...columnMapping, billNumber: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none focus:border-blue-400 cursor-pointer"
                         >
                           <option value="">-- Use Global Setting --</option>
@@ -1074,9 +1162,9 @@ export default function PurchaseEntry() {
                       {/* Optional Purchase Date Column */}
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Pur. Date Column</label>
-                        <select 
-                          value={columnMapping.purchaseDate} 
-                          onChange={(e) => setColumnMapping({...columnMapping, purchaseDate: e.target.value})}
+                        <select
+                          value={columnMapping.purchaseDate}
+                          onChange={(e) => setColumnMapping({ ...columnMapping, purchaseDate: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold focus:outline-none focus:border-blue-400 cursor-pointer"
                         >
                           <option value="">-- Use Global Setting --</option>
@@ -1197,7 +1285,7 @@ export default function PurchaseEntry() {
                 </div>
               )}
             </div>
-            
+
           </div>
         </div>
       )}
@@ -1258,18 +1346,18 @@ export default function PurchaseEntry() {
           {savedMed && (
             <div className="thermal-label">
               <div className="barcode-wrapper">
-                <Barcode 
-                  value={savedMed.barcodeId} 
+                <Barcode
+                  value={savedMed.barcodeId}
                   format="CODE128"
-                  renderer="svg"     
-                  width={1.5}        
-                  height={35}        
-                  fontSize={8}      
-                  margin={0}         
-                  textMargin={1}     
-                  background="#ffffff" 
-                  lineColor="#000000" 
-                  displayValue={barcodeConfig.showBarcodeText} 
+                  renderer="svg"
+                  width={1.5}
+                  height={35}
+                  fontSize={8}
+                  margin={0}
+                  textMargin={1}
+                  background="#ffffff"
+                  lineColor="#000000"
+                  displayValue={barcodeConfig.showBarcodeText}
                 />
               </div>
 

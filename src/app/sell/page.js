@@ -14,7 +14,7 @@ const invoiceCalculations = (invoice) => {
 
   invoice.items.forEach((item) => {
     const qty = item.sellQuantity || item.quantity || 1;
-    const mrp = item.mrp || 0;
+    const mrp = item.sellMrp || item.mrp || 0;
     const discountPercent = item.discountPercent || 0;
     const gstPercent = item.gstPercent || 0;
 
@@ -56,6 +56,7 @@ export default function QuickSell() {
   const [waPhone, setWaPhone] = useState("");
 
   const [searchQtys, setSearchQtys] = useState({});
+  const [sellUnits, setSellUnits] = useState({}); // mapped medicine id to unit type: 'strip' | 'tab'
   const [isPrescriptionRequired, setIsPrescriptionRequired] = useState(false);
   const [doctorName, setDoctorName] = useState("");
   const [doctorRegNo, setDoctorRegNo] = useState("");
@@ -215,14 +216,24 @@ export default function QuickSell() {
     }
   }, [showCamera]);
 
+  const searchControllerRef = useRef(null);
+
   const performSearch = async (query, isManualClick = false) => {
     if (!query.trim()) {
       setSearchResults([]);
       return;
     }
+
+    if (searchControllerRef.current) {
+      searchControllerRef.current.abort();
+    }
+    searchControllerRef.current = new AbortController();
+
     setLoading(true);
     try {
-      const res = await fetch(`/api/medicine?search=${encodeURIComponent(query)}&limit=50`);
+      const res = await fetch(`/api/medicine?search=${encodeURIComponent(query)}&limit=20`, {
+        signal: searchControllerRef.current.signal
+      });
       const data = await res.json();
       if (data.success) {
         setSearchResults(data.medicines);
@@ -231,25 +242,26 @@ export default function QuickSell() {
         }
       }
     } catch (error) {
-      if (isManualClick) {
-        toast.error("Search failed");
+      if (error.name !== "AbortError") {
+        if (isManualClick) {
+          toast.error("Search failed");
+        }
+        console.error("Search error:", error);
       }
-      console.error("Search error:", error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // Debounced manual search for medicine suggestions as user types
+  // Ultra-fast debounced search as user types (150ms)
   useEffect(() => {
     if (!manualSearch.trim()) {
-      setTimeout(() => {
-        setSearchResults([]);
-      }, 0);
+      setSearchResults([]);
       return;
     }
     const timer = setTimeout(() => {
       performSearch(manualSearch, false);
-    }, 250); // 250ms debounce
+    }, 150);
     return () => clearTimeout(timer);
   }, [manualSearch]);
 
@@ -297,35 +309,55 @@ export default function QuickSell() {
       return; 
     } 
 
-    const existingItem = cart.find(item => item._id === med._id);
+    const selectedUnit = sellUnits[med._id] || (med.isLoose ? "strip" : "tab");
+    const tabletsPerStrip = med.tabletsPerStrip || 1;
+    const requiredQty = selectedUnit === "strip" ? customQty * tabletsPerStrip : customQty;
+
+    // Check if total quantity of this medicine in the cart (across both units if any) exceeds available stock
+    const alreadyInCartQty = cart
+      .filter(item => item._id === med._id)
+      .reduce((sum, item) => sum + (item.sellUnit === "strip" ? item.sellQuantity * (item.tabletsPerStrip || 1) : item.sellQuantity), 0);
+
+    if (alreadyInCartQty + requiredQty > med.quantity) {
+      toast.error(`Cannot add! Insufficient stock. Total available: ${med.quantity} tablets. Already in cart: ${alreadyInCartQty} tablets.`);
+      return;
+    }
+
+    const sellMrp = selectedUnit === "strip" ? (med.stripMrp || med.mrp * tabletsPerStrip) : med.mrp;
+    
+    // Find item with same _id AND same unit
+    const existingItem = cart.find(item => item._id === med._id && item.sellUnit === selectedUnit);
     
     if (existingItem) {
-      const newQty = existingItem.sellQuantity + customQty;
-      if (newQty <= med.quantity) {
-        setCart(cart.map(item => item._id === med._id ? { ...item, sellQuantity: newQty } : item));
-        toast.success(`Quantity increased for ${med.name}`);
-      } else {
-        toast.error(`Cannot add more! Insufficient stock. Available: ${med.quantity}`);
-      }
+      setCart(cart.map(item => 
+        (item._id === med._id && item.sellUnit === selectedUnit)
+          ? { ...item, sellQuantity: item.sellQuantity + customQty }
+          : item
+      ));
+      toast.success(`Quantity increased for ${med.name} (${selectedUnit}s)`);
     } else {
-      if (customQty <= med.quantity) {
-        setCart([...cart, { ...med, sellQuantity: customQty, discountPercent: 0, gstPercent: 0 }]);
-        toast.success(`${med.name} added to cart`);
-      } else {
-        toast.error(`Cannot add! Insufficient stock. Available: ${med.quantity}`);
-      }
+      setCart([...cart, { 
+        ...med, 
+        sellUnit: selectedUnit, 
+        sellQuantity: customQty, 
+        sellMrp, // Actual price for this row's unit type
+        discountPercent: 0, 
+        gstPercent: 0 
+      }]);
+      toast.success(`${med.name} (${selectedUnit}) added to cart`);
     }
+
     setSearchResults([]);
     setManualSearch("");
     setSearchQtys({});
   };
 
-  const removeItem = (id) => {
-    setCart(cart.filter(item => item._id !== id));
+  const removeItem = (id, unit) => {
+    setCart(cart.filter(item => !(item._id === id && item.sellUnit === unit)));
     inputRef.current?.focus();
   };
 
-  const totalCartAmount = Number(cart.reduce((total, item) => total + ((item.mrp || 0) * item.sellQuantity * (1 - (item.discountPercent || 0) / 100)), 0).toFixed(2));
+  const totalCartAmount = Number(cart.reduce((total, item) => total + ((item.sellMrp || item.mrp || 0) * item.sellQuantity * (1 - (item.discountPercent || 0) / 100)), 0).toFixed(2));
 
   const triggerWhatsAppSend = (invoice, phone) => {
     let cleanedPhone = phone.replace(/\D/g, "");
@@ -457,11 +489,13 @@ export default function QuickSell() {
       _id: item._id,
       name: item.name,
       sellQuantity: item.sellQuantity,
-      mrp: item.mrp,
+      mrp: item.sellMrp || item.mrp,
       batch: item.batch,
       expiryDate: item.expiryDate,
       discountPercent: item.discountPercent || 0,
-      gstPercent: item.gstPercent || 0
+      gstPercent: item.gstPercent || 0,
+      sellUnit: item.sellUnit || "tab",
+      tabletsPerStrip: item.tabletsPerStrip || 1
     }));
 
     const prescriptionDetail = isPrescriptionRequired ? {
@@ -672,14 +706,63 @@ export default function QuickSell() {
                       <p className="font-bold text-xs md:text-sm text-slate-800 truncate">{med.name}</p>
                       
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                        <span className="text-[8px] md:text-[9px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded shadow-sm">Stock: {med.quantity}</span>
-                        <span className="text-[8px] md:text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shadow-sm">₹{med.mrp}</span>
+                        <span className="text-[8px] md:text-[9px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded shadow-sm">
+                          {med.isLoose && med.tabletsPerStrip > 1 ? (
+                            (sellUnits[med._id] || "strip") === "strip"
+                              ? `Strips Stock: ${Math.floor(med.quantity / med.tabletsPerStrip)}`
+                              : `Stock: ${med.quantity} tabs`
+                          ) : (
+                            `Stock: ${med.quantity} Pcs`
+                          )}
+                        </span>
+                        <span className="text-[8px] md:text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shadow-sm">
+                          {med.isLoose && med.tabletsPerStrip > 1 ? (
+                            (sellUnits[med._id] || "strip") === "strip"
+                              ? `₹${med.stripMrp || (med.mrp * med.tabletsPerStrip).toFixed(2)} / strip`
+                              : `₹${med.mrp.toFixed(2)} / tab`
+                          ) : (
+                            `₹${med.mrp}`
+                          )}
+                        </span>
                         <span className="text-[8px] md:text-[9px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-1.5 py-0.5 rounded shadow-sm">Exp: {formatExpiryDate(med.expiryDate)}</span>
                         {med.rackNumber && <span className="text-[8px] md:text-[9px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded shadow-sm">Rack: {med.rackNumber}</span>}
                       </div>
                     </div>
                     
-                    <div className="flex items-center space-x-2 shrink-0">
+                    <div className="flex items-center space-x-2 shrink-0 flex-wrap gap-2 sm:flex-nowrap">
+                      {med.isLoose && med.tabletsPerStrip > 1 && (
+                        <div className="flex bg-slate-200 p-0.5 rounded-lg border border-slate-350 select-none">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSellUnits({ ...sellUnits, [med._id]: "strip" });
+                              setSearchQtys({ ...searchQtys, [med._id]: 1 });
+                            }}
+                            className={`px-2 py-1 rounded-md text-[9px] font-extrabold uppercase transition-all cursor-pointer ${
+                              (sellUnits[med._id] || "strip") === "strip"
+                                ? "bg-blue-600 text-white shadow-sm font-black"
+                                : "text-slate-600 hover:text-slate-900"
+                            }`}
+                          >
+                            Strip
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSellUnits({ ...sellUnits, [med._id]: "tab" });
+                              setSearchQtys({ ...searchQtys, [med._id]: 1 });
+                            }}
+                            className={`px-2 py-1 rounded-md text-[9px] font-extrabold uppercase transition-all cursor-pointer ${
+                              (sellUnits[med._id] || "strip") === "tab"
+                                ? "bg-blue-600 text-white shadow-sm font-black"
+                                : "text-slate-600 hover:text-slate-900"
+                            }`}
+                          >
+                            Loose
+                          </button>
+                        </div>
+                      )}
+
                       {med.quantity > 0 && (
                         <div className="flex items-center border border-slate-200 rounded-lg p-0.5 bg-white shadow-sm">
                           <button
@@ -697,10 +780,11 @@ export default function QuickSell() {
                           <input
                             type="number"
                             min="1"
-                            max={med.quantity}
+                            max={(sellUnits[med._id] || (med.isLoose ? "strip" : "tab")) === "strip" ? Math.floor(med.quantity / med.tabletsPerStrip) : med.quantity}
                             value={searchQtys[med._id] || 1}
                             onChange={(e) => {
-                              const val = Math.max(1, Math.min(med.quantity, parseInt(e.target.value) || 1));
+                              const maxVal = (sellUnits[med._id] || (med.isLoose ? "strip" : "tab")) === "strip" ? Math.floor(med.quantity / med.tabletsPerStrip) : med.quantity;
+                              const val = Math.max(1, Math.min(maxVal, parseInt(e.target.value) || 1));
                               setSearchQtys({ ...searchQtys, [med._id]: val });
                             }}
                             className="w-8 text-center font-bold text-slate-800 focus:outline-none text-[10px] bg-transparent border-none p-0"
@@ -709,7 +793,8 @@ export default function QuickSell() {
                             type="button"
                             onClick={() => {
                               const current = searchQtys[med._id] || 1;
-                              if (current < med.quantity) {
+                              const maxVal = (sellUnits[med._id] || (med.isLoose ? "strip" : "tab")) === "strip" ? Math.floor(med.quantity / med.tabletsPerStrip) : med.quantity;
+                              if (current < maxVal) {
                                 setSearchQtys({ ...searchQtys, [med._id]: current + 1 });
                               }
                             }}
@@ -751,13 +836,23 @@ export default function QuickSell() {
               <div className="space-y-2 md:space-y-3">
                 {cart.map((item) => {
                   const discPercent = item.discountPercent || 0;
-                  const discountedPrice = (item.mrp || 0) * (1 - discPercent / 100);
+                  const discountedPrice = (item.sellMrp || item.mrp || 0) * (1 - discPercent / 100);
                   const itemTotal = discountedPrice * item.sellQuantity;
+                  const maxQty = item.sellUnit === "strip" ? Math.floor(item.quantity / (item.tabletsPerStrip || 1)) : item.quantity;
                   
                   return (
-                    <div key={item._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 bg-slate-50/50 rounded-xl md:rounded-2xl border border-slate-100 gap-3 sm:gap-0 animate-in fade-in duration-200">
+                    <div key={`${item._id}_${item.sellUnit}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 bg-slate-50/50 rounded-xl md:rounded-2xl border border-slate-100 gap-3 sm:gap-0 animate-in fade-in duration-200">
                       <div className="flex-1 pr-0 sm:pr-4 min-w-0">
-                        <p className="font-bold text-slate-800 text-sm md:text-lg truncate">{item.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-slate-800 text-sm md:text-lg truncate">{item.name}</p>
+                          {item.isLoose && item.tabletsPerStrip > 1 && (
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded shadow-sm ${
+                              item.sellUnit === 'strip' ? 'bg-blue-600 text-white' : 'bg-amber-600 text-white'
+                            }`}>
+                              {item.sellUnit === 'strip' ? 'Strip (Patta)' : 'Loose / Tab'}
+                            </span>
+                          )}
+                        </div>
                         
                         <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1 mb-1.5 md:mb-2">
                           <span className="text-[9px] md:text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Batch: {item.batch}</span>
@@ -765,20 +860,20 @@ export default function QuickSell() {
                           {item.rackNumber && <span className="text-[9px] md:text-[10px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)]">Rack: {item.rackNumber}</span>}
                           {item.distributor && <span className="text-[9px] md:text-[10px] font-bold bg-amber-50 border border-amber-100 text-amber-600 px-1.5 md:px-2 py-0.5 rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.05)] max-w-[100px] md:max-w-[120px] truncate">Dist: {item.distributor}</span>}
                         </div>
-
+ 
                         <div className="flex flex-wrap items-center gap-4 mt-2">
                           {/* Unit price display */}
                           <div className="text-xs md:text-sm text-blue-600 font-extrabold flex items-center">
                             {discPercent > 0 ? (
                               <>
-                                <span className="line-through text-slate-400 mr-1.5 font-semibold">₹{item.mrp || 0}</span>
+                                <span className="line-through text-slate-400 mr-1.5 font-semibold">₹{item.sellMrp || item.mrp || 0}</span>
                                 <span>₹{discountedPrice.toFixed(2)}</span>
                               </>
                             ) : (
-                              `₹${item.mrp || 0}`
-                            )} <span className="text-[9px] text-slate-400 font-bold ml-1">/ unit</span>
+                              `₹${item.sellMrp || item.mrp || 0}`
+                            )} <span className="text-[9px] text-slate-400 font-bold ml-1">/ {item.sellUnit === 'strip' ? 'strip' : 'unit'}</span>
                           </div>
-
+ 
                           {/* GST Slab Selector */}
                           <div className="flex items-center gap-1.5">
                             <span className="text-[9px] font-bold text-slate-400 uppercase">GST:</span>
@@ -786,7 +881,7 @@ export default function QuickSell() {
                               value={item.gstPercent || 0}
                               onChange={(e) => {
                                 const val = parseInt(e.target.value) || 0;
-                                setCart(cart.map(c => c._id === item._id ? { ...c, gstPercent: val } : c));
+                                setCart(cart.map(c => (c._id === item._id && c.sellUnit === item.sellUnit) ? { ...c, gstPercent: val } : c));
                               }}
                               className="bg-white border border-slate-200 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded focus:outline-none cursor-pointer h-6"
                             >
@@ -796,7 +891,7 @@ export default function QuickSell() {
                               <option value={18}>18%</option>
                             </select>
                           </div>
-
+ 
                           {/* Discount Input */}
                           <div className="flex items-center gap-1.5">
                             <span className="text-[9px] font-bold text-slate-400 uppercase">Disc %:</span>
@@ -808,23 +903,23 @@ export default function QuickSell() {
                               value={item.discountPercent || ""}
                               onChange={(e) => {
                                 const val = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
-                                setCart(cart.map(c => c._id === item._id ? { ...c, discountPercent: val } : c));
+                                setCart(cart.map(c => (c._id === item._id && c.sellUnit === item.sellUnit) ? { ...c, discountPercent: val } : c));
                               }}
                               className="bg-white border border-slate-200 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded focus:outline-none w-10 text-center h-6"
                             />
                           </div>
                         </div>
                       </div>
-
+ 
                       <div className="flex items-center justify-between sm:justify-end space-x-3 md:space-x-4 shrink-0 bg-white sm:bg-transparent p-2 sm:p-0 rounded-lg sm:rounded-none border sm:border-none border-slate-100">
                         <div className="flex items-center space-x-1.5 bg-slate-50 sm:bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
                           <button
                             type="button"
                             onClick={() => {
                               if (item.sellQuantity > 1) {
-                                setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: c.sellQuantity - 1 } : c));
+                                setCart(cart.map(c => (c._id === item._id && c.sellUnit === item.sellUnit) ? { ...c, sellQuantity: c.sellQuantity - 1 } : c));
                               } else {
-                                removeItem(item._id);
+                                removeItem(item._id, item.sellUnit);
                               }
                             }}
                             className="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-lg transition-colors text-sm focus:outline-none"
@@ -834,19 +929,19 @@ export default function QuickSell() {
                           <input
                             type="number"
                             min="1"
-                            max={item.quantity}
+                            max={maxQty}
                             value={item.sellQuantity}
                             onChange={(e) => {
-                              const val = Math.max(1, Math.min(item.quantity, parseInt(e.target.value) || 1));
-                              setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: val } : c));
+                              const val = Math.max(1, Math.min(maxQty, parseInt(e.target.value) || 1));
+                              setCart(cart.map(c => (c._id === item._id && c.sellUnit === item.sellUnit) ? { ...c, sellQuantity: val } : c));
                             }}
                             className="w-10 text-center font-bold text-slate-800 focus:outline-none text-xs md:text-sm bg-transparent border-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                           <button
                             type="button"
                             onClick={() => {
-                              if (item.sellQuantity < item.quantity) {
-                                setCart(cart.map(c => c._id === item._id ? { ...c, sellQuantity: c.sellQuantity + 1 } : c));
+                              if (item.sellQuantity < maxQty) {
+                                setCart(cart.map(c => (c._id === item._id && c.sellUnit === item.sellUnit) ? { ...c, sellQuantity: c.sellQuantity + 1 } : c));
                               } else {
                                 toast.error("Cannot add more! Insufficient stock.");
                               }
@@ -859,7 +954,7 @@ export default function QuickSell() {
                         <div className="font-bold text-base md:text-lg text-slate-800 min-w-[50px] md:min-w-[60px] text-right">
                           ₹{itemTotal.toFixed(2)}
                         </div>
-                        <button onClick={() => removeItem(item._id)} className="p-1.5 md:p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg md:rounded-xl transition-colors">
+                        <button onClick={() => removeItem(item._id, item.sellUnit)} className="p-1.5 md:p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg md:rounded-xl transition-colors">
                           <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                         </button>
                       </div>
@@ -1299,17 +1394,22 @@ export default function QuickSell() {
                   {completedInvoice.items.map((item, i) => {
                     const discount = item.discountPercent || 0;
                     const gst = item.gstPercent || 0;
-                    const itemUnitTotal = item.mrp * (1 - discount / 100);
+                    const itemMrp = item.sellMrp || item.mrp || 0;
+                    const itemUnitTotal = itemMrp * (1 - discount / 100);
                     return (
                       <div key={i} className="text-[10px] leading-tight space-y-0.5">
                         <div className="flex justify-between">
-                          <span className="truncate max-w-[150px] font-bold">{item.name}</span>
-                          <span>{item.sellQuantity} x ₹{item.mrp}</span>
+                          <span className="truncate max-w-[150px] font-bold">
+                            {item.name.includes('(Strip)') || item.name.includes('(Tab)') || item.name.includes('(Str)')
+                              ? item.name
+                              : `${item.name} ${item.sellUnit === 'strip' ? '(Str)' : '(Tab)'}`}
+                          </span>
+                          <span>{item.sellQuantity} x ₹{itemMrp}</span>
                         </div>
                         {(discount > 0 || gst > 0) && (
                           <div className="flex justify-between text-[8px] text-slate-400 font-semibold pl-2">
                             <span>{discount > 0 ? `Disc: ${discount}%` : ""} {gst > 0 ? `GST: ${gst}%` : ""}</span>
-                            <span>Net Unit: ₹{itemUnitTotal.toFixed(2)}</span>
+                            <span>Net: ₹{itemUnitTotal.toFixed(2)}</span>
                           </div>
                         )}
                       </div>
@@ -1523,17 +1623,22 @@ export default function QuickSell() {
                 {completedInvoice.items.map((item, i) => {
                   const discount = item.discountPercent || 0;
                   const gst = item.gstPercent || 0;
-                  const itemUnitTotal = item.mrp * (1 - discount / 100);
+                  const itemMrp = item.sellMrp || item.mrp || 0;
+                  const itemUnitTotal = itemMrp * (1 - discount / 100);
                   return (
                     <div key={i} style={{ marginBottom: '4px' }}>
                       <div className="row" style={{ margin: 0 }}>
-                        <span style={{ maxWidth: '32mm', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
-                        <span>{item.sellQuantity} x ₹{item.mrp}</span>
+                        <span style={{ maxWidth: '32mm', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.name.includes('(Strip)') || item.name.includes('(Tab)') || item.name.includes('(Str)')
+                            ? item.name
+                            : `${item.name} ${item.sellUnit === 'strip' ? '(Str)' : '(Tab)'}`}
+                        </span>
+                        <span>{item.sellQuantity} x ₹{itemMrp}</span>
                       </div>
                       {(discount > 0 || gst > 0) && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '7px', color: 'gray', paddingLeft: '4px' }}>
                           <span>{discount > 0 ? `D:${discount}%` : ""} {gst > 0 ? `G:${gst}%` : ""}</span>
-                          <span>Net Unit: ₹{itemUnitTotal.toFixed(2)}</span>
+                          <span>Net: ₹{itemUnitTotal.toFixed(2)}</span>
                         </div>
                       )}
                     </div>

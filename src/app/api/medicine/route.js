@@ -82,17 +82,15 @@ export async function GET(req) {
                         ]
                     };
 
-                    const prefixCount = await Medicine.countDocuments(prefixQuery);
                     const additionalMeds = await Medicine.find(wildcardQuery)
                         .sort({ createdAt: -1 })
                         .limit(remainingLimit)
                         .lean();
 
                     medicines = medicines.concat(additionalMeds);
-                    const wildcardCount = await Medicine.countDocuments(wildcardQuery);
-                    total = prefixCount + wildcardCount;
+                    total = medicines.length;
                 } else {
-                    total = await Medicine.countDocuments(prefixQuery);
+                    total = medicines.length;
                 }
             } else {
                 // STANDARD WILD-CARD PATH FOR PAGINATED SEARCHES (skip > 0)
@@ -162,13 +160,32 @@ export async function POST(req) {
 
         // 📝 SINGLE INSERTION PATH
         const uniqueBarcode = `MED-${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
+        
+        let saveQty = Number(data.quantity);
+        let saveMrp = Number(data.mrp);
+        let savePurchasePrice = Number(data.purchasePrice || data.mrp || 0);
+        let stripMrp = Number(data.stripMrp || data.mrp || 0);
+        let tabletsPerStrip = Number(data.tabletsPerStrip || 1);
+        
+        if (data.isLoose && tabletsPerStrip > 1) {
+            saveQty = Number(data.quantity) * tabletsPerStrip;
+            saveMrp = Number(data.stripMrp) / tabletsPerStrip;
+            savePurchasePrice = Number(data.purchasePrice || data.stripMrp || 0) / tabletsPerStrip;
+        } else {
+            stripMrp = saveMrp;
+            tabletsPerStrip = 1;
+        }
+
         const newMedicine = new Medicine({
             ...data,
             userId,
             barcodeId: uniqueBarcode,
-            quantity: Number(data.quantity),
-            mrp: Number(data.mrp),
-            purchasePrice: Number(data.purchasePrice || data.mrp)
+            quantity: saveQty,
+            mrp: saveMrp,
+            purchasePrice: savePurchasePrice,
+            stripMrp,
+            tabletsPerStrip,
+            isLoose: Boolean(data.isLoose)
         });
         await newMedicine.save();
         return NextResponse.json({ success: true, medicine: newMedicine }, { status: 201 });
@@ -191,6 +208,16 @@ export async function PUT(req) {
 
         await connectToDatabase();
         const { id, ...updateData } = await req.json();
+        
+        if (updateData.isLoose && Number(updateData.tabletsPerStrip) > 1) {
+            if (updateData.stripMrp && updateData.tabletsPerStrip) {
+                updateData.mrp = Number(updateData.stripMrp) / Number(updateData.tabletsPerStrip);
+            }
+            if (updateData.stripPurchasePrice && updateData.tabletsPerStrip) {
+                updateData.purchasePrice = Number(updateData.stripPurchasePrice) / Number(updateData.tabletsPerStrip);
+            }
+        }
+        
         const updated = await Medicine.findOneAndUpdate({ _id: id, userId }, updateData, { new: true }).lean();
         if (!updated) {
             return NextResponse.json({ success: false, error: "Medicine not found or unauthorized" }, { status: 404 });

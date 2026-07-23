@@ -14,6 +14,11 @@ const MedicineSchema = new mongoose.Schema({
 
     barcodeId: { type: String, unique: true, required: true, trim: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    
+    // 📦 Solution B: Loose Medicine / Strip Conversion Support
+    isLoose: { type: Boolean, default: false },
+    tabletsPerStrip: { type: Number, default: 1 },
+    stripMrp: { type: Number, default: 0 },
 }, { 
     timestamps: true, 
     versionKey: false 

@@ -49,14 +49,17 @@ export async function POST(req) {
         const med = medMap[item._id.toString()];
         
         if (!med) throw new Error(`${item.name} not found in database!`);
-        if (med.quantity < item.sellQuantity) {
-          throw new Error(`${item.name} has insufficient stock! Available: ${med.quantity}`);
+        
+        const decrementQty = item.sellUnit === "strip" ? Number(item.sellQuantity) * Number(item.tabletsPerStrip || 1) : Number(item.sellQuantity);
+
+        if (med.quantity < decrementQty) {
+          throw new Error(`${item.name} has insufficient stock! Available: ${med.quantity} tablets`);
         }
 
         // Atomic stock update to prevent race conditions
         const res = await Medicine.updateOne(
-          { _id: med._id, userId, quantity: { $gte: item.sellQuantity } },
-          { $inc: { quantity: -item.sellQuantity } }
+          { _id: med._id, userId, quantity: { $gte: decrementQty } },
+          { $inc: { quantity: -decrementQty } }
         );
         
         if (res.modifiedCount === 0) {
@@ -66,7 +69,7 @@ export async function POST(req) {
         // Track for rollback
         decrementedItems.push({
           medicineId: med._id,
-          quantity: item.sellQuantity
+          quantity: decrementQty
         });
 
         const discountPercent = Number(item.discountPercent || 0);
@@ -87,12 +90,15 @@ export async function POST(req) {
         
         totalDiscount += (itemMrp * item.sellQuantity) - itemTotal;
 
+        const unitSuffix = item.sellUnit === "strip" ? " (Strip)" : (med.isLoose ? " (Tab)" : "");
+        const unitPurchasePrice = item.sellUnit === "strip" ? ((med.purchasePrice || 0) * Number(item.tabletsPerStrip || 1)) : (med.purchasePrice || 0);
+
         saleItems.push({
           medicineId: med._id,
-          name: med.name,
+          name: `${med.name}${unitSuffix}`,
           quantity: item.sellQuantity,
           mrp: itemMrp,
-          purchasePrice: med.purchasePrice || 0,
+          purchasePrice: unitPurchasePrice,
           total: itemTotal,
           discountPercent,
           gstPercent,
