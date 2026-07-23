@@ -6,7 +6,7 @@ import Header from "./Header";
 import MobileNav from "./MobileNav";
 import AIChatBot from "./AIChatBot";
 
-const validDashboardPaths = ["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns"];
+const validDashboardPaths = ["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns", "/reorder"];
 
 export default function LayoutWrapper({ children }) {
   const pathname = usePathname();

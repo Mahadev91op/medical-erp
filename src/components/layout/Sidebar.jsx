@@ -16,7 +16,8 @@ import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
-  RotateCcw
+  RotateCcw,
+  ClipboardList
 } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 
@@ -26,6 +27,7 @@ const navLinks = [
   { name: 'Inventory', icon: Package, path: '/inventory', roles: ['admin'] },
   { name: 'Purchase Entry', icon: PackagePlus, path: '/purchase', roles: ['admin'] },
   { name: 'Quick Sell', icon: ScanBarcode, path: '/sell', roles: ['admin', 'staff'] },
+  { name: 'Shortage Notebook', icon: ClipboardList, path: '/reorder', roles: ['admin', 'staff'] },
   { name: 'Medicine Lookup', icon: Search, path: '/lookup', roles: ['admin', 'staff'] },
   { name: 'Credit Book', icon: BookOpen, path: '/khata', roles: ['admin', 'staff'] },
   { name: 'Distributor Returns', icon: RotateCcw, path: '/returns', roles: ['admin'] },
@@ -37,7 +39,7 @@ const Sidebar = ({ isCollapsed = false, toggleCollapse }) => {
   const router = useRouter();
   const { data: session } = useSession();
 
-  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns"].includes(pathname);
+  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns", "/reorder"].includes(pathname);
   
   useEffect(() => {
     if (session?.error === "disabled") {
