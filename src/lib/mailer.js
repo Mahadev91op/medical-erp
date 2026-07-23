@@ -107,6 +107,9 @@ export async function sendOtpEmail(email, emailOtp, phoneOtp = null, type = "sig
           user,
           pass,
         },
+        tls: {
+          rejectUnauthorized: false
+        }
       });
 
       await transporter.sendMail({
@@ -119,8 +122,16 @@ export async function sendOtpEmail(email, emailOtp, phoneOtp = null, type = "sig
       return { success: true, mock: false };
     } catch (error) {
       console.error("Mailer Error (Failed to send email):", error);
+      
+      let errorMsg = "Failed to send verification email. Please check server SMTP configurations.";
+      if (error.code === "EAUTH" || error.responseCode === 535) {
+        errorMsg = "Failed to send verification email: Invalid SMTP username or App Password. Please generate a new Gmail App Password in .env";
+      } else if (error.message) {
+        errorMsg = `Failed to send verification email: ${error.message}`;
+      }
+
       if (process.env.NODE_ENV === "production") {
-        throw new Error("Failed to send verification email. Please try again or check server SMTP configurations.");
+        throw new Error(errorMsg);
       }
       // Fall through to mock logic in development
     }
@@ -212,6 +223,9 @@ export async function sendRegistrationAlertEmail(userData, plainPassword) {
         user,
         pass,
       },
+      tls: {
+        rejectUnauthorized: false
+      }
     });
 
     await transporter.sendMail({

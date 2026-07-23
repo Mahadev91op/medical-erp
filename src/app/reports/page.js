@@ -5,6 +5,7 @@ import { AlertTriangle, TrendingDown, Truck, Loader2, CalendarClock, RefreshCw, 
 import { formatDate, formatExpiryDate } from "@/lib/formatDate";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import toast, { Toaster } from "react-hot-toast";
+import ReportDetailModal from "@/components/reports/ReportDetailModal";
 
 const ReportsSkeleton = () => {
   return (
@@ -198,6 +199,9 @@ Thank you! Get well soon. 🏥`;
   const [showSoldItemsModal, setShowSoldItemsModal] = useState(false);
   const [showExpiryModal, setShowExpiryModal] = useState(false);
   const [showLowStockModal, setShowLowStockModal] = useState(false);
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
+  const [showOutOfStockModal, setShowOutOfStockModal] = useState(false);
+  const [reportModalType, setReportModalType] = useState(null);
 
   const [dateFilter, setDateFilter] = useState("today"); // today, yesterday, 7days, 15days, 30days, 60days, 90days, customDays, custom
   const [customStartDate, setCustomStartDate] = useState(() => {
@@ -539,8 +543,12 @@ Thank you! Get well soon. 🏥`;
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-5">
         
         {/* Revenue */}
-        <div className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center hover:shadow-md transition-all">
-            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mr-3 shrink-0 text-blue-500">
+        <div 
+          onClick={() => { setActiveReportTab("bills"); setShowSoldItemsModal(true); }}
+          className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center hover:border-blue-200 hover:shadow-md transition-all cursor-pointer group"
+          title="Click to view total sales report"
+        >
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mr-3 shrink-0 text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
                 <IndianRupee className="w-5 h-5" />
             </div>
             <div>
@@ -550,9 +558,17 @@ Thank you! Get well soon. 🏥`;
                 </p>
             </div>
         </div>
+
         {/* Payment Breakdown Card */}
-        <div className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] border border-slate-100 flex flex-col justify-center hover:shadow-md transition-all col-span-2 sm:col-span-1">
-            <p className="text-slate-405 text-[9px] md:text-[10px] font-bold uppercase tracking-wider mb-2">Payment Breakdown</p>
+        <div 
+          onClick={() => { setActiveReportTab("bills"); setShowSoldItemsModal(true); }}
+          className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] border border-slate-100 flex flex-col justify-center hover:border-indigo-200 hover:shadow-md transition-all col-span-2 sm:col-span-1 cursor-pointer"
+          title="Click for payment details"
+        >
+            <p className="text-slate-405 text-[9px] md:text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center justify-between">
+              <span>Payment Breakdown</span>
+              <span className="text-[8px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-extrabold">Details →</span>
+            </p>
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between items-center text-slate-600">
                 <span className="font-semibold flex items-center">💵 Cash</span>
@@ -568,6 +584,7 @@ Thank you! Get well soon. 🏥`;
               </div>
             </div>
         </div>
+
         {/* Stock Valuation */}
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-lg text-white flex items-center hover:shadow-slate-800/30 transition-shadow">
             <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center mr-3 shrink-0">
@@ -583,7 +600,7 @@ Thank you! Get well soon. 🏥`;
         
         {/* Items Sold */}
         <div 
-          onClick={() => setShowSoldItemsModal(true)}
+          onClick={() => { setActiveReportTab("items"); setShowSoldItemsModal(true); }}
           className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center cursor-pointer hover:border-indigo-100 hover:shadow-md transition-all group"
           title="Click to view details"
         >
@@ -601,7 +618,7 @@ Thank you! Get well soon. 🏥`;
         {/* Bills Generated */}
         <div 
           className="bg-white p-4 md:p-5 rounded-[20px] md:rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center cursor-pointer hover:border-amber-100 hover:shadow-md transition-all" 
-          onClick={() => setShowSoldItemsModal(true)} 
+          onClick={() => { setActiveReportTab("bills"); setShowSoldItemsModal(true); }} 
           title="Click to view details"
         >
             <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mr-3 shrink-0 text-amber-500">
@@ -644,66 +661,6 @@ Thank you! Get well soon. 🏥`;
           </div>
         </div>
       )}
-
-      {/* Top Performing Distributors Section */}
-      <div className="space-y-3 md:space-y-4 pt-2">
-        <h2 className="text-sm md:text-lg font-bold text-slate-700">Top Performing Distributors</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
-          {data.distributorStock?.slice(0, 2).map((dist, index) => (
-            <div key={dist._id} className="relative bg-white p-4 md:p-5 rounded-[20px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col group hover:border-indigo-100 transition-all">
-              
-              {index === 0 && (dist?.revenueGenerated || 0) > 0 && (
-                <div className="absolute -top-3 -right-2 md:-right-4 bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 md:py-1.5 rounded-full shadow-lg flex items-center z-10 animate-bounce">
-                  <Award className="w-3 h-3 md:w-4 md:h-4 mr-1" /> Top Earner
-                </div>
-              )}
-
-              <div className="flex items-center mb-4 border-b border-slate-50 pb-4">
-                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center mr-3 md:mr-4 shrink-0 transition-transform group-hover:scale-105 ${index === 0 ? 'bg-amber-50 text-amber-500' : 'bg-indigo-50 text-indigo-500'}`}>
-                  <Truck className="w-6 h-6 md:w-7 md:h-7" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider truncate">Distributor</p>
-                  <p className="text-lg md:text-xl font-extrabold text-slate-800 leading-none truncate mt-0.5">{dist._id}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Revenue</p>
-                  <p className="text-base md:text-xl font-extrabold text-blue-600 flex items-center justify-end">
-                    <IndianRupee className="w-3 h-3 md:w-4 md:h-4 mr-0.5" />
-                    {(dist?.revenueGenerated || 0).toLocaleString('en-IN')}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 md:gap-4 bg-slate-50/50 p-2.5 md:p-3 rounded-xl md:rounded-2xl border border-slate-50/80">
-                <div className="flex flex-col p-1.5 md:p-2 bg-white rounded-lg md:rounded-xl shadow-sm border border-slate-100">
-                  <span className="flex items-center text-[9px] md:text-[10px] font-bold text-slate-400 uppercase mb-1">
-                    <ShoppingCart className="w-3 h-3 mr-1 text-indigo-400" /> Items Sold
-                  </span>
-                  <span className="text-sm md:text-base font-extrabold text-slate-700">{dist?.soldQuantity || 0}</span>
-                </div>
-                <div className="flex flex-col p-1.5 md:p-2 bg-white rounded-lg md:rounded-xl shadow-sm border border-slate-100">
-                  <span className="flex items-center text-[9px] md:text-[10px] font-bold text-slate-400 uppercase mb-1">
-                    <PackageOpen className="w-3 h-3 mr-1 text-amber-500" /> Left in Stock
-                  </span>
-                  <span className="text-sm md:text-base font-extrabold text-slate-700">{dist.totalQuantity || 0} <span className="text-[9px] md:text-[10px] font-medium text-slate-400">({dist.totalItems || 0} Brands)</span></span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {data.distributorStock?.length > 2 && (
-          <div className="flex justify-end mt-2 md:mt-0">
-            <button
-              onClick={() => setShowAllDistributors(true)}
-              className="text-xs md:text-sm font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 md:px-5 md:py-2.5 rounded-xl transition-colors flex items-center shadow-sm"
-            >
-              View All Distributors ({data.distributorStock.length})
-            </button>
-          </div>
-        )}
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
                 {/* Sold Items Report Card */}
@@ -1007,11 +964,16 @@ Thank you! Get well soon. 🏥`;
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6 pt-4">
         
         {/* Already Expired Stock Tracker */}
-        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-200 overflow-hidden flex flex-col min-h-[350px]">
+        <div 
+          onClick={() => setShowExpiredModal(true)}
+          className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-rose-200 hover:border-rose-400 overflow-hidden flex flex-col min-h-[350px] cursor-pointer hover:shadow-md transition-all group"
+          title="Click to view all expired stock items"
+        >
           <div className="bg-rose-50/50 p-4 md:p-5 border-b border-rose-100 flex items-center justify-between">
-            <h2 className="text-sm md:text-base font-bold text-rose-800 flex items-center gap-2">
+            <h2 className="text-sm md:text-base font-bold text-rose-800 flex items-center gap-2 group-hover:text-rose-600 transition-colors">
               <AlertTriangle className="w-5 h-5 text-rose-500 animate-pulse" />
               <span>Expired Stock Tracker</span>
+              <span className="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-bold ml-1">View Full List →</span>
             </h2>
             <span className="bg-rose-200 text-rose-800 text-[10px] md:text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0">
               {data.alreadyExpired?.length || 0} Items
@@ -1053,8 +1015,11 @@ Thank you! Get well soon. 🏥`;
                         </td>
                         <td className="py-2.5 text-center">
                           <button
-                            onClick={() => handleDeleteMedicine(med._id, med.name)}
-                            className="p-1.5 text-rose-500 hover:text-white hover:bg-rose-500 rounded-lg transition-colors border border-rose-100 hover:border-rose-500"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteMedicine(med._id, med.name);
+                            }}
+                            className="p-1.5 text-rose-500 hover:text-white hover:bg-rose-500 rounded-lg transition-colors border border-rose-100 hover:border-rose-500 cursor-pointer"
                             title="Delete Expired Item"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1066,7 +1031,7 @@ Thank you! Get well soon. 🏥`;
                 </table>
                 {data.alreadyExpired.length > 10 && (
                   <p className="text-center text-[10px] text-slate-400 mt-3 font-semibold">
-                    + {data.alreadyExpired.length - 10} more expired items. Please clean up your inventory.
+                    + {data.alreadyExpired.length - 10} more expired items. Click this card to view all.
                   </p>
                 )}
               </div>
@@ -1075,11 +1040,16 @@ Thank you! Get well soon. 🏥`;
         </div>
 
         {/* Out of Stock / Reorder Checklist */}
-        <div className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-amber-200 overflow-hidden flex flex-col min-h-[350px]">
+        <div 
+          onClick={() => setShowOutOfStockModal(true)}
+          className="bg-white rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-amber-200 hover:border-amber-400 overflow-hidden flex flex-col min-h-[350px] cursor-pointer hover:shadow-md transition-all group"
+          title="Click to view all out of stock medicines"
+        >
           <div className="bg-amber-50/50 p-4 md:p-5 border-b border-amber-100 flex items-center justify-between">
-            <h2 className="text-sm md:text-base font-bold text-amber-800 flex items-center gap-2">
+            <h2 className="text-sm md:text-base font-bold text-amber-800 flex items-center gap-2 group-hover:text-amber-600 transition-colors">
               <PackageOpen className="w-5 h-5 text-amber-500" />
               <span>Out of Stock Checklist</span>
+              <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold ml-1">View Full List →</span>
             </h2>
             <span className="bg-amber-200 text-amber-800 text-[10px] md:text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0">
               {data.outOfStock?.length || 0} Items
@@ -1120,7 +1090,7 @@ Thank you! Get well soon. 🏥`;
                 </table>
                 {data.outOfStock.length > 10 && (
                   <p className="text-center text-[10px] text-slate-400 mt-3 font-semibold">
-                    + {data.outOfStock.length - 10} more out-of-stock items.
+                    + {data.outOfStock.length - 10} more out-of-stock items. Click this card to view all.
                   </p>
                 )}
               </div>
@@ -2188,6 +2158,131 @@ Thank you! Get well soon. 🏥`;
           )}
         </div>
       </div>
+
+      {/* 📊 INTERACTIVE REPORTS DETAIL DRILLDOWN MODAL */}
+      <ReportDetailModal 
+        isOpen={!!reportModalType}
+        onClose={() => setReportModalType(null)}
+        modalType={reportModalType}
+        data={data}
+      />
+
+      {/* 🔴 EXPIRED STOCK DETAIL MODAL */}
+      {showExpiredModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] md:rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100 animate-in zoom-in-95">
+            <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-lg md:text-xl font-bold text-rose-800 flex items-center">
+                <AlertTriangle className="w-5 h-5 mr-2 text-rose-500" />
+                All Expired Stock Items
+              </h2>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowExpiredModal(false); }}
+                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm cursor-pointer"
+              >
+                <X className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 md:p-6 overflow-x-auto overflow-y-auto flex-1 bg-slate-50/30 custom-scrollbar">
+              <table className="w-full min-w-[600px] text-left border-collapse bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">
+                    <th className="p-3 md:p-4 font-bold">#</th>
+                    <th className="p-3 md:p-4 font-bold">Medicine</th>
+                    <th className="p-3 md:p-4 font-bold">Batch No.</th>
+                    <th className="p-3 md:p-4 font-bold text-center">Remaining Stock</th>
+                    <th className="p-3 md:p-4 font-bold text-right">Expired Date</th>
+                    <th className="p-3 md:p-4 font-bold text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
+                  {data.alreadyExpired?.map((med, index) => (
+                    <tr key={med._id} className="hover:bg-rose-50/20 transition-colors">
+                      <td className="p-3 md:p-4 text-slate-400">{index + 1}</td>
+                      <td className="p-3 md:p-4">
+                        <p className="font-bold text-slate-800">{med.name}</p>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">Distributor: {med.distributor || 'N/A'}</p>
+                      </td>
+                      <td className="p-3 md:p-4 font-medium text-slate-600">{med.batch || 'N/A'}</td>
+                      <td className="p-3 md:p-4 text-center">
+                        <span className="font-extrabold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg">
+                          {med.quantity} pcs
+                        </span>
+                      </td>
+                      <td className="p-3 md:p-4 text-right">
+                        <span className="font-bold text-rose-600">
+                          {formatExpiryDate(med.expiryDate)}
+                        </span>
+                      </td>
+                      <td className="p-3 md:p-4 text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteMedicine(med._id, med.name);
+                          }}
+                          className="p-1.5 text-rose-500 hover:text-white hover:bg-rose-500 rounded-lg transition-colors border border-rose-100 hover:border-rose-500 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🟡 OUT OF STOCK DETAIL MODAL */}
+      {showOutOfStockModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] md:rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100 animate-in zoom-in-95">
+            <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h2 className="text-lg md:text-xl font-bold text-slate-800 flex items-center">
+                <PackageOpen className="w-5 h-5 mr-2 text-amber-500 animate-pulse" />
+                All Out of Stock Medicines
+              </h2>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowOutOfStockModal(false); }}
+                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors bg-white border border-slate-200 shadow-sm cursor-pointer"
+              >
+                <X className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 md:p-6 overflow-x-auto overflow-y-auto flex-1 bg-slate-50/30 custom-scrollbar">
+              <table className="w-full min-w-[600px] text-left border-collapse bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-[10px] md:text-xs text-slate-500 uppercase tracking-wider border-b border-slate-150">
+                    <th className="p-3 md:p-4 font-bold">#</th>
+                    <th className="p-3 md:p-4 font-bold">Medicine</th>
+                    <th className="p-3 md:p-4 font-bold">Distributor / Agency</th>
+                    <th className="p-3 md:p-4 font-bold">Last Bill No.</th>
+                    <th className="p-3 md:p-4 font-bold text-right">MRP</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs md:text-sm">
+                  {data.outOfStock?.map((med, index) => (
+                    <tr key={med._id} className="hover:bg-amber-50/20 transition-colors">
+                      <td className="p-3 md:p-4 text-slate-400">{index + 1}</td>
+                      <td className="p-3 md:p-4">
+                        <p className="font-bold text-slate-800">{med.name}</p>
+                        <p className="text-[9px] text-slate-400 font-medium mt-0.5">Batch: {med.batch}</p>
+                      </td>
+                      <td className="p-3 md:p-4 font-semibold text-slate-600">{med.distributor || "N/A"}</td>
+                      <td className="p-3 md:p-4 text-slate-500 font-medium">{med.billNumber || "N/A"}</td>
+                      <td className="p-3 md:p-4 text-right font-extrabold text-slate-700">₹{med.mrp}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

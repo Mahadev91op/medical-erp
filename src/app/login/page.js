@@ -50,13 +50,14 @@ export default function Login() {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Username</label>
                         <div className="relative">
                             <input
                                 type="text"
                                 required
+                                autoComplete="off"
                                 placeholder="Enter username"
                                 className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium"
                                 value={formData.username}
@@ -72,6 +73,7 @@ export default function Login() {
                             <input
                                 type="password"
                                 required
+                                autoComplete="new-password"
                                 placeholder="Enter password"
                                 className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all font-medium"
                                 value={formData.password}

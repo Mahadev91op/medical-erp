@@ -142,7 +142,20 @@ export default function Profile() {
   const [revokingSessionId, setRevokingSessionId] = useState(null);
 
   // Database custom cleanup preferences
-  const [cleanupMonths, setCleanupMonths] = useState(6);
+  const [cleanupPeriod, setCleanupPeriod] = useState("6m");
+  const getPeriodLabel = (val) => {
+    switch (val) {
+      case "1d": return "1 Day";
+      case "3d": return "3 Days";
+      case "7d": return "7 Days";
+      case "30d": return "30 Days (1 Month)";
+      case "3m": return "3 Months";
+      case "6m": return "6 Months";
+      case "12m": return "12 Months (1 Year)";
+      case "24m": return "24 Months (2 Years)";
+      default: return val;
+    }
+  };
   const [cleanupSoldOut, setCleanupSoldOut] = useState(true);
   const [cleanupExpired, setCleanupExpired] = useState(true);
   const [cleanupSales, setCleanupSales] = useState(true);
@@ -208,12 +221,21 @@ export default function Profile() {
     }
     setCleanupLoading(true);
     const toastId = toast.loading("Executing storage database cleanup...");
+    let months = 0;
+    let days = 0;
+    if (cleanupPeriod.endsWith("d")) {
+      days = parseInt(cleanupPeriod) || 1;
+    } else {
+      months = parseInt(cleanupPeriod) || 6;
+    }
+
     try {
       const res = await fetch("/api/cleanup", { 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          months: cleanupMonths,
+          months,
+          days,
           cleanSoldOut: cleanupSoldOut,
           cleanExpired: cleanupExpired,
           cleanSales: cleanupSales,
@@ -1401,19 +1423,23 @@ export default function Profile() {
                   <div className="space-y-2">
                     <label className="block text-[11px] font-extrabold uppercase text-slate-400 tracking-wider">Select Age Threshold</label>
                     <select
-                      value={cleanupMonths}
-                      onChange={(e) => setCleanupMonths(parseInt(e.target.value))}
+                      value={cleanupPeriod}
+                      onChange={(e) => setCleanupPeriod(e.target.value)}
                       className="w-full bg-white border border-rose-100 text-slate-700 rounded-xl px-3.5 py-3 focus:outline-none focus:border-rose-400 transition-all font-semibold text-sm cursor-pointer"
                     >
-                      <option value={3}>Older than 3 Months</option>
-                      <option value={6}>Older than 6 Months (Recommended)</option>
-                      <option value={12}>Older than 12 Months (1 Year)</option>
-                      <option value={24}>Older than 24 Months (2 Years)</option>
+                      <option value="1d">Older than 1 Day (24 Hours)</option>
+                      <option value="3d">Older than 3 Days</option>
+                      <option value="7d">Older than 7 Days (1 Week)</option>
+                      <option value="30d">Older than 30 Days (1 Month)</option>
+                      <option value="3m">Older than 3 Months</option>
+                      <option value="6m">Older than 6 Months (Recommended)</option>
+                      <option value="12m">Older than 12 Months (1 Year)</option>
+                      <option value="24m">Older than 24 Months (2 Years)</option>
                     </select>
                   </div>
 
                   <p className="text-xs text-rose-700/80 leading-relaxed font-semibold bg-white p-3.5 rounded-xl border border-rose-100/50">
-                    ℹ️ Current settings will delete records older than <strong className="text-rose-900">{cleanupMonths} months</strong>. Active stock levels, recent transactions, and non-expired batches will remain fully unaffected.
+                    ℹ️ Current settings will delete records older than <strong className="text-rose-900">{getPeriodLabel(cleanupPeriod)}</strong>. Active stock levels, recent transactions, and non-expired batches will remain fully unaffected.
                   </p>
 
                   <div className="pt-2">
@@ -1827,7 +1853,7 @@ export default function Profile() {
             
             <form onSubmit={handleCustomDatabaseCleanup} className="p-6 space-y-5">
               <div className="bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold p-4 rounded-xl leading-relaxed space-y-1.5">
-                <p className="font-extrabold">⚠️ WARNING: You are purging database storage records older than {cleanupMonths} months:</p>
+                <p className="font-extrabold">⚠️ WARNING: You are purging database storage records older than {getPeriodLabel(cleanupPeriod)}:</p>
                 <ul className="list-disc list-inside space-y-1 pl-1 font-semibold text-rose-800">
                   {cleanupSoldOut && <li>Sold-out medicines (quantity 0)</li>}
                   {cleanupExpired && <li>Expired medicine batches</li>}

@@ -16,6 +16,7 @@ export async function POST(req) {
     const userId = session.user.id;
 
     let months = 6;
+    let days = 0;
     let cleanSoldOut = true;
     let cleanExpired = true;
     let cleanSales = true;
@@ -25,6 +26,7 @@ export async function POST(req) {
       const body = await req.json();
       if (body) {
         if (body.months !== undefined) months = parseInt(body.months) || 6;
+        if (body.days !== undefined) days = parseInt(body.days) || 0;
         if (body.cleanSoldOut !== undefined) cleanSoldOut = !!body.cleanSoldOut;
         if (body.cleanExpired !== undefined) cleanExpired = !!body.cleanExpired;
         if (body.cleanSales !== undefined) cleanSales = !!body.cleanSales;
@@ -37,7 +39,11 @@ export async function POST(req) {
     await connectToDatabase();
 
     const thresholdDate = new Date();
-    thresholdDate.setMonth(thresholdDate.getMonth() - months);
+    if (days > 0) {
+      thresholdDate.setDate(thresholdDate.getDate() - days);
+    } else {
+      thresholdDate.setMonth(thresholdDate.getMonth() - months);
+    }
 
     let deletedSold = { deletedCount: 0 };
     let deletedExpired = { deletedCount: 0 };
@@ -85,8 +91,9 @@ export async function POST(req) {
     if (cleanSales) summaryParts.push(`${deletedSales.deletedCount} transaction invoices`);
     if (cleanKhata) summaryParts.push(`${deletedKhata.deletedCount} settled credit accounts`);
 
+    const periodText = days > 0 ? `${days} days` : `${months} months`;
     const summaryMessage = summaryParts.length > 0 
-      ? `Successfully purged: ${summaryParts.join(", ")} older than ${months} months.`
+      ? `Successfully purged: ${summaryParts.join(", ")} older than ${periodText}.`
       : "No cleanup actions selected.";
 
     return NextResponse.json({

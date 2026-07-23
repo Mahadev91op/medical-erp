@@ -1,8 +1,8 @@
 "use client";
-import { IndianRupee } from "lucide-react";
+import { IndianRupee, ExternalLink } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-export default function SalesChart({ data }) {
+export default function SalesChart({ data, onCardClick }) {
   if (!data || data.length === 0) {
     return (
       <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] h-full flex flex-col justify-center items-center min-h-[300px]">
@@ -13,13 +13,22 @@ export default function SalesChart({ data }) {
   }
 
   return (
-    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] flex flex-col h-full">
-      <div className="mb-6">
-        <h2 className="text-lg font-bold text-slate-700 flex items-center">
-          <span className="w-2 h-2 rounded-full bg-blue-400 mr-3"></span>
-          Last 7 Days Revenue
-        </h2>
-        <p className="text-xs font-semibold text-slate-400 mt-1">Daily sales performance graph</p>
+    <div 
+      onClick={() => onCardClick && onCardClick("todayRevenue")}
+      className="bg-white p-6 rounded-3xl border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] flex flex-col h-full cursor-pointer hover:border-blue-200 transition-colors group relative"
+    >
+      <div className="mb-6 flex justify-between items-start">
+        <div>
+          <h2 className="text-lg font-bold text-slate-700 flex items-center group-hover:text-blue-600 transition-colors">
+            <span className="w-2 h-2 rounded-full bg-blue-400 mr-3"></span>
+            Last 7 Days Revenue
+          </h2>
+          <p className="text-xs font-semibold text-slate-400 mt-1">Click graph to view detailed sales breakdown</p>
+        </div>
+        <div className="flex items-center gap-1 bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1.5 rounded-xl opacity-80 group-hover:opacity-100 transition-opacity">
+          <span>Details</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+        </div>
       </div>
       
       <div className="flex-1 w-full min-h-[250px]">

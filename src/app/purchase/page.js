@@ -128,6 +128,27 @@ export default function PurchaseEntry() {
       } catch(e) {}
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const reorderName = params.get("reorderName");
+      const reorderDistributor = params.get("reorderDistributor");
+      const reorderBatch = params.get("reorderBatch");
+      const reorderMrp = params.get("reorderMrp");
+      
+      if (reorderName) {
+        setFormData(prev => ({
+          ...prev,
+          name: reorderName,
+          distributor: reorderDistributor || "",
+          batch: reorderBatch || "",
+          mrp: reorderMrp || "",
+          quantity: ""
+        }));
+      }
+    }
+  }, []);
   
   const printRef = useRef(null);
   const handlePrint = useReactToPrint({

@@ -1,8 +1,7 @@
 import { AlertCircle, ArrowRight, PackageOpen } from "lucide-react";
-import Link from "next/link";
 import { formatExpiryDate } from "@/lib/formatDate";
 
-export default function ExpiryAlerts({ alerts }) {
+export default function ExpiryAlerts({ alerts, onCardClick }) {
   
   // Kitne din bache hain ye auto calculate karne ka logic
   const calculateDaysLeft = (expiryDate) => {
@@ -20,11 +19,12 @@ export default function ExpiryAlerts({ alerts }) {
           <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-rose-400 mr-2 md:mr-3 animate-pulse"></span>
           Urgent Expiry Alerts
         </h2>
-        <Link href="/reports">
-          <button className="text-[10px] md:text-sm text-blue-600 font-bold hover:text-blue-700 flex items-center group bg-blue-50 px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-colors shrink-0">
-            View All <ArrowRight className="w-3 h-3 md:w-4 md:h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </Link>
+        <button 
+          onClick={() => onCardClick && onCardClick("expiring")}
+          className="text-[10px] md:text-sm text-blue-600 font-bold hover:text-blue-700 flex items-center group bg-blue-50 px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-xl transition-colors shrink-0 cursor-pointer"
+        >
+          View All <ArrowRight className="w-3 h-3 md:w-4 md:h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+        </button>
       </div>
       
       <div className="space-y-2.5 md:space-y-3 flex-1 overflow-y-auto custom-scrollbar max-h-[300px]">
@@ -37,14 +37,17 @@ export default function ExpiryAlerts({ alerts }) {
           alerts.map((med) => {
             const daysLeft = calculateDaysLeft(med.expiryDate);
             return (
-              <div key={med._id} className="flex justify-between items-center p-3 md:p-4 bg-rose-50/40 rounded-xl md:rounded-2xl border border-rose-100/60 hover:bg-rose-50 transition-colors cursor-pointer group">
+              <div 
+                key={med._id} 
+                onClick={() => onCardClick && onCardClick("expiring")}
+                className="flex justify-between items-center p-3 md:p-4 bg-rose-50/40 rounded-xl md:rounded-2xl border border-rose-100/60 hover:bg-rose-50 hover:border-rose-300 transition-all cursor-pointer group"
+              >
                 <div className="flex-1 pr-2 min-w-0">
                   <span className="text-xs md:text-base font-bold text-slate-800 block group-hover:text-rose-600 transition-colors truncate" title={med.name}>{med.name}</span>
                   <span className="text-[9px] md:text-xs font-semibold text-slate-500 block mt-0.5">Batch: {med.batch} | Qty: {med.quantity}</span>
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-[10px] md:text-sm text-rose-600 font-bold block">{formatExpiryDate(med.expiryDate)}</span>
-                  {/* Agar 15 din se kam bache hain toh red alert me dikhega */}
                   <span className={`text-[8px] md:text-xs font-semibold px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md md:rounded-lg mt-0.5 md:mt-1 inline-block ${daysLeft <= 15 ? 'text-white bg-rose-500 shadow-md' : 'text-rose-500 bg-rose-100/50'}`}>
                     {daysLeft} Days left
                   </span>

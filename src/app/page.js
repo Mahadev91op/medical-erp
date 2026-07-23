@@ -11,6 +11,7 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import StatCards from "@/components/dashboard/StatCards";
 import ExpiryAlerts from "@/components/dashboard/ExpiryAlerts";
 import SalesChart from "@/components/dashboard/SalesChart";
+import DashboardDetailModal from "@/components/dashboard/DashboardDetailModal";
 import toast, { Toaster } from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import SuperAdmin from "./superadmin/page";
@@ -92,6 +93,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [termsLoading, setTermsLoading] = useState(false);
+  const [activeModalType, setActiveModalType] = useState(null);
   
   // Instant search states
   const [localSearchTerm, setLocalSearchTerm] = useState("");
@@ -257,6 +259,28 @@ export default function Dashboard() {
     }
   };
 
+  const handleClearExpired = async () => {
+    const isConfirm = window.confirm("⚠️ WARNING ⚠️\n\nAre you sure you want to delete all expired medicines from your inventory? This action is permanent and cannot be undone!");
+    if (!isConfirm) return;
+    
+    const toastId = toast.loading("⏳ Deleting all expired medicines...");
+    try {
+      const res = await fetch("/api/medicine?id=all-expired", {
+        method: "DELETE"
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || "Expired stock cleared successfully!", { id: toastId, duration: 5000 });
+        setActiveModalType(null);
+        fetchDashboardData(true); // silent refresh
+      } else {
+        toast.error(data.error || "Failed to clear expired stock", { id: toastId, duration: 6000 });
+      }
+    } catch (err) {
+      toast.error("Network or Server error occurred!", { id: toastId });
+    }
+  };
+
   const [shopInfo, setShopInfo] = useState(null);
 
   useEffect(() => {
@@ -394,20 +418,29 @@ export default function Dashboard() {
          (dashboardData.stats?.outOfStockCount || 0) > 0 ||
          (dashboardData.stats?.expiredCount || 0) > 0)
       ) && (
-        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border border-amber-500/20 rounded-2xl md:rounded-3xl p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top duration-300">
+        <div 
+          onClick={() => setActiveModalType("morningAlerts")}
+          className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border border-amber-500/20 rounded-2xl md:rounded-3xl p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top duration-300 cursor-pointer hover:border-amber-400 transition-colors"
+        >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-500 text-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
               <AlertTriangle className="w-5 h-5 md:w-6 md:h-6 animate-pulse" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-800 text-sm md:text-base leading-tight">Morning Inventory Alert</h3>
+              <h3 className="font-extrabold text-slate-800 text-sm md:text-base leading-tight flex items-center gap-2">
+                <span>Morning Inventory Alert</span>
+                <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">Click for summary →</span>
+              </h3>
               <p className="text-slate-600 text-xs mt-1 font-semibold leading-relaxed">
                 You have {dashboardData.stats.outOfStockCount || 0} out-of-stock items, {dashboardData.stats.lowStockCount || 0} low stock items, and {dashboardData.stats.expiringCount || 0} expiring items today.
               </p>
             </div>
           </div>
           <button
-            onClick={handleShareMorningAlert}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleShareMorningAlert();
+            }}
             className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs md:text-sm font-extrabold px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer w-full md:w-auto shrink-0 animate-pulse hover:animate-none"
           >
             <Smartphone className="w-4 h-4 text-emerald-200" />
@@ -416,7 +449,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <StatCards stats={dashboardData?.stats} />
+      <StatCards stats={dashboardData?.stats} onCardClick={(type) => setActiveModalType(type)} />
 
       {/* Cockpit Actions and Instant Stock Search */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -531,17 +564,20 @@ export default function Dashboard() {
 
       {/* Sales Trend Chart & Expiry Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <SalesChart data={dashboardData?.salesData} />
-        <ExpiryAlerts alerts={dashboardData?.expiringMedicines} />
+        <SalesChart data={dashboardData?.salesData} onCardClick={(type) => setActiveModalType(type)} />
+        <ExpiryAlerts alerts={dashboardData?.expiringMedicines} onCardClick={(type) => setActiveModalType(type)} />
       </div>
 
       {/* Today's Sales Cockpit & Reorder Board */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Today's Sales Performance & Payment modes */}
-        <div className="bg-white p-4 md:p-6 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 space-y-4">
+        <div 
+          onClick={() => setActiveModalType("todayRevenue")}
+          className="bg-white p-4 md:p-6 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 hover:border-blue-200 transition-colors cursor-pointer space-y-4 group"
+        >
           <div className="flex justify-between items-center border-b border-slate-50 pb-2">
-            <h2 className="text-sm md:text-base font-bold text-slate-700">Today&apos;s Sales Dashboard</h2>
-            <span className="text-[9px] md:text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold">Live Data</span>
+            <h2 className="text-sm md:text-base font-bold text-slate-700 group-hover:text-blue-600 transition-colors">Today&apos;s Sales Dashboard</h2>
+            <span className="text-[9px] md:text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold">Click details →</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -585,10 +621,13 @@ export default function Dashboard() {
         </div>
 
         {/* Live Reorder Board (Out of Stock alert list) */}
-        <div className="bg-white p-4 md:p-6 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 space-y-4 flex flex-col justify-between">
+        <div 
+          onClick={() => setActiveModalType("outOfStock")}
+          className="bg-white p-4 md:p-6 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100 hover:border-amber-200 transition-colors cursor-pointer space-y-4 flex flex-col justify-between group"
+        >
           <div>
             <div className="flex justify-between items-center border-b border-slate-50 pb-2">
-              <h2 className="text-sm md:text-base font-bold text-slate-700 flex items-center gap-2">
+              <h2 className="text-sm md:text-base font-bold text-slate-700 flex items-center gap-2 group-hover:text-amber-600 transition-colors">
                 <AlertTriangle className="w-5 h-5 text-amber-500 animate-pulse" />
                 <span>Out of Stock / Reorder Alert</span>
               </h2>
@@ -624,10 +663,10 @@ export default function Dashboard() {
             </div>
           </div>
           
-          {dashboardData?.stats?.outOfStockCount > 5 && (
-            <a href="/reports" className="block text-center text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline pt-2 border-t border-slate-100 mt-2">
-              View all {dashboardData.stats.outOfStockCount} out of stock products in reports
-            </a>
+          {dashboardData?.stats?.outOfStockCount > 0 && (
+            <button className="w-full text-center text-xs font-bold text-indigo-600 hover:text-indigo-700 pt-2 border-t border-slate-100 mt-2">
+              View all out of stock products details →
+            </button>
           )}
         </div>
 
@@ -750,6 +789,16 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* 📊 INTERACTIVE DASHBOARD DETAIL DRILLDOWN MODAL */}
+      <DashboardDetailModal 
+        isOpen={!!activeModalType}
+        onClose={() => setActiveModalType(null)}
+        modalType={activeModalType}
+        data={dashboardData}
+        stats={dashboardData?.stats}
+        onClearExpired={handleClearExpired}
+      />
 
     </div>
   );

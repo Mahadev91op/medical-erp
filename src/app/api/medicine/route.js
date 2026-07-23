@@ -219,6 +219,11 @@ export async function DELETE(req) {
         if (!id) {
             return NextResponse.json({ success: false, error: "ID parameter is required" }, { status: 400 });
         }
+        if (id === "all-expired") {
+            const today = new Date();
+            const result = await Medicine.deleteMany({ userId, expiryDate: { $lt: today } });
+            return NextResponse.json({ success: true, message: `Successfully deleted ${result.deletedCount} expired items.` });
+        }
         if (id.includes(",")) {
             const ids = id.split(",").filter(Boolean);
             await Medicine.deleteMany({ _id: { $in: ids }, userId });
