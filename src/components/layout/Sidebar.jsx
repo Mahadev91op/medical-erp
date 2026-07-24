@@ -39,7 +39,7 @@ const Sidebar = ({ isCollapsed = false, toggleCollapse }) => {
   const router = useRouter();
   const { data: session } = useSession();
 
-  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns", "/reorder"].includes(pathname);
+  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/inventory/import", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns", "/reorder"].includes(pathname);
   
   useEffect(() => {
     if (session?.error === "disabled") {

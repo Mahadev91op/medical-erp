@@ -202,7 +202,7 @@ export default function Header() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin"].includes(pathname);
+  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/inventory/import", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns", "/reorder"].includes(pathname);
 
   // Agar login nahi hai ya role superadmin hai, toh Header mat dikhao
   if (!session || session?.user?.role === "superadmin" || isAuthOrPausedOrNotFound) return null;

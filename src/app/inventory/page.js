@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { 
   Package, Search, Printer, Edit, Trash2, 
-  Loader2, X, AlertCircle, CheckSquare, Square, RefreshCw, Mic
+  Loader2, X, AlertCircle, CheckSquare, Square, RefreshCw, Mic, Database
 } from "lucide-react";
 import Barcode from "react-barcode";
 import { useReactToPrint } from "react-to-print";

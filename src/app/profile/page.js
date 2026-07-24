@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import ImportHubTab from "@/components/profile/ImportHubTab";
 import { 
   Lock, 
   User, 
@@ -838,6 +839,7 @@ export default function Profile() {
   // Define tab navigation buttons array
   const navigationTabs = [
     { id: "profile", label: "Profile Information", icon: <User className="w-4 h-4" /> },
+    { id: "importHub", label: "Software Sync Hub", icon: <Database className="w-4 h-4" /> },
     { id: "subHistory", label: "Subscription History", icon: <History className="w-4 h-4" />, hide: session?.user?.role === "superadmin" },
     { id: "devices", label: "Devices & Sessions", icon: <Laptop className="w-4 h-4" /> },
     { id: "databasePurge", label: "Storage Cleanup", icon: <Trash2 className="w-4 h-4" />, hide: session?.user?.id === "000000000000000000000000" },
@@ -1129,6 +1131,17 @@ export default function Profile() {
                   </button>
                 )}
               </form>
+            </div>
+          )}
+
+          {/* SOFTWARE IMPORT SYNC HUB TAB */}
+          {activeTab === "importHub" && (
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-150 shadow-sm animate-in fade-in duration-300">
+              <h3 className="text-base font-bold text-slate-800 flex items-center mb-6">
+                <Database className="w-5 h-5 text-blue-500 mr-2.5 shrink-0" />
+                Direct Software Import & Sync
+              </h3>
+              <ImportHubTab />
             </div>
           )}
 

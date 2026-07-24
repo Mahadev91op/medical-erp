@@ -1,0 +1,49 @@
+{
+  "items": [
+    {
+      "itemName": "Aspirin 75mg Low Dose",
+      "qty": 350,
+      "mrp": 22,
+      "purchaseRate": 15,
+      "batchNo": "ASP26B",
+      "expiryDate": "2027-12-31"
+    },
+    {
+      "itemName": "Metformin 500mg SR",
+      "qty": 400,
+      "mrp": 45.5,
+      "purchaseRate": 31,
+      "batchNo": "MET2601",
+      "expiryDate": "2028-02-15"
+    },
+    {
+      "itemName": "Azithromycin 500mg (Azee)",
+      "qty": 150,
+      "mrp": 120,
+      "purchaseRate": 85,
+      "batchNo": "AZI909",
+      "expiryDate": "2027-06-30"
+    }
+  ],
+  "parties": [
+    {
+      "partyName": "Rahul Sharma (Customer)",
+      "phone": "9876543210",
+      "opBal": 1250,
+      "parentGroup": "Sundry Debtors"
+    },
+    {
+      "partyName": "Ambika Pharma Distributor",
+      "phone": "9911882233",
+      "opBal": -45000,
+      "parentGroup": "Sundry Creditors",
+      "address": "Sector 5, Noida, UP"
+    },
+    {
+      "partyName": "Amit Verma (Customer)",
+      "phone": "9998887776",
+      "opBal": 450,
+      "parentGroup": "Sundry Debtors"
+    }
+  ]
+}

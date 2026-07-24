@@ -29,7 +29,7 @@ const MobileNav = () => {
   const { data: session } = useSession();
   const [showMore, setShowMore] = useState(false);
 
-  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns", "/reorder"].includes(pathname);
+  const isAuthOrPausedOrNotFound = ["/login", "/signup", "/paused"].includes(pathname) || !["/", "/inventory", "/inventory/import", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns", "/reorder"].includes(pathname);
   
   useEffect(() => {
     if (session?.error === "disabled") {
@@ -39,7 +39,7 @@ const MobileNav = () => {
 
   // Prefetch all links for instant mobile tab navigation
   useEffect(() => {
-    const validPaths = ["/", "/sell", "/inventory", "/lookup", "/khata", "/returns", "/purchase", "/reports", "/profile", "/reorder"];
+    const validPaths = ["/", "/sell", "/inventory", "/inventory/import", "/lookup", "/khata", "/returns", "/purchase", "/reports", "/profile", "/reorder"];
     validPaths.forEach(path => {
       router.prefetch(path);
     });
