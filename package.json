@@ -22,12 +22,14 @@
     "next": "16.1.6",
     "next-auth": "^4.24.13",
     "nodemailer": "^7.0.13",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.3",
     "react-barcode": "^1.6.1",
     "react-dom": "19.2.3",
     "react-hot-toast": "^2.6.0",
     "react-to-print": "^3.2.0",
     "recharts": "^3.7.0",
+    "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
