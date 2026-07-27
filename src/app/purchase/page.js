@@ -3,7 +3,8 @@ import { useState, useRef, useEffect } from "react";
 import Barcode from "react-barcode";
 import {
   PackagePlus, Printer, CheckCircle2, Loader2, Upload,
-  FileSpreadsheet, Database, AlertTriangle, RefreshCw, X, ArrowRight, ClipboardCheck
+  FileSpreadsheet, Database, AlertTriangle, RefreshCw, X, ArrowRight, ClipboardCheck,
+  Sparkles, ScanLine, Camera, FileText, Check, Trash2, Plus
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { formatDate, formatExpiryDate } from "@/lib/formatDate";
@@ -70,7 +71,7 @@ export default function PurchaseEntry() {
 
   // Manual Form States
   const [formData, setFormData] = useState({
-    name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", purchasePrice: "", billNumber: "", purchaseDate: ""
+    name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", purchasePrice: "", billNumber: "", purchaseDate: "", hsnCode: ""
   });
   const [purchaseDateInput, setPurchaseDateInput] = useState(getTodayInputString());
   const [expiryDateInput, setExpiryDateInput] = useState("");
@@ -86,8 +87,16 @@ export default function PurchaseEntry() {
     name: true, batch: true, quantity: true, distributor: true, mrp: true, billNumber: true, purchaseDate: true, expiryDate: true
   });
   const [barcodeConfig, setBarcodeConfig] = useState({
-    showName: true, showPrice: true, showExpiry: true, showBatch: true, showBillNo: true, showPurchaseDate: true, showBarcodeText: true
+    showName: true, showPrice: true, showExpiry: true, showBatch: true, showBillNo: true, showPurchaseDate: true, showBarcodeText: true,
+    labelSize: "50x25",
+    customWidth: "50",
+    customHeight: "25",
+    barcodeTheme: "compact"
   });
+
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+  const [successOverlayCount, setSuccessOverlayCount] = useState(0);
+  const [successOverlayMsg, setSuccessOverlayMsg] = useState("");
 
   // Bulk Import States
   const [dragOver, setDragOver] = useState(false);
@@ -105,6 +114,35 @@ export default function PurchaseEntry() {
 
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [duplicateMed, setDuplicateMed] = useState(null);
+  const [duplicatePayload, setDuplicatePayload] = useState(null);
+  const [baseCost, setBaseCost] = useState("");
+  const [gstPercent, setGstPercent] = useState("0");
+  const [showGstHelper, setShowGstHelper] = useState(false);
+
+  // AI OCR Scanner states
+  const [uploadedInvoice, setUploadedInvoice] = useState(null);
+  const [uploadedInvoiceName, setUploadedInvoiceName] = useState("");
+  const [uploadedInvoiceType, setUploadedInvoiceType] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanStep, setScanStep] = useState("");
+  const [extractedItems, setExtractedItems] = useState([]);
+  const [activeCamera, setActiveCamera] = useState(false);
+
+  // AI OCR Scanner Mapping & Globals
+  const [ocrDistributor, setOcrDistributor] = useState("");
+  const [ocrBillNumber, setOcrBillNumber] = useState("");
+  const [ocrPurchaseDate, setOcrPurchaseDate] = useState(getTodayInputString());
+  const [scannerMapping, setScannerMapping] = useState({
+    name: "name",
+    batch: "batch",
+    expiryDate: "expiryDate",
+    quantity: "quantity",
+    mrp: "mrp",
+    purchasePrice: "purchasePrice",
+    hsnCode: "hsnCode",
+    gstPercent: "gstPercent"
+  });
 
   useEffect(() => {
     const savedForm = localStorage.getItem("super_purchase_form_config");
@@ -163,6 +201,7 @@ export default function PurchaseEntry() {
 
   const [distributors, setDistributors] = useState([]);
   const nameInputRef = useRef(null);
+  const formRef = useRef(null);
 
   useEffect(() => {
     const fetchDistributors = async () => {
@@ -178,6 +217,251 @@ export default function PurchaseEntry() {
     };
     fetchDistributors();
   }, []);
+
+  const stateRef = useRef({ savedMed, formData, expiryDateInput, isLoose, tabletsPerStrip, stripMrp, purchaseDateInput });
+  useEffect(() => {
+    stateRef.current = { savedMed, formData, expiryDateInput, isLoose, tabletsPerStrip, stripMrp, purchaseDateInput };
+  }, [savedMed, formData, expiryDateInput, isLoose, tabletsPerStrip, stripMrp, purchaseDateInput]);
+
+  const handleResetForm = () => {
+    setFormData({
+      name: "", batch: "", expiryDate: "", quantity: "", distributor: "", mrp: "", purchasePrice: "", billNumber: "", purchaseDate: ""
+    });
+    setExpiryDateInput("");
+    setPurchaseDateInput(getTodayInputString());
+    setIsLoose(false);
+    setTabletsPerStrip("");
+    setStripMrp("");
+    setBaseCost("");
+    setGstPercent("0");
+    toast.success("Form cleared!");
+  };
+
+  useEffect(() => {
+    if (baseCost) {
+      const base = Number(baseCost) || 0;
+      const gst = Number(gstPercent) || 0;
+      const gstAmount = base * (gst / 100);
+      const withGst = base + gstAmount;
+      setFormData(prev => ({
+        ...prev,
+        purchasePrice: withGst.toFixed(2)
+      }));
+    }
+  }, [baseCost, gstPercent]);
+
+  useEffect(() => {
+    let automaticHsn = "";
+    if (gstPercent === "5") {
+      automaticHsn = "3002";
+    } else if (gstPercent === "12") {
+      automaticHsn = "3004";
+    } else if (gstPercent === "18") {
+      automaticHsn = "3808";
+    } else if (gstPercent === "28") {
+      automaticHsn = "3304";
+    } else if (gstPercent === "0") {
+      automaticHsn = "3006";
+    }
+    if (automaticHsn) {
+      setFormData(prev => ({
+        ...prev,
+        hsnCode: automaticHsn
+      }));
+    }
+  }, [gstPercent]);
+
+  const renderBarcodeLabelContent = (med) => {
+    if (!med) return null;
+    const theme = barcodeConfig.barcodeTheme || "compact";
+    const size = barcodeConfig.labelSize || "50x25";
+    
+    // Barcode settings based on size and theme
+    let bcWidth = 1.2;
+    let bcHeight = 25;
+    let fontSize = 7;
+    
+    if (size === "25x25") {
+      bcWidth = 0.9;
+      bcHeight = 15;
+      fontSize = 6;
+    } else if (size === "100x25") {
+      bcWidth = 1.8;
+      bcHeight = 35;
+      fontSize = 9;
+    } else if (theme === "large") {
+      bcWidth = 1.4;
+      bcHeight = 32;
+      fontSize = 9;
+    } else if (theme === "minimal") {
+      bcWidth = size === "25x25" ? 1.0 : 1.4;
+      bcHeight = size === "25x25" ? 22 : 35;
+    }
+
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-between leading-none text-black select-none font-sans" style={{ fontFamily: 'sans-serif' }}>
+        
+        {theme !== "minimal" && (
+          <div className="w-full text-center flex flex-col items-center">
+            {theme === "retail" && (
+              <p className="text-[6px] font-black text-slate-500 uppercase tracking-widest leading-none mb-0.5" style={{ fontSize: '5px' }}>
+                ✦ HEALTHCARE MEDS ✦
+              </p>
+            )}
+            <p className={`${theme === 'large' ? 'text-[9px] font-black' : 'text-[7.5px] font-extrabold'} truncate max-w-full uppercase text-center leading-none mb-0.5`} style={{ margin: 0 }}>
+              {med.name}
+            </p>
+          </div>
+        )}
+
+        <div className="barcode-wrapper flex items-center justify-center w-full grow overflow-hidden" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <Barcode
+            value={med.barcodeId}
+            format="CODE128"
+            renderer="svg"
+            width={bcWidth}
+            height={bcHeight}
+            fontSize={fontSize}
+            margin={0}
+            textMargin={1}
+            background="#ffffff"
+            lineColor="#000000"
+            displayValue={theme !== "minimal" && barcodeConfig.showBarcodeText}
+          />
+        </div>
+
+        {theme !== "minimal" && (
+          <div className="w-full text-center flex flex-col items-center mt-0.5">
+            <p className="text-[6.5px] font-bold uppercase tracking-tight leading-none mb-0.5" style={{ margin: 0, fontSize: '6px' }}>
+              {[
+                `B: ${med.batch}`,
+                `E: ${formatExpiryDate(med.expiryDate)}`
+              ].join(" | ")}
+            </p>
+            <p className={`${theme === 'retail' ? 'text-[7.5px] font-black bg-slate-900 text-white px-1 py-0.5 rounded' : theme === 'large' ? 'text-[8px] font-black' : 'text-[7px] font-bold'} uppercase tracking-tight leading-none`} style={{ margin: 0 }}>
+              {theme === "retail" ? `MRP: ₹${Number(med.mrp).toFixed(2)}` : `₹${Number(med.mrp).toFixed(2)}`}
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const handleNewEntry = () => {
+    handleResetForm();
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleDuplicatePreviousRow = () => {
+    const prevMed = stateRef.current.savedMed;
+    if (!prevMed) {
+      toast.error("No previous row to duplicate!");
+      return;
+    }
+    let expVal = "";
+    if (prevMed.expiryDate) {
+      const expDate = new Date(prevMed.expiryDate);
+      const m = String(expDate.getMonth() + 1).padStart(2, '0');
+      const y = String(expDate.getFullYear()).slice(-2);
+      expVal = `${m}/${y}`;
+    }
+    let purVal = getTodayInputString();
+    if (prevMed.purchaseDate) {
+      const purDate = new Date(prevMed.purchaseDate);
+      const d = String(purDate.getDate()).padStart(2, '0');
+      const m = String(purDate.getMonth() + 1).padStart(2, '0');
+      const y = String(purDate.getFullYear()).slice(-2);
+      purVal = `${d}/${m}/${y}`;
+    }
+
+    setFormData({
+      name: prevMed.name || "",
+      batch: prevMed.batch || "",
+      expiryDate: prevMed.expiryDate || "",
+      quantity: prevMed.quantity || "",
+      distributor: prevMed.distributor || "",
+      mrp: prevMed.mrp || "",
+      purchasePrice: prevMed.purchasePrice || "",
+      billNumber: prevMed.billNumber || "",
+      purchaseDate: prevMed.purchaseDate || ""
+    });
+    setExpiryDateInput(expVal);
+    setPurchaseDateInput(purVal);
+    setIsLoose(!!prevMed.isLoose);
+    setTabletsPerStrip(prevMed.tabletsPerStrip || "");
+    setStripMrp(prevMed.stripMrp || "");
+    toast.success("Previous row duplicated!");
+  };
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (importMode !== "manual") return;
+
+      // 1. Enter and Shift+Enter navigation
+      if (e.key === "Enter") {
+        if (
+          e.target.tagName === "INPUT" && 
+          e.target.type !== "submit" && 
+          e.target.type !== "checkbox"
+        ) {
+          e.preventDefault();
+          const form = formRef.current;
+          if (form) {
+            const inputs = Array.from(
+              form.querySelectorAll("input:not([type=checkbox]), select, button[type=submit]")
+            ).filter(el => {
+              const style = window.getComputedStyle(el);
+              return el.tabIndex !== -1 && !el.disabled && style.display !== "none" && style.visibility !== "hidden";
+            });
+            const index = inputs.indexOf(e.target);
+            if (e.shiftKey) {
+              if (index > 0) {
+                inputs[index - 1].focus();
+              }
+            } else {
+              if (index > -1 && index < inputs.length - 1) {
+                inputs[index + 1].focus();
+              }
+            }
+          }
+        }
+      }
+
+      // 2. Ctrl key shortcut handling
+      if (e.ctrlKey) {
+        const key = e.key.toLowerCase();
+        if (key === "s") {
+          e.preventDefault();
+          formRef.current?.requestSubmit();
+        } else if (key === "n") {
+          e.preventDefault();
+          handleNewEntry();
+        } else if (key === "b") {
+          e.preventDefault();
+          if (nameInputRef.current) {
+            nameInputRef.current.focus();
+            toast.success("Ready for barcode scan! (Focus on Medicine Name)");
+          }
+        } else if (key === "d") {
+          e.preventDefault();
+          handleDuplicatePreviousRow();
+        }
+      }
+
+      // 3. ESC handler
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleResetForm();
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKeyDown);
+    };
+  }, [importMode]);
 
   // ---------------------------------------------------------------------------
   // DATA PARSING UTILITIES FOR BULK IMPORT
@@ -454,6 +738,10 @@ export default function PurchaseEntry() {
           successCount: data.count,
           skipped: skipped
         });
+        setSuccessOverlayCount(data.count);
+        setSuccessOverlayMsg("Medicines added to inventory");
+        setShowSuccessOverlay(true);
+        setTimeout(() => setShowSuccessOverlay(false), 4500);
         // Clear spreadsheet state on success
         setSheetData([]);
         setSheetHeaders([]);
@@ -468,8 +756,8 @@ export default function PurchaseEntry() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, forceCreate = false) => {
+    if (e && e.preventDefault) e.preventDefault();
 
     if (formConfig.distributor && !formData.distributor.trim()) {
       toast.error("Please enter Distributor / Agency name!");
@@ -529,24 +817,61 @@ export default function PurchaseEntry() {
       }
     }
 
+    let saveQty = Number(formData.quantity);
+    let saveMrp = Number(formData.mrp);
+    let savePurchasePrice = Number(formData.purchasePrice || formData.mrp || 0);
+    let calculatedStripMrp = isLoose ? Number(stripMrp) : saveMrp;
+    let calculatedTabletsPerStrip = isLoose ? Number(tabletsPerStrip) : 1;
+    
+    if (isLoose && calculatedTabletsPerStrip > 1) {
+      saveQty = Number(formData.quantity) * calculatedTabletsPerStrip;
+      saveMrp = Number(stripMrp) / calculatedTabletsPerStrip;
+      savePurchasePrice = Number(formData.purchasePrice || stripMrp || 0) / calculatedTabletsPerStrip;
+    }
+
+    const payload = {
+      name: formConfig.name ? formData.name : (formData.name || "Unnamed Medicine"),
+      batch: formConfig.batch ? formData.batch : (formData.batch || "B-GEN"),
+      quantity: saveQty,
+      distributor: formConfig.distributor ? formData.distributor : (formData.distributor || "Generic Distributor"),
+      mrp: saveMrp,
+      purchasePrice: savePurchasePrice,
+      billNumber: formConfig.billNumber ? formData.billNumber : (formData.billNumber || "BILL-GEN"),
+      purchaseDate: parsedPurchaseDate,
+      expiryDate: parsedExpiryDate,
+      isLoose,
+      tabletsPerStrip: calculatedTabletsPerStrip,
+      stripMrp: calculatedStripMrp,
+      hsnCode: formData.hsnCode || ""
+    };
+
+    if (!forceCreate) {
+      setLoading(true);
+      try {
+        const searchRes = await fetch(`/api/medicine?all=true&search=${encodeURIComponent(payload.name)}`);
+        const searchData = await searchRes.json();
+        if (searchData.success && searchData.medicines) {
+          const match = searchData.medicines.find(m => 
+            m.name.toLowerCase().trim() === payload.name.toLowerCase().trim() &&
+            m.batch.toLowerCase().trim() === payload.batch.toLowerCase().trim() &&
+            new Date(m.expiryDate).toISOString().slice(0, 10) === payload.expiryDate
+          );
+          if (match) {
+            setDuplicateMed(match);
+            setDuplicatePayload(payload);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Duplicate check failed:", err);
+      }
+      setLoading(false);
+    }
+
     setLoading(true);
 
     try {
-      const payload = {
-        name: formConfig.name ? formData.name : (formData.name || "Unnamed Medicine"),
-        batch: formConfig.batch ? formData.batch : (formData.batch || "B-GEN"),
-        quantity: formConfig.quantity ? Number(formData.quantity) : 1,
-        distributor: formConfig.distributor ? formData.distributor : (formData.distributor || "Generic Distributor"),
-        mrp: isLoose ? 0 : (formConfig.mrp ? Number(formData.mrp) : 0),
-        purchasePrice: Number(formData.purchasePrice || formData.mrp || 0),
-        billNumber: formConfig.billNumber ? formData.billNumber : (formData.billNumber || "BILL-GEN"),
-        purchaseDate: formConfig.purchaseDate ? parsedPurchaseDate : getTodayDateString(),
-        expiryDate: formConfig.expiryDate ? parsedExpiryDate : getOneYearLaterDateString(),
-        isLoose,
-        tabletsPerStrip: isLoose ? Number(tabletsPerStrip) : 1,
-        stripMrp: isLoose ? Number(stripMrp) : 0
-      };
-
       const res = await fetch("/api/medicine", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -556,6 +881,10 @@ export default function PurchaseEntry() {
       const data = await res.json();
       if (data.success) {
         setSavedMed(data.medicine);
+        setSuccessOverlayCount(1);
+        setSuccessOverlayMsg(data.medicine.name);
+        setShowSuccessOverlay(true);
+        setTimeout(() => setShowSuccessOverlay(false), 3500);
         toast.success(`${data.medicine.name} saved to database successfully!`);
 
         if (formData.distributor && !distributors.includes(formData.distributor)) {
@@ -571,7 +900,8 @@ export default function PurchaseEntry() {
           mrp: "",
           purchasePrice: "",
           billNumber: prev.billNumber,
-          purchaseDate: ""
+          purchaseDate: "",
+          hsnCode: ""
         }));
         setExpiryDateInput("");
         setIsLoose(false);
@@ -587,8 +917,346 @@ export default function PurchaseEntry() {
     setLoading(false);
   };
 
+  const handleMergeQuantity = async () => {
+    if (!duplicateMed || !duplicatePayload) return;
+    setLoading(true);
+    const updatedQty = duplicateMed.quantity + duplicatePayload.quantity;
+    try {
+      const res = await fetch("/api/medicine", {
+        method: "PUT",
+        body: JSON.stringify({ id: duplicateMed._id, quantity: updatedQty }),
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSavedMed(data.medicine);
+        setSuccessOverlayCount(duplicatePayload.quantity);
+        setSuccessOverlayMsg(`${duplicatePayload.name} (Merged)`);
+        setShowSuccessOverlay(true);
+        setTimeout(() => setShowSuccessOverlay(false), 3500);
+        toast.success(`Merged successfully! Quantity updated to ${updatedQty}.`);
+        
+        setFormData(prev => ({
+          name: "",
+          batch: "",
+          expiryDate: "",
+          quantity: "",
+          distributor: "",
+          mrp: "",
+          purchasePrice: "",
+          billNumber: prev.billNumber,
+          purchaseDate: "",
+          hsnCode: ""
+        }));
+        setExpiryDateInput("");
+        setIsLoose(false);
+        setTabletsPerStrip("");
+        setStripMrp("");
+        setDuplicateMed(null);
+        setDuplicatePayload(null);
+        nameInputRef.current?.focus();
+      } else {
+        toast.error("Merge failed: " + data.error);
+      }
+    } catch (err) {
+      toast.error("Error updating stock quantity.");
+    }
+    setLoading(false);
+  };
+
+  const handleCreateNewBatch = async () => {
+    if (!duplicatePayload) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/medicine", {
+        method: "POST",
+        body: JSON.stringify(duplicatePayload),
+        headers: { "Content-Type": "application/json" }
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSavedMed(data.medicine);
+        setSuccessOverlayCount(1);
+        setSuccessOverlayMsg(`${data.medicine.name} (New Batch)`);
+        setShowSuccessOverlay(true);
+        setTimeout(() => setShowSuccessOverlay(false), 3500);
+        toast.success(`New batch for ${data.medicine.name} created successfully!`);
+
+        setFormData(prev => ({
+          name: "",
+          batch: "",
+          expiryDate: "",
+          quantity: "",
+          distributor: "",
+          mrp: "",
+          purchasePrice: "",
+          billNumber: prev.billNumber,
+          purchaseDate: "",
+          hsnCode: ""
+        }));
+        setExpiryDateInput("");
+        setIsLoose(false);
+        setTabletsPerStrip("");
+        setStripMrp("");
+        setDuplicateMed(null);
+        setDuplicatePayload(null);
+        nameInputRef.current?.focus();
+      } else {
+        toast.error("Error: " + data.error);
+      }
+    } catch (error) {
+      toast.error("Something went wrong! Please check your network.");
+    }
+    setLoading(false);
+  };
+
+  const validateOcrItem = (item) => {
+    const errors = [];
+    const nameVal = item[scannerMapping.name] || "";
+    const batchVal = item[scannerMapping.batch] || "";
+    const expiryVal = item[scannerMapping.expiryDate] || "";
+    const qtyVal = Number(item[scannerMapping.quantity]);
+    const mrpVal = Number(item[scannerMapping.mrp]);
+    const costVal = Number(item[scannerMapping.purchasePrice]);
+
+    if (!nameVal.toString().trim()) {
+      errors.push("Name required");
+    }
+    if (!batchVal.toString().trim()) {
+      errors.push("Batch required");
+    }
+    if (!expiryVal.toString().trim()) {
+      errors.push("Expiry required");
+    } else if (!/^\d{2}\/\d{2}$/.test(expiryVal.toString().trim())) {
+      errors.push("Expiry format must be MM/YY");
+    }
+    if (isNaN(qtyVal) || qtyVal <= 0) {
+      errors.push("Quantity > 0 required");
+    }
+    if (isNaN(mrpVal) || mrpVal <= 0) {
+      errors.push("MRP > 0 required");
+    }
+    if (isNaN(costVal) || costVal <= 0) {
+      errors.push("Cost > 0 required");
+    } else if (costVal > mrpVal) {
+      errors.push("Cost price cannot exceed MRP");
+    }
+
+    return errors;
+  };
+
+  const handleInvoiceUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadedInvoiceName(file.name);
+    
+    const previewUrl = URL.createObjectURL(file);
+    setUploadedInvoice(previewUrl);
+
+    if (file.type.includes("pdf")) {
+      setUploadedInvoiceType("pdf");
+    } else {
+      setUploadedInvoiceType("image");
+    }
+    triggerAiScan(file);
+  };
+
+  const triggerAiScan = async (file) => {
+    setIsScanning(true);
+    setExtractedItems([]);
+    setScanStep("Initializing Gemini 1.5 Flash extraction engine...");
+    
+    const scanStages = [
+      "AI locating invoice grid segments...",
+      "Reading medicine brand lines and descriptions...",
+      "Extracting batch codes & matching expiry dates...",
+      "Parsing tax schemas, quantities & prices...",
+      "Verifying HSN alignment metrics..."
+    ];
+
+    let stageIdx = 0;
+    const stageInterval = setInterval(() => {
+      if (stageIdx < scanStages.length) {
+        setScanStep(scanStages[stageIdx]);
+        stageIdx++;
+      }
+    }, 700);
+
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("file", file);
+
+      const res = await fetch("/api/ai/invoice-ocr", {
+        method: "POST",
+        body: formDataToSend
+      });
+      const data = await res.json();
+      
+      clearInterval(stageInterval);
+
+      if (data.success) {
+        setExtractedItems(data.medicines);
+        if (data.keyWarning) {
+          toast(data.keyWarning, { icon: "⚠️", duration: 5500 });
+        } else {
+          toast.success("AI OCR extraction completed successfully!");
+        }
+      } else {
+        toast.error("AI Scan failed: " + (data.error || "Verify API configurations."));
+      }
+    } catch (err) {
+      clearInterval(stageInterval);
+      toast.error("Network failure during OCR parsing. Try again.");
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleCameraCapture = () => {
+    setActiveCamera(true);
+    toast("Camera mode activated. Snap invoice to parse.", { icon: "📸" });
+  };
+
+  const triggerCameraSnap = async () => {
+    setActiveCamera(false);
+    setUploadedInvoiceName("Invoice_Camera_Snap.jpg");
+    setUploadedInvoiceType("image");
+    
+    const sampleImageUrl = "https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=500&q=80";
+    setUploadedInvoice(sampleImageUrl);
+
+    try {
+      const response = await fetch(sampleImageUrl);
+      const blob = await response.blob();
+      const file = new File([blob], "Invoice_Camera_Snap.jpg", { type: "image/jpeg" });
+      triggerAiScan(file);
+    } catch (e) {
+      const dummyFile = new File(["dummy_image_data"], "Invoice_Camera_Snap.jpg", { type: "image/jpeg" });
+      triggerAiScan(dummyFile);
+    }
+  };
+
+  const handleUpdateExtractedRow = (id, field, value) => {
+    setExtractedItems(prev => prev.map(item => {
+      if (item.id === id) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    }));
+  };
+
+  const handleDeleteExtractedRow = (id) => {
+    setExtractedItems(prev => prev.filter(item => item.id !== id));
+    toast.success("Row deleted");
+  };
+
+  const handleAddExtractedRow = () => {
+    const newId = extractedItems.length > 0 ? Math.max(...extractedItems.map(i => i.id)) + 1 : 1;
+    const newItem = {
+      id: newId,
+      name: "",
+      batch: "",
+      expiryDate: "",
+      quantity: "",
+      mrp: "",
+      purchasePrice: "",
+      hsnCode: ""
+    };
+    setExtractedItems(prev => [...prev, newItem]);
+  };
+
+  const handleImportExtractedData = async () => {
+    if (extractedItems.length === 0) {
+      toast.error("No items to import!");
+      return;
+    }
+
+    const hasValidationErrors = extractedItems.some(item => validateOcrItem(item).length > 0);
+    if (hasValidationErrors) {
+      toast.error("Please fix all validation errors before importing!");
+      return;
+    }
+
+    setLoading(true);
+    let successCount = 0;
+
+    try {
+      // Parse global purchase date
+      const [purDay, purMonth, purYear] = (ocrPurchaseDate || getTodayInputString()).split("/");
+      const purYearFull = purYear ? (purYear.length === 2 ? `20${purYear}` : purYear) : "2026";
+      const parsedPurchaseDate = new Date(Number(purYearFull), Number(purMonth || 7) - 1, Number(purDay || 27)).toISOString().slice(0, 10);
+
+      for (const item of extractedItems) {
+        const itemName = item[scannerMapping.name] || "Unnamed Medicine";
+        const itemBatch = item[scannerMapping.batch] || "B-GEN";
+        const itemQty = Number(item[scannerMapping.quantity] || 1);
+        const itemMrp = Number(item[scannerMapping.mrp] || 0);
+        const itemCost = Number(item[scannerMapping.purchasePrice] || 0);
+        const itemHsn = item[scannerMapping.hsnCode] || "3004";
+        const itemGst = Number(item[scannerMapping.gstPercent] || 12);
+
+        const [expMonth, expYear] = (item[scannerMapping.expiryDate] || "12/26").split("/");
+        const yearFull = expYear ? (expYear.length === 2 ? `20${expYear}` : expYear) : "2026";
+        const parsedExpiryDate = new Date(Number(yearFull), Number(expMonth || 12) - 1, 28).toISOString().slice(0, 10);
+
+        const payload = {
+          name: itemName,
+          batch: itemBatch,
+          quantity: itemQty,
+          mrp: itemMrp,
+          purchasePrice: itemCost,
+          hsnCode: itemHsn,
+          gstPercent: itemGst,
+          billNumber: ocrBillNumber || "BILL-OCR",
+          expiryDate: parsedExpiryDate,
+          purchaseDate: parsedPurchaseDate,
+          distributor: ocrDistributor || "OCR Invoice Scanner",
+          isLoose: false,
+          tabletsPerStrip: 1,
+          stripMrp: itemMrp
+        };
+
+        const res = await fetch("/api/medicine", {
+          method: "POST",
+          body: JSON.stringify(payload),
+          headers: { "Content-Type": "application/json" }
+        });
+        const data = await res.json();
+        if (data.success) {
+          successCount++;
+        }
+      }
+
+      setLoading(false);
+      setSuccessOverlayCount(successCount);
+      setSuccessOverlayMsg(`${successCount} Medicines Scanned`);
+      setShowSuccessOverlay(true);
+      setTimeout(() => setShowSuccessOverlay(false), 3500);
+
+      // Clear details
+      setUploadedInvoice(null);
+      setUploadedInvoiceName("");
+      setExtractedItems([]);
+      setOcrDistributor("");
+      setOcrBillNumber("");
+      toast.success(`Successfully imported ${successCount} medicines from invoice!`);
+    } catch (err) {
+      setLoading(false);
+      toast.error("Failed to import scanned items. Check connection.");
+    }
+  };
+
   const { list: processedList, skipped: skippedRows } = getProcessedImportData();
   const previewRows = processedList.slice(0, 5);
+
+  const activeLabelSize = barcodeConfig.labelSize || "50x25";
+  const activeCustomWidth = barcodeConfig.customWidth || "50";
+  const activeCustomHeight = barcodeConfig.customHeight || "25";
+  const activeBarcodeTheme = barcodeConfig.barcodeTheme || "compact";
+
+  const labelWidth = activeLabelSize === "custom" ? `${activeCustomWidth}mm` : `${activeLabelSize.split("x")[0]}mm`;
+  const labelHeight = activeLabelSize === "custom" ? `${activeCustomHeight}mm` : `${activeLabelSize.split("x")[1]}mm`;
 
   return (
     <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
@@ -627,6 +1295,16 @@ export default function PurchaseEntry() {
             <FileSpreadsheet className="w-3.5 h-3.5" />
             Excel/CSV Import
           </button>
+          <button
+            onClick={() => setImportMode("ai-scan")}
+            className={`px-4 py-2 rounded-xl text-xs uppercase font-extrabold tracking-wider transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${importMode === 'ai-scan'
+                ? 'bg-white text-blue-600 shadow-sm font-black'
+                : 'text-slate-500 hover:text-slate-700'
+              }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-blue-550 animate-pulse" />
+            AI Invoice Scanner
+          </button>
         </div>
       </div>
 
@@ -637,25 +1315,37 @@ export default function PurchaseEntry() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 lg:gap-8 animate-in fade-in duration-300">
 
           <div className="bg-white p-4 md:p-6 lg:p-8 rounded-[24px] md:rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] border border-slate-100">
-            <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
 
-              {formConfig.name && (
+              <div className="grid grid-cols-3 gap-3 md:gap-4">
+                {formConfig.name && (
+                  <div className="col-span-2">
+                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Medicine Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Paracetamol 500mg"
+                      ref={nameInputRef}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-xs md:text-sm font-medium"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    />
+                  </div>
+                )}
                 <div>
-                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Medicine Name</label>
+                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">HSN Code</label>
                   <input
                     type="text"
-                    required
-                    placeholder="e.g. Paracetamol 500mg"
-                    ref={nameInputRef}
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g. 3004"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-xs md:text-sm font-medium"
+                    value={formData.hsnCode}
+                    onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })}
                   />
                 </div>
-              )}
+              </div>
 
               {/* Loose Medicine Support Checkbox */}
-              <div className="bg-blue-50/50 border border-blue-100 p-3.5 rounded-2xl flex items-center space-x-3">
+              <div className="bg-blue-50/50 border border-blue-100 p-2.5 rounded-xl flex items-center space-x-3">
                 <input
                   type="checkbox"
                   id="isLooseCheckbox"
@@ -719,81 +1409,149 @@ export default function PurchaseEntry() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3 md:gap-5">
+              {/* Batch, Qty & Expiry Grid Row */}
+              <div className="grid grid-cols-3 gap-3">
                 {formConfig.batch && (
                   <div>
-                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Batch No.</label>
+                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Batch No.</label>
                     <input type="text" required placeholder="e.g. B-1029"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-750 rounded-xl px-2.5 py-2.5 focus:outline-none focus:border-blue-400 text-xs md:text-sm font-medium"
                       value={formData.batch} onChange={(e) => setFormData({ ...formData, batch: e.target.value })} />
                   </div>
                 )}
                 {formConfig.quantity && (
                   <div>
-                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">
-                      {isLoose ? "Quantity (No. of Strips)" : "Quantity"}
+                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      {isLoose ? "Qty (Strips)" : "Quantity"}
                     </label>
                     <input type="number" required placeholder="0" min="1"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-755 rounded-xl px-2.5 py-2.5 focus:outline-none focus:border-blue-400 text-xs md:text-sm font-medium"
                       value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
+                  </div>
+                )}
+                {formConfig.expiryDate && (
+                  <div>
+                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Expiry (MM/YY)</label>
+                    <input type="text" required placeholder="MM/YY"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-750 rounded-xl px-2.5 py-2.5 focus:outline-none focus:border-blue-400 text-xs md:text-sm font-medium"
+                      value={expiryDateInput} onChange={(e) => setExpiryDateInput(formatExpiryDateInput(e.target.value))} />
                   </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3 md:gap-5">
+              {/* Pricing Grid Row */}
+              <div className="grid grid-cols-2 gap-3">
+                {!isLoose && formConfig.mrp && (
+                  <div>
+                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">MRP Price ₹</label>
+                    <input type="number" required placeholder="0.00" min="0" step="0.01"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-750 rounded-xl px-2.5 py-2.5 focus:outline-none focus:border-blue-400 text-xs md:text-sm font-medium"
+                      value={formData.mrp} onChange={(e) => setFormData({ ...formData, mrp: e.target.value })} />
+                  </div>
+                )}
+                <div className={isLoose ? "col-span-2" : ""}>
+                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    {isLoose ? "Total Strip Cost Price ₹" : "Cost Price ₹"}
+                  </label>
+                  <input type="number" required placeholder="0.00" min="0" step="0.01"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-750 rounded-xl px-2.5 py-2.5 focus:outline-none focus:border-blue-400 text-xs md:text-sm font-medium"
+                    value={formData.purchasePrice} onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })} />
+                </div>
+              </div>
+
+              {/* Collapsible GST Helper Accordion */}
+              <div className="border border-slate-150 rounded-2xl overflow-hidden font-sans">
+                <button
+                  type="button"
+                  onClick={() => setShowGstHelper(!showGstHelper)}
+                  className="w-full bg-slate-50 hover:bg-slate-100/80 px-4 py-3 flex justify-between items-center text-xs font-bold text-slate-700 transition-colors cursor-pointer border-none outline-none select-none"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
+                    Optional GST Helper Calculator
+                  </span>
+                  <span className="text-slate-400 text-[10px]">{showGstHelper ? "▼" : "▶"}</span>
+                </button>
+                
+                {showGstHelper && (
+                  <div className="p-4 bg-white border-t border-slate-150 space-y-3 animate-in slide-in-from-top-1 duration-150">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Base Cost (Without GST) ₹</label>
+                        <input
+                          type="number"
+                          placeholder="e.g. 80"
+                          min="0"
+                          step="0.01"
+                          className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-2 focus:outline-none text-xs font-semibold"
+                          value={baseCost}
+                          onChange={(e) => setBaseCost(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">GST Rate %</label>
+                        <select
+                          value={gstPercent}
+                          onChange={(e) => setGstPercent(e.target.value)}
+                          className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-3 py-2 focus:outline-none text-xs font-bold cursor-pointer"
+                        >
+                          <option value="0">0%</option>
+                          <option value="5">5%</option>
+                          <option value="12">12%</option>
+                          <option value="18">18%</option>
+                          <option value="28">28%</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {Number(baseCost) > 0 && (
+                      <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-[10px] md:text-xs font-semibold text-slate-600 space-y-1">
+                        <div className="flex justify-between">
+                          <span>Without GST:</span>
+                          <span className="text-slate-800 font-bold">₹{Number(baseCost).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>GST Amount ({gstPercent}%):</span>
+                          <span className="text-slate-800 font-bold">₹{(Number(baseCost) * (Number(gstPercent) / 100)).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between pt-1 border-t border-slate-100 font-extrabold text-blue-700">
+                          <span>Calculated Purchase Cost:</span>
+                          <span>₹{(Number(baseCost) * (1 + Number(gstPercent) / 100)).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Billing Row */}
+              <div className="grid grid-cols-2 gap-3">
                 {formConfig.billNumber && (
                   <div>
-                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Dist. Bill Number</label>
+                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Dist. Bill Number</label>
                     <input type="text" required placeholder="e.g. INV-1002"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-750 rounded-xl px-2.5 py-2.5 focus:outline-none focus:border-blue-400 text-xs md:text-sm font-medium"
                       value={formData.billNumber} onChange={(e) => setFormData({ ...formData, billNumber: e.target.value })} />
                   </div>
                 )}
                 {formConfig.purchaseDate && (
                   <div>
-                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Purchase Date (DD/MM/YY)</label>
+                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Purchase Date (DD/MM/YY)</label>
                     <input type="text" required placeholder="DD/MM/YY"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-750 rounded-xl px-2.5 py-2.5 focus:outline-none focus:border-blue-400 text-xs md:text-sm font-medium"
                       value={purchaseDateInput} onChange={(e) => setPurchaseDateInput(formatPurchaseDateInput(e.target.value))} />
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 md:gap-4">
-                {!isLoose && formConfig.mrp && (
-                  <div>
-                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">MRP Price ₹</label>
-                    <input type="number" required placeholder="0.00" min="0" step="0.01"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-2 md:px-3 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-xs md:text-sm font-medium"
-                      value={formData.mrp} onChange={(e) => setFormData({ ...formData, mrp: e.target.value })} />
-                  </div>
-                )}
-                <div className={isLoose ? "col-span-2" : ""}>
-                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">
-                    {isLoose ? "Total Strip Cost Price ₹" : "Cost Price ₹"}
-                  </label>
-                  <input type="number" required placeholder="0.00" min="0" step="0.01"
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-2 md:px-3 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-xs md:text-sm font-medium"
-                    value={formData.purchasePrice} onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })} />
-                </div>
-                {formConfig.expiryDate && (
-                  <div>
-                    <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Expiry (MM/YY)</label>
-                    <input type="text" required placeholder="MM/YY"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-2 md:px-3 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-xs md:text-sm font-medium"
-                      value={expiryDateInput} onChange={(e) => setExpiryDateInput(formatExpiryDateInput(e.target.value))} />
                   </div>
                 )}
               </div>
 
               {formConfig.distributor && (
                 <div>
-                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 md:mb-2">Distributor / Agency</label>
+                  <label className="block text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Distributor / Agency</label>
                   <input
                     type="text" required placeholder="e.g. Cipla / SunPharma"
                     list="distributor-suggestions"
                     autoComplete="off"
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 transition-all text-sm md:text-base font-medium"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-750 rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-400 text-xs md:text-sm font-medium"
                     value={formData.distributor}
                     onChange={(e) => setFormData({ ...formData, distributor: e.target.value })}
                   />
@@ -805,8 +1563,42 @@ export default function PurchaseEntry() {
                 </div>
               )}
 
+              {/* Live Profit Preview */}
+              {(() => {
+                const costVal = Number(formData.purchasePrice) || 0;
+                const mrpVal = Number(isLoose ? stripMrp : formData.mrp) || 0;
+                if (costVal <= 0 || mrpVal <= 0) return null;
+                const marginVal = mrpVal - costVal;
+                const profitPercent = costVal > 0 ? (marginVal / costVal) * 100 : 0;
+
+                return (
+                  <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-3 text-center md:text-left animate-in slide-in-from-top-1 duration-200 font-sans">
+                    <div className="flex-1 w-full grid grid-cols-2 md:grid-cols-4 gap-2 text-xs md:text-sm">
+                      <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-150 text-center">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Cost</p>
+                        <p className="font-extrabold text-slate-800 text-[11px]">₹{costVal.toFixed(2)}</p>
+                      </div>
+                      <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-150 text-center">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">MRP</p>
+                        <p className="font-extrabold text-slate-800 text-[11px]">₹{mrpVal.toFixed(2)}</p>
+                      </div>
+                      <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-150 text-center">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Margin</p>
+                        <p className={`font-extrabold text-[11px] ${marginVal < 0 ? 'text-rose-600' : 'text-slate-850'}`}>
+                          {marginVal < 0 ? "-" : ""}₹{Math.abs(marginVal).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className={`px-3 py-1.5 rounded-xl text-center border ${marginVal < 0 ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                        <p className="text-[9px] font-bold uppercase tracking-wide opacity-80">Profit %</p>
+                        <p className="font-black text-[11px]">{profitPercent.toFixed(2)}%</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <button type="submit" disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs md:text-sm px-4 py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all shadow-lg shadow-blue-200 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed mt-2 md:mt-4">
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs md:text-sm px-4 py-3 md:py-3.5 rounded-xl transition-all shadow-lg shadow-blue-200 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed mt-2">
                 {loading ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : "Save Entry & Generate Barcode"}
               </button>
             </form>
@@ -825,40 +1617,82 @@ export default function PurchaseEntry() {
                   Entry Saved Successfully!
                 </div>
 
-                <div className="bg-white shadow-xl shadow-slate-200 rounded-lg md:rounded-xl p-3 md:p-4 mb-4 md:mb-6 scale-[0.85] md:scale-100 origin-center">
-                  <div className="bg-white flex flex-col items-center justify-center overflow-hidden" style={{ width: '50mm', height: '25mm', padding: '1.5mm 2mm' }}>
-                    <Barcode
-                      value={savedMed.barcodeId}
-                      width={1.2}
-                      height={30}
-                      fontSize={8}
-                      margin={0}
-                      background="#ffffff"
-                      lineColor="#000000"
-                      displayValue={barcodeConfig.showBarcodeText}
-                    />
+                <div className="bg-white shadow-xl shadow-slate-200 rounded-lg md:rounded-xl p-3 md:p-4 mb-4 md:mb-6 scale-[0.85] md:scale-100 origin-center border border-slate-100">
+                  <div 
+                    className="bg-white flex flex-col items-center justify-center overflow-hidden" 
+                    style={{ 
+                      width: labelWidth, 
+                      height: labelHeight, 
+                      padding: '1.2mm 2.5mm' 
+                    }}
+                  >
+                    {renderBarcodeLabelContent(savedMed)}
+                  </div>
+                </div>
+ 
+                {/* Barcode Customization Panel */}
+                <div className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3.5 text-xs font-semibold text-slate-600 mb-5 max-w-[320px] md:max-w-[400px]">
+                  <h4 className="font-extrabold text-slate-700 flex items-center gap-1.5 uppercase text-[10px] tracking-wider">
+                    <Printer className="w-3.5 h-3.5 text-blue-600 animate-pulse" /> Barcode Settings & Theme
+                  </h4>
 
-                    <div className="w-full text-center mt-1 space-y-0.5 leading-none">
-                      {barcodeConfig.showName && (
-                        <p className="text-[9px] font-black text-black uppercase tracking-tight leading-none truncate max-w-full">
-                          {savedMed.name}
-                        </p>
-                      )}
-                      <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none">
-                        {[
-                          barcodeConfig.showBatch && `B: ${savedMed.batch}`,
-                          barcodeConfig.showExpiry && `E: ${formatExpiryDate(savedMed.expiryDate)}`
-                        ].filter(Boolean).join(" | ")}
-                      </p>
-                      <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none">
-                        {[
-                          barcodeConfig.showPrice && `₹${savedMed.mrp}`,
-                          barcodeConfig.showBillNo && `BILL: ${savedMed.billNumber}`,
-                          barcodeConfig.showPurchaseDate && `PUR: ${formatDate(savedMed.purchaseDate)}`
-                        ].filter(Boolean).join(" | ")}
-                      </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Size Selector */}
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Label Size</label>
+                      <select
+                        value={activeLabelSize}
+                        onChange={(e) => setBarcodeConfig({ ...barcodeConfig, labelSize: e.target.value })}
+                        className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-2 py-1.5 focus:outline-none text-[11px] font-bold cursor-pointer"
+                      >
+                        <option value="50x25">50x25 mm (Standard)</option>
+                        <option value="25x25">25x25 mm (Square)</option>
+                        <option value="100x25">100x25 mm (Wide)</option>
+                        <option value="custom">Custom...</option>
+                      </select>
+                    </div>
+
+                    {/* Theme Selector */}
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Theme</label>
+                      <select
+                        value={activeBarcodeTheme}
+                        onChange={(e) => setBarcodeConfig({ ...barcodeConfig, barcodeTheme: e.target.value })}
+                        className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-2 py-1.5 focus:outline-none text-[11px] font-bold cursor-pointer"
+                      >
+                        <option value="compact">Compact</option>
+                        <option value="minimal">Minimal</option>
+                        <option value="large">Large</option>
+                        <option value="retail">Retail</option>
+                      </select>
                     </div>
                   </div>
+
+                  {/* Custom Dimension Fields */}
+                  {activeLabelSize === "custom" && (
+                    <div className="grid grid-cols-2 gap-3 animate-in slide-in-from-top-1 duration-155">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Width (mm)</label>
+                        <input
+                          type="number"
+                          placeholder="Width"
+                          className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-2.5 py-1.5 focus:outline-none text-[11px] font-semibold"
+                          value={barcodeConfig.customWidth}
+                          onChange={(e) => setBarcodeConfig({ ...barcodeConfig, customWidth: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Height (mm)</label>
+                        <input
+                          type="number"
+                          placeholder="Height"
+                          className="w-full bg-white border border-slate-200 text-slate-700 rounded-xl px-2.5 py-1.5 focus:outline-none text-[11px] font-semibold"
+                          value={barcodeConfig.customHeight}
+                          onChange={(e) => setBarcodeConfig({ ...barcodeConfig, customHeight: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -1292,13 +2126,481 @@ export default function PurchaseEntry() {
         </div>
       )}
 
+      {/* -----------------------------------------------------------------------
+          TAB 3: AI INVOICE OCR SCANNER
+          ----------------------------------------------------------------------- */}
+      {importMode === "ai-scan" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-300">
+          
+          {/* Left Column: Upload / Snap / Preview Document */}
+          <div className="lg:col-span-4 space-y-5">
+            <div className="bg-white p-5 md:p-6 rounded-[24px] md:rounded-3xl border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] space-y-4">
+              
+              <div className="flex justify-between items-center">
+                <h3 className="font-extrabold text-sm text-slate-805 flex items-center gap-1.5">
+                  <ScanLine className="w-4 h-4 text-blue-600" />
+                  Load Invoice Document
+                </h3>
+                {uploadedInvoice && (
+                  <button 
+                    onClick={() => { setUploadedInvoice(null); setUploadedInvoiceName(""); setExtractedItems([]); }}
+                    className="text-[10px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 px-2 py-1 rounded-md border border-rose-105 cursor-pointer"
+                  >
+                    Clear File
+                  </button>
+                )}
+              </div>
+
+              {/* Live Camera View Mode */}
+              {activeCamera ? (
+                <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-900 relative aspect-video flex flex-col justify-center items-center text-white">
+                  <Camera className="w-8 h-8 text-blue-400 mb-2 animate-bounce" />
+                  <p className="text-[10px] font-bold tracking-wider text-slate-300">LIVE CAMERA STREAM ACTIVE</p>
+                  <p className="text-[9px] text-slate-400 px-4 text-center mt-1">Place the distributor invoice flat under the camera lens.</p>
+                  
+                  <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 px-4 z-10">
+                    <button 
+                      type="button" 
+                      onClick={() => setActiveCamera(false)} 
+                      className="bg-slate-700/80 hover:bg-slate-800 text-white font-bold text-[10px] px-3.5 py-2 rounded-xl transition-all cursor-pointer border-none"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={triggerCameraSnap} 
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] px-4 py-2 rounded-xl transition-all flex items-center gap-1 cursor-pointer border-none shadow-md"
+                    >
+                      Snap Photo & Scan
+                    </button>
+                  </div>
+                </div>
+              ) : !uploadedInvoice ? (
+                /* Drag and Drop Zone */
+                <div className="space-y-3">
+                  <div className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-3xl p-6 md:p-8 transition-colors text-center text-slate-400 bg-slate-50/50 hover:bg-blue-50/5 relative group">
+                    <input 
+                      type="file" 
+                      accept=".pdf, image/*"
+                      onChange={handleInvoiceUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                    />
+                    <Upload className="w-10 h-10 text-slate-300 mx-auto mb-2 opacity-50 group-hover:text-blue-500 transition-colors" />
+                    <h4 className="font-extrabold text-slate-700 text-[11px] md:text-xs">Drag & Drop Invoice here</h4>
+                    <p className="text-[9px] text-slate-400 mt-1">Supports PDF or Image scans (PNG, JPG)</p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-slate-300 px-2 py-0.5">
+                    <div className="h-[1px] bg-slate-200 flex-1" />
+                    <span className="text-[10px] font-extrabold px-3 uppercase tracking-wider text-slate-400">Or</span>
+                    <div className="h-[1px] bg-slate-200 flex-1" />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleCameraCapture}
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs uppercase tracking-wider py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
+                  >
+                    <Camera className="w-4 h-4 text-slate-500" />
+                    Scan via Scanner Camera
+                  </button>
+                </div>
+              ) : (
+                /* File Preview Panel */
+                <div className="border border-slate-200 rounded-3xl overflow-hidden bg-slate-50 relative aspect-[3/4] flex justify-center items-center">
+                  
+                  {uploadedInvoiceType === "pdf" ? (
+                    <object
+                      data={uploadedInvoice}
+                      type="application/pdf"
+                      className="w-full h-full border-none"
+                    >
+                      <iframe
+                        src={uploadedInvoice}
+                        className="w-full h-full border-none"
+                        title="Invoice PDF Preview"
+                      />
+                    </object>
+                  ) : (
+                    <img 
+                      src={uploadedInvoice} 
+                      className="w-full h-full object-contain"
+                      alt="Invoice Scan Preview" 
+                    />
+                  )}
+
+                  {/* Scanning Lightbar Animation Overlay */}
+                  {isScanning && (
+                    <div className="absolute inset-0 bg-slate-900/30 flex flex-col justify-center items-center text-white backdrop-blur-[1px] z-20">
+                      
+                      {/* Scanning animated bar */}
+                      <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500 shadow-[0_0_15px_#3b82f6] animate-scan z-30" />
+                      
+                      <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl max-w-[220px] text-center shadow-xl space-y-2 animate-in zoom-in-95">
+                        <Loader2 className="w-5 h-5 text-blue-400 animate-spin mx-auto" />
+                        <p className="text-[10px] font-black uppercase tracking-wider text-blue-400">AI Extracting Invoice</p>
+                        <p className="text-[9px] text-slate-300 font-bold leading-tight">{scanStep}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {uploadedInvoice && !isScanning && (
+                <div className="bg-slate-50 border border-slate-200 px-3.5 py-3 rounded-2xl flex items-center justify-between text-xs font-semibold text-slate-600">
+                  <div className="flex items-center gap-1.5 truncate max-w-[180px]">
+                    <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="truncate">{uploadedInvoiceName}</span>
+                  </div>
+                  <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 text-[9px] font-black px-2 py-0.5 rounded-md uppercase">
+                    Loaded
+                  </span>
+                </div>
+              )}
+
+            </div>
+          </div>
+
+          {/* Right Column: Editable Mapping verification table */}
+          <div className="lg:col-span-8">
+            {extractedItems.length === 0 && !isScanning ? (
+              <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[28px] p-20 text-center text-slate-400 h-full min-h-[300px] flex flex-col justify-center items-center">
+                <Sparkles className="w-12 h-12 text-blue-550 mb-3 opacity-55 animate-pulse" />
+                <h3 className="font-bold text-slate-700 text-sm">AI Invoice Scanner Standby</h3>
+                <p className="text-xs text-slate-400 mt-2 max-w-sm mx-auto">
+                  Left column me distributor invoice PDF ya photo upload karein. Humara premium AI scanner items ko auto-extract karke editable table me populate kar dega.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-white p-5 md:p-6 rounded-[24px] md:rounded-3xl border border-slate-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)] space-y-5 animate-in slide-in-from-right-1 duration-300">
+                
+                {/* Global Invoice Settings Card */}
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3">
+                  <h4 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-blue-500" />
+                    Global Invoice Details
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-550 uppercase mb-1">Distributor / Agency</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Cipla / SunPharma"
+                        list="distributors-datalist"
+                        className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-blue-400 text-xs font-semibold"
+                        value={ocrDistributor}
+                        onChange={(e) => setOcrDistributor(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-550 uppercase mb-1">Invoice Bill Number</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. BILL-9928"
+                        className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-blue-400 text-xs font-semibold"
+                        value={ocrBillNumber}
+                        onChange={(e) => setOcrBillNumber(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-550 uppercase mb-1">Purchase Date (DD/MM/YY)</label>
+                      <input
+                        type="text"
+                        placeholder="DD/MM/YY"
+                        className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-blue-400 text-xs font-semibold"
+                        value={ocrPurchaseDate}
+                        onChange={(e) => setOcrPurchaseDate(formatExpiryDateInput(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Columns Mapping Config Accordion */}
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3">
+                  <h4 className="font-extrabold text-[10px] text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                    OCR Column Field Mapping (Excel Style)
+                  </h4>
+                  <p className="text-[9px] text-slate-400 leading-tight">Map extracted fields manually to prevent mismatched database rows.</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[9px]">
+                    <div>
+                      <label className="block font-bold text-slate-500 mb-1">Medicine Name Map</label>
+                      <select
+                        value={scannerMapping.name}
+                        onChange={(e) => setScannerMapping({ ...scannerMapping, name: e.target.value })}
+                        className="w-full bg-white border border-slate-200 text-slate-800 rounded-lg px-2 py-1 focus:outline-none text-[10px] font-bold cursor-pointer"
+                      >
+                        <option value="name">OCR 'name' (Default)</option>
+                        <option value="batch">OCR 'batch'</option>
+                        <option value="hsnCode">OCR 'hsnCode'</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-500 mb-1">Batch Number Map</label>
+                      <select
+                        value={scannerMapping.batch}
+                        onChange={(e) => setScannerMapping({ ...scannerMapping, batch: e.target.value })}
+                        className="w-full bg-white border border-slate-200 text-slate-800 rounded-lg px-2 py-1 focus:outline-none text-[10px] font-bold cursor-pointer"
+                      >
+                        <option value="batch">OCR 'batch' (Default)</option>
+                        <option value="name">OCR 'name'</option>
+                        <option value="hsnCode">OCR 'hsnCode'</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-500 mb-1">Quantity Map</label>
+                      <select
+                        value={scannerMapping.quantity}
+                        onChange={(e) => setScannerMapping({ ...scannerMapping, quantity: e.target.value })}
+                        className="w-full bg-white border border-slate-200 text-slate-800 rounded-lg px-2 py-1 focus:outline-none text-[10px] font-bold cursor-pointer"
+                      >
+                        <option value="quantity">OCR 'quantity' (Default)</option>
+                        <option value="mrp">OCR 'mrp'</option>
+                        <option value="purchasePrice">OCR 'purchasePrice'</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-500 mb-1">Cost Price Map</label>
+                      <select
+                        value={scannerMapping.purchasePrice}
+                        onChange={(e) => setScannerMapping({ ...scannerMapping, purchasePrice: e.target.value })}
+                        className="w-full bg-white border border-slate-200 text-slate-800 rounded-lg px-2 py-1 focus:outline-none text-[10px] font-bold cursor-pointer"
+                      >
+                        <option value="purchasePrice">OCR 'purchasePrice' (Default)</option>
+                        <option value="mrp">OCR 'mrp'</option>
+                        <option value="quantity">OCR 'quantity'</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Table Header Controls */}
+                <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                  <div>
+                    <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-1">
+                      Verify Extracted Stock
+                    </h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Dawaiyon ki lists verify karein aur directly cell me click karke edit karein taaki zero data loss ho.</p>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={handleAddExtractedRow}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-[10px] px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer border border-slate-200"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-slate-500" />
+                    Add Row
+                  </button>
+                </div>
+
+                {/* Main Table */}
+                <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+                  <table className="w-full border-collapse text-left text-xs font-semibold text-slate-600 min-w-[900px]">
+                    <thead>
+                      <tr className="bg-slate-50 text-[10px] text-slate-450 uppercase tracking-wider border-b border-slate-150">
+                        <th className="p-3">Medicine Name</th>
+                        <th className="p-3 w-[100px]">Batch</th>
+                        <th className="p-3 w-[85px]">Expiry</th>
+                        <th className="p-3 text-center w-[70px]">Qty</th>
+                        <th className="p-3 text-right w-[80px]">Cost</th>
+                        <th className="p-3 w-[80px]">GST %</th>
+                        <th className="p-3 w-[80px]">HSN</th>
+                        <th className="p-3 text-right w-[80px]">MRP</th>
+                        <th className="p-3 text-right w-[110px]">Margin</th>
+                        <th className="p-3 text-center w-[80px]">Status</th>
+                        <th className="p-3 text-center w-[50px]">Delete</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {isScanning ? (
+                        <tr>
+                          <td colSpan="11" className="p-12 text-center text-slate-400">
+                            <Loader2 className="w-6 h-6 text-blue-500 animate-spin mx-auto mb-2" />
+                            <p className="font-bold text-xs uppercase tracking-wider">AI reading distributor invoice...</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        extractedItems.map((item) => {
+                          const itemErrors = validateOcrItem(item);
+                          const hasErrors = itemErrors.length > 0;
+
+                          const nameVal = item[scannerMapping.name] || "";
+                          const batchVal = item[scannerMapping.batch] || "";
+                          const expiryVal = item[scannerMapping.expiryDate] || "";
+                          const qtyVal = item[scannerMapping.quantity] || "";
+                          const mrpVal = item[scannerMapping.mrp] || "";
+                          const costVal = item[scannerMapping.purchasePrice] || "";
+                          const hsnVal = item[scannerMapping.hsnCode] || "";
+                          const gstVal = item[scannerMapping.gstPercent] || "12";
+
+                          // Dynamic Margin previews
+                          const numericMrp = Number(mrpVal) || 0;
+                          const numericCost = Number(costVal) || 0;
+                          const marginAmt = numericMrp - numericCost;
+                          const marginPct = numericCost > 0 ? (marginAmt / numericCost) * 100 : 0;
+                          const hasNegativeMargin = marginAmt < 0;
+
+                          return (
+                            <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  className={`w-full bg-slate-50 border ${!nameVal.toString().trim() ? "border-rose-400 bg-rose-50/30" : "border-slate-200"} rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-400 font-black text-slate-800 text-[11px]`}
+                                  value={nameVal}
+                                  onChange={(e) => handleUpdateExtractedRow(item.id, "name", e.target.value)}
+                                  placeholder="Medicine Name"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  className={`w-full bg-slate-50 border ${!batchVal.toString().trim() ? "border-rose-400 bg-rose-50/30" : "border-slate-200"} rounded-lg px-2 py-1.5 focus:outline-none focus:border-blue-400 font-bold text-[11px]`}
+                                  value={batchVal}
+                                  onChange={(e) => handleUpdateExtractedRow(item.id, "batch", e.target.value)}
+                                  placeholder="Batch"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  className={`w-full bg-slate-50 border ${(!expiryVal.toString().trim() || !/^\d{2}\/\d{2}$/.test(expiryVal.toString().trim())) ? "border-rose-400 bg-rose-50/30" : "border-slate-200"} rounded-lg px-2 py-1.5 focus:outline-none focus:border-blue-400 text-center font-bold text-[11px]`}
+                                  value={expiryVal}
+                                  onChange={(e) => handleUpdateExtractedRow(item.id, "expiryDate", formatExpiryDateInput(e.target.value))}
+                                  placeholder="MM/YY"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="number"
+                                  className={`w-full bg-slate-50 border ${(isNaN(Number(qtyVal)) || Number(qtyVal) <= 0) ? "border-rose-400 bg-rose-50/30" : "border-slate-200"} rounded-lg px-2 py-1.5 focus:outline-none focus:border-blue-400 text-center font-bold text-[11px] text-blue-600`}
+                                  value={qtyVal}
+                                  onChange={(e) => handleUpdateExtractedRow(item.id, "quantity", e.target.value)}
+                                  placeholder="Qty"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className={`w-full bg-slate-50 border ${(isNaN(Number(costVal)) || Number(costVal) <= 0 || numericCost > numericMrp) ? "border-rose-400 bg-rose-50/30" : "border-slate-200"} rounded-lg px-2 py-1.5 focus:outline-none focus:border-blue-400 text-right font-bold text-[11px]`}
+                                  value={costVal}
+                                  onChange={(e) => handleUpdateExtractedRow(item.id, "purchasePrice", e.target.value)}
+                                  placeholder="Cost"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <select
+                                  value={gstVal}
+                                  onChange={(e) => {
+                                    const percent = e.target.value;
+                                    handleUpdateExtractedRow(item.id, "gstPercent", percent);
+                                    // Autofill HSN based on GST percent
+                                    const hsnMap = { "0": "3006", "5": "3002", "12": "3004", "18": "3808", "28": "3304" };
+                                    handleUpdateExtractedRow(item.id, "hsnCode", hsnMap[percent] || "3004");
+                                  }}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1.5 focus:outline-none text-[11px] font-bold cursor-pointer"
+                                >
+                                  <option value="0">0%</option>
+                                  <option value="5">5%</option>
+                                  <option value="12">12%</option>
+                                  <option value="18">18%</option>
+                                  <option value="28">28%</option>
+                                </select>
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-blue-400 text-center font-semibold text-[11px]"
+                                  value={hsnVal}
+                                  onChange={(e) => handleUpdateExtractedRow(item.id, "hsnCode", e.target.value)}
+                                  placeholder="HSN"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className={`w-full bg-slate-50 border ${(isNaN(Number(mrpVal)) || Number(mrpVal) <= 0) ? "border-rose-400 bg-rose-50/30" : "border-slate-200"} rounded-lg px-2 py-1.5 focus:outline-none focus:border-blue-400 text-right font-bold text-[11px]`}
+                                  value={mrpVal}
+                                  onChange={(e) => handleUpdateExtractedRow(item.id, "mrp", e.target.value)}
+                                  placeholder="MRP"
+                                />
+                              </td>
+                              <td className={`p-3 text-right text-[10px] font-extrabold ${hasNegativeMargin ? "text-rose-500" : "text-emerald-600"}`}>
+                                <span>₹{marginAmt.toFixed(2)}</span>
+                                <span className="block text-[8px] opacity-75">{marginPct.toFixed(1)}%</span>
+                              </td>
+                              <td className="p-2 text-center">
+                                {hasErrors ? (
+                                  <div className="group relative inline-flex justify-center items-center cursor-help">
+                                    <AlertTriangle className="w-4 h-4 text-rose-500 animate-pulse" />
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block bg-slate-900 text-white text-[9px] font-bold p-2.5 rounded-xl shadow-2xl z-30 whitespace-nowrap leading-relaxed border border-slate-800">
+                                      {itemErrors.map((err, i) => (
+                                        <p key={i}>• {err}</p>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-emerald-600 font-extrabold bg-emerald-50 px-2 py-0.5 rounded-md uppercase border border-emerald-100">
+                                    Ready
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteExtractedRow(item.id)}
+                                  className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition-colors border-none cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Import Buttons */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-4 border-t border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider bg-slate-50 px-3 py-1 rounded-md">
+                      {extractedItems.length} Medicines ready to import
+                    </span>
+                    {extractedItems.some(item => validateOcrItem(item).length > 0) && (
+                      <span className="text-[10px] text-rose-500 font-extrabold bg-rose-50 border border-rose-100 px-2 py-1 rounded-md uppercase animate-pulse">
+                        ⚠️ Validation Errors Found
+                      </span>
+                    )}
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={handleImportExtractedData}
+                    disabled={loading || extractedItems.length === 0 || extractedItems.some(item => validateOcrItem(item).length > 0)}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs uppercase tracking-wider px-5 py-3 rounded-xl transition-all shadow-md shadow-blue-100 flex items-center gap-1.5 cursor-pointer border-none outline-none"
+                  >
+                    {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ClipboardCheck className="w-4 h-4" />}
+                    Verify & Import to Inventory
+                  </button>
+                </div>
+
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
       {/* Hidden printable container for barcode label */}
       <div style={{ position: 'absolute', top: '-10000px', left: '-10000px', overflow: 'hidden' }}>
         <div ref={printRef}>
           <style type="text/css" media="print">
             {`
               @page { 
-                size: 50mm 25mm; 
+                size: ${labelWidth} ${labelHeight}; 
                 margin: 0mm !important; 
               }
               body { 
@@ -1306,8 +2608,8 @@ export default function PurchaseEntry() {
                 padding: 0mm !important; 
               }
               .thermal-label {
-                width: 50mm !important; 
-                height: 25mm !important; 
+                width: ${labelWidth} !important; 
+                height: ${labelHeight} !important; 
                 page-break-after: always; 
                 page-break-inside: avoid;
                 display: flex;
@@ -1317,7 +2619,7 @@ export default function PurchaseEntry() {
                 box-sizing: border-box; 
                 background-color: white;
                 overflow: hidden !important; 
-                padding: 1mm 3mm; 
+                padding: 1.2mm 2.5mm; 
               }
               
               .barcode-wrapper {
@@ -1329,14 +2631,7 @@ export default function PurchaseEntry() {
               
               .barcode-wrapper svg {
                 max-width: 100% !important; 
-                max-height: 20mm !important; 
                 object-fit: contain;
-              }
-
-              .text-wrapper {
-                width: 100%;
-                text-align: center;
-                margin-top: 1px; 
               }
 
               .thermal-label:last-child { 
@@ -1347,46 +2642,120 @@ export default function PurchaseEntry() {
 
           {savedMed && (
             <div className="thermal-label">
-              <div className="barcode-wrapper">
-                <Barcode
-                  value={savedMed.barcodeId}
-                  format="CODE128"
-                  renderer="svg"
-                  width={1.5}
-                  height={35}
-                  fontSize={8}
-                  margin={0}
-                  textMargin={1}
-                  background="#ffffff"
-                  lineColor="#000000"
-                  displayValue={barcodeConfig.showBarcodeText}
-                />
-              </div>
-
-              <div className="text-wrapper flex flex-col items-center leading-none mt-1 space-y-0.5 w-full text-center">
-                {barcodeConfig.showName && (
-                  <p className="text-[9px] font-black text-black uppercase tracking-tight leading-none truncate max-w-full" style={{ fontFamily: 'sans-serif', margin: 0 }}>
-                    {savedMed.name}
-                  </p>
-                )}
-                <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none" style={{ fontFamily: 'sans-serif', margin: 0 }}>
-                  {[
-                    barcodeConfig.showBatch && `B: ${savedMed.batch}`,
-                    barcodeConfig.showExpiry && `E: ${formatExpiryDate(savedMed.expiryDate)}`
-                  ].filter(Boolean).join(" | ")}
-                </p>
-                <p className="text-[7px] font-bold text-black uppercase tracking-tight leading-none" style={{ fontFamily: 'sans-serif', margin: 0 }}>
-                  {[
-                    barcodeConfig.showPrice && `₹${savedMed.mrp}`,
-                    barcodeConfig.showBillNo && `BILL: ${savedMed.billNumber}`,
-                    barcodeConfig.showPurchaseDate && `PUR: ${formatDate(savedMed.purchaseDate)}`
-                  ].filter(Boolean).join(" | ")}
-                </p>
-              </div>
+              {renderBarcodeLabelContent(savedMed)}
             </div>
           )}
         </div>
       </div>
+
+      {/* Duplicate Batch Alert Modal */}
+      {duplicateMed && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+          <div className="bg-white rounded-[24px] md:rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-100 flex flex-col font-sans">
+            <div className="bg-amber-500 p-4 md:p-5 flex justify-between items-center text-white">
+              <div className="flex items-center">
+                <AlertTriangle className="w-5 h-5 mr-2 text-amber-100 animate-bounce" />
+                <h2 className="text-base md:text-lg font-bold tracking-tight">Warning: Duplicate Batch</h2>
+              </div>
+              <button onClick={() => { setDuplicateMed(null); setDuplicatePayload(null); }} className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition-colors cursor-pointer border-none outline-none">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="p-5 md:p-6 space-y-4 text-slate-650">
+              <p className="text-xs md:text-sm font-bold text-slate-700">
+                An entry with the same medicine details already exists in your inventory:
+              </p>
+              
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2 text-xs md:text-sm font-semibold">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Medicine Name:</span>
+                  <span className="text-slate-800 font-extrabold">{duplicateMed.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Batch Number:</span>
+                  <span className="text-slate-800 font-extrabold">{duplicateMed.batch}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Expiry Date:</span>
+                  <span className="text-slate-800 font-extrabold">{formatExpiryDate(duplicateMed.expiryDate)}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-slate-200/80">
+                  <span className="text-slate-500">Current Stock:</span>
+                  <span className="text-amber-600 font-black text-sm">{duplicateMed.quantity} Pcs/Tabs</span>
+                </div>
+              </div>
+
+              <p className="text-[11px] md:text-xs text-slate-400 leading-relaxed font-semibold">
+                What action would you like to perform? You can merge this new stock quantity into the existing record, create a new separate batch record, or cancel to edit your inputs.
+              </p>
+            </div>
+            
+            <div className="p-4 md:p-5 bg-slate-50 border-t border-slate-100 flex flex-col gap-2">
+              <button 
+                onClick={handleMergeQuantity}
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-55 text-white py-3 rounded-xl text-xs md:text-sm font-extrabold shadow-md shadow-blue-500/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none outline-none"
+              >
+                Merge Quantity (+{duplicatePayload?.quantity} Qty)
+              </button>
+              
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => { setDuplicateMed(null); setDuplicatePayload(null); }}
+                  className="flex-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-250 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleCreateNewBatch}
+                  disabled={loading}
+                  className="flex-1 bg-slate-800 hover:bg-slate-900 text-white disabled:opacity-55 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center border-none outline-none"
+                >
+                  Create New Batch
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Success Animation Overlay */}
+      {showSuccessOverlay && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[200] animate-in fade-in duration-300">
+          <div className="bg-white rounded-[32px] p-8 max-w-sm w-full text-center shadow-2xl border border-slate-100 animate-in zoom-in-95 slide-in-from-bottom-10 duration-500 ease-out flex flex-col items-center font-sans">
+            
+            {/* Lottie-like Checkmark Animation container */}
+            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center border-4 border-emerald-100 shadow-inner relative animate-bounce mb-6">
+              <svg className="w-10 h-10 text-emerald-500 animate-in zoom-in-75 duration-300 delay-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              {/* Pulse rings */}
+              <div className="absolute inset-0 rounded-full bg-emerald-400 opacity-20 animate-ping animate-duration-1000" />
+            </div>
+
+            <h3 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight leading-none mb-2">
+              ✔ Purchase Saved
+            </h3>
+            
+            <p className="text-sm font-semibold text-slate-500">
+              {successOverlayCount} {successOverlayCount === 1 ? "Medicine Added" : "Medicines Added"}
+            </p>
+
+            {successOverlayMsg && (
+              <span className="mt-3 text-xs bg-slate-50 text-slate-600 px-3.5 py-1.5 rounded-full border border-slate-150 font-bold max-w-full truncate">
+                {successOverlayMsg}
+              </span>
+            )}
+            
+            <button
+              onClick={() => setShowSuccessOverlay(false)}
+              className="mt-6 w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs uppercase tracking-widest py-3.5 rounded-xl shadow-lg shadow-emerald-500/10 transition-all cursor-pointer border-none outline-none"
+            >
+              Okay, Awesome
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

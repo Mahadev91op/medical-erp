@@ -19,6 +19,7 @@ const MedicineSchema = new mongoose.Schema({
     isLoose: { type: Boolean, default: false },
     tabletsPerStrip: { type: Number, default: 1 },
     stripMrp: { type: Number, default: 0 },
+    hsnCode: { type: String, trim: true, default: "" },
 }, { 
     timestamps: true, 
     versionKey: false 

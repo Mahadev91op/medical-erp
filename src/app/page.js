@@ -1,379 +1,43 @@
 "use client";
-import { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { 
-  RefreshCw, Loader2, Database, AlertOctagon, 
+  RefreshCw, Loader2, Database,
   Search, ShoppingCart, PackagePlus, FileText, 
   LayoutGrid, Package, AlertTriangle, Banknote, 
-  Smartphone, CreditCard, Award, ShieldCheck 
+  Smartphone, CreditCard, ShieldCheck 
 } from "lucide-react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import StatCards from "@/components/dashboard/StatCards";
 import ExpiryAlerts from "@/components/dashboard/ExpiryAlerts";
 import SalesChart from "@/components/dashboard/SalesChart";
 import DashboardDetailModal from "@/components/dashboard/DashboardDetailModal";
-import toast, { Toaster } from "react-hot-toast";
-import { useSession } from "next-auth/react";
+import { Toaster } from "react-hot-toast";
 import SuperAdmin from "./superadmin/page";
-
-const DashboardSkeleton = () => {
-  return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-pulse">
-      {/* Top Banner Skeleton */}
-      <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-        <div className="space-y-2">
-          <div className="h-6 w-48 bg-slate-200 rounded-lg"></div>
-          <div className="h-4 w-32 bg-slate-200 rounded-lg"></div>
-        </div>
-        <div className="h-10 w-28 bg-slate-200 rounded-xl"></div>
-      </div>
-
-      {/* Grid of Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 space-y-3 shadow-sm">
-            <div className="flex justify-between items-center">
-              <div className="h-4 w-24 bg-slate-200 rounded-md"></div>
-              <div className="w-8 h-8 bg-blue-50 rounded-lg"></div>
-            </div>
-            <div className="h-8 w-20 bg-slate-200 rounded-lg mt-2"></div>
-            <div className="h-3 w-36 bg-slate-200 rounded-md"></div>
-          </div>
-        ))}
-      </div>
-
-      {/* Main Split Layout: Chart and Expiry Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Side: Large Chart Area */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
-          <div className="flex justify-between items-center">
-            <div className="space-y-1.5">
-              <div className="h-5 w-36 bg-slate-200 rounded-md"></div>
-              <div className="h-3 w-48 bg-slate-200 rounded-md"></div>
-            </div>
-            <div className="flex gap-2">
-              <div className="h-8 w-16 bg-slate-200 rounded-lg"></div>
-              <div className="h-8 w-16 bg-slate-200 rounded-lg"></div>
-            </div>
-          </div>
-          <div className="h-64 bg-slate-50 rounded-2xl flex items-end justify-between p-4 pt-10">
-            {[40, 60, 45, 80, 50, 75, 90, 65, 55, 70, 85, 95].map((h, idx) => (
-              <div key={idx} className="w-full mx-1 bg-slate-200 rounded-t-md" style={{ height: `${h}%` }}></div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Side: List Area */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
-          <div className="space-y-1.5">
-            <div className="h-5 w-40 bg-slate-200 rounded-md"></div>
-            <div className="h-3 w-28 bg-slate-200 rounded-md"></div>
-          </div>
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex justify-between items-center p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="space-y-2">
-                  <div className="h-4 w-32 bg-slate-200 rounded-md"></div>
-                  <div className="h-3 w-20 bg-slate-200 rounded-md"></div>
-                </div>
-                <div className="h-6 w-12 bg-rose-100/60 rounded-full"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import useDashboard from "@/hooks/useDashboard";
+import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 
 export default function Dashboard() {
-  const { data: session, status } = useSession();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [dashboardData, setDashboardData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [termsLoading, setTermsLoading] = useState(false);
-  const [activeModalType, setActiveModalType] = useState(null);
-  
-  // Instant search states
-  const [localSearchTerm, setLocalSearchTerm] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-
-  // Debounced manual search for medicine suggestions as user types
-  useEffect(() => {
-    if (!localSearchTerm.trim()) {
-      setSearchTerm("");
-      setSearchResults([]);
-      return;
-    }
-    const timer = setTimeout(() => {
-      setSearchTerm(localSearchTerm);
-    }, 250); // 250ms debounce
-    return () => clearTimeout(timer);
-  }, [localSearchTerm]);
-
-  useEffect(() => {
-    if (searchTerm.trim()) {
-      executeSearch(searchTerm);
-    }
-  }, [searchTerm]);
-
-  const fetchDashboardData = async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const res = await fetch("/api/dashboard", { cache: "no-store" });
-      const data = await res.json();
-
-      if (data.success) {
-        setDashboardData(data);
-        if (!data.termsAccepted || data.termsVersion !== "v1.0") {
-          setShowTermsModal(true);
-        } else {
-          setShowTermsModal(false);
-        }
-      } else {
-        toast.error("Failed to load dashboard data");
-      }
-    } catch (error) {
-      toast.error("Network or Server error occurred!");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAcceptTermsUpdate = async () => {
-    setTermsLoading(true);
-    try {
-      const res = await fetch("/api/user/profile/accept-terms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-      });
-      const resData = await res.json();
-      if (resData.success) {
-        toast.success("Policies accepted successfully!");
-        setShowTermsModal(false);
-        fetchDashboardData(true);
-      } else {
-        toast.error(resData.error || "Failed to accept terms.");
-      }
-    } catch (err) {
-      toast.error("Connection error. Please try again.");
-    } finally {
-      setTermsLoading(false);
-    }
-  };
-
-  const executeSearch = async (val) => {
-    if (!val.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    setSearching(true);
-    try {
-      const res = await fetch(`/api/medicine?search=${encodeURIComponent(val)}&limit=5`);
-      const resData = await res.json();
-      if (resData.success) {
-        setSearchResults(resData.medicines);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-    setSearching(false);
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchDashboardData(true);
-    if (searchTerm.trim()) {
-      await executeSearch(searchTerm);
-    }
-    setTimeout(() => setIsRefreshing(false), 500); 
-  };
-
-  useEffect(() => {
-    if (session?.user?.role === "superadmin") return;
-    fetchDashboardData();
-    const interval = setInterval(() => {
-      fetchDashboardData(true);
-    }, 30000); 
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
-
-  // 📦 BACKUP LENE KA FUNCTION
-  const handleBackup = async () => {
-    const toastId = toast.loading("⏳ Saving database backup...");
-    try {
-      const res = await fetch("/api/backup");
-      const data = await res.json();
-      
-      if (data.success) {
-        const blob = new Blob([JSON.stringify(data.backupData, null, 2)], { type: "application/json" });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = data.filename || `backup_${Date.now()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-
-        toast.success("🎉 Backup saved to device successfully!", { id: toastId, duration: 5000 });
-      } else {
-        toast.error("❌ Backup failed!", { id: toastId, duration: 6000 });
-        alert(`BACKUP FAILED!\n\nReason:\n${data.error || data.details}`);
-      }
-    } catch (error) {
-      toast.error("Network or Server error occurred!", { id: toastId });
-    }
-  };
-
-  // ⚠️ DATA WAPAS LAANE (RESTORE) KA FUNCTION
-  const handleRestore = async () => {
-    const isConfirm = window.confirm(
-      "⚠️ WARNING (DANGER) ⚠️\n\n" +
-      "Are you sure you want to RESTORE the backup?\n\n" +
-      "This action will DELETE all your current data and replace it with the backup saved in your D Drive!\n\n" +
-      "Please click OK only if you really want to restore the previous data."
-    );
-
-    if (!isConfirm) return;
-
-    const toastId = toast.loading("⏳ Restoring old data. Please wait...");
-    try {
-      const res = await fetch("/api/restore");
-      const data = await res.json();
-      
-      if (data.success) {
-        toast.success(data.message, { id: toastId, duration: 6000 });
-        alert(`✅ RESTORE SUCCESSFUL!\n\n${data.message}`);
-        setTimeout(() => window.location.reload(), 2000);
-      } else {
-        toast.error("❌ Restore failed! Check backup in D drive.", { id: toastId, duration: 6000 });
-        alert(`RESTORE FAILED!\n\nReason:\n${data.stderr || data.error}`);
-      }
-    } catch (error) {
-      toast.error("Network or Server error occurred!", { id: toastId });
-    }
-  };
-
-  const handleClearExpired = async () => {
-    const isConfirm = window.confirm("⚠️ WARNING ⚠️\n\nAre you sure you want to delete all expired medicines from your inventory? This action is permanent and cannot be undone!");
-    if (!isConfirm) return;
-    
-    const toastId = toast.loading("⏳ Deleting all expired medicines...");
-    try {
-      const res = await fetch("/api/medicine?id=all-expired", {
-        method: "DELETE"
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(data.message || "Expired stock cleared successfully!", { id: toastId, duration: 5000 });
-        setActiveModalType(null);
-        fetchDashboardData(true); // silent refresh
-      } else {
-        toast.error(data.error || "Failed to clear expired stock", { id: toastId, duration: 6000 });
-      }
-    } catch (err) {
-      toast.error("Network or Server error occurred!", { id: toastId });
-    }
-  };
-
-  const [shopInfo, setShopInfo] = useState(null);
-
-  useEffect(() => {
-    const fetchShopInfo = async () => {
-      try {
-        const res = await fetch("/api/user/profile");
-        const data = await res.json();
-        if (data.success) {
-          setShopInfo(data.user);
-        }
-      } catch (err) {
-        console.error("Failed to fetch shop info:", err);
-      }
-    };
-    fetchShopInfo();
-  }, []);
-
-  const handleShareMorningAlert = async () => {
-    const toastId = toast.loading("Preparing WhatsApp summary...");
-    try {
-      const res = await fetch("/api/reports?expiryMonths=3&lowStockThreshold=10");
-      const reportData = await res.json();
-      if (!reportData.success) {
-        toast.error("Failed to fetch inventory alert data");
-        return;
-      }
-      
-      const shopName = shopInfo?.shopName || "MedERP Pharmacy";
-      const shopPhone = shopInfo?.phoneNumber || "";
-      
-      let message = `*🌅 MORNING INVENTORY ALERT 🌅*\n`;
-      message += `-----------------------------\n`;
-      message += `*Store:* ${shopName}\n`;
-      if (shopPhone) message += `*Phone:* ${shopPhone}\n`;
-      message += `*Date:* ${new Date().toLocaleDateString('en-IN')}\n`;
-      message += `-----------------------------\n\n`;
-
-      const lowStockList = reportData.lowStock || [];
-      const expiringSoonList = reportData.expiringSoon || [];
-      const outOfStockList = reportData.outOfStock || [];
-
-      if (outOfStockList.length > 0) {
-        message += `*🚨 OUT OF STOCK ITEMS (${outOfStockList.length})*\n`;
-        outOfStockList.slice(0, 15).forEach((item) => {
-          message += `• ${item.name} (Batch: ${item.batch})\n`;
-        });
-        if (outOfStockList.length > 15) {
-          message += `  _...and ${outOfStockList.length - 15} more_\n`;
-        }
-        message += `\n`;
-      }
-
-      if (lowStockList.length > 0) {
-        message += `*⚠️ LOW STOCK ITEMS (${lowStockList.length})*\n`;
-        lowStockList.slice(0, 15).forEach((item) => {
-          message += `• ${item.name} (${item.quantity} units left)\n`;
-        });
-        if (lowStockList.length > 15) {
-          message += `  _...and ${lowStockList.length - 15} more_\n`;
-        }
-        message += `\n`;
-      }
-
-      if (expiringSoonList.length > 0) {
-        message += `*⏳ EXPIRING SOON (${expiringSoonList.length})*\n`;
-        expiringSoonList.slice(0, 15).forEach((item) => {
-          const expStr = new Date(item.expiryDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-          message += `• ${item.name} (Exp: ${expStr} | Qty: ${item.quantity})\n`;
-        });
-        if (expiringSoonList.length > 15) {
-          message += `  _...and ${expiringSoonList.length - 15} more_\n`;
-        }
-        message += `\n`;
-      }
-
-      message += `-----------------------------\n`;
-      message += `Please reorder low stock/out of stock items and clear expiring inventory. 🏥`;
-
-      const encodedText = encodeURIComponent(message);
-      let ownerPhone = shopInfo?.phoneNumber || "";
-      let cleanedPhone = ownerPhone.replace(/\D/g, "");
-      if (cleanedPhone.length === 10) {
-        cleanedPhone = "91" + cleanedPhone;
-      }
-
-      const waUrl = cleanedPhone ? `https://wa.me/${cleanedPhone}?text=${encodedText}` : `https://wa.me/?text=${encodedText}`;
-      
-      window.open(waUrl, "_blank");
-      toast.success("Alert summary generated!", { id: toastId });
-    } catch (err) {
-      toast.error("Error generating WhatsApp share", { id: toastId });
-    }
-  };
+  const {
+    session,
+    status,
+    isRefreshing,
+    dashboardData,
+    loading,
+    showTermsModal,
+    termsLoading,
+    activeModalType,
+    localSearchTerm,
+    searchResults,
+    searching,
+    shopInfo,
+    setLocalSearchTerm,
+    setActiveModalType,
+    handleRefresh,
+    handleAcceptTermsUpdate,
+    handleClearExpired,
+    handleShareMorningAlert
+  } = useDashboard();
 
   if (status === "loading") {
     return (
@@ -460,34 +124,34 @@ export default function Dashboard() {
             <span>Store Command Center</span>
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <a href="/sell" className="flex items-center gap-3 p-3 md:p-4 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-2xl transition-all shadow-sm border border-blue-100/50 hover:scale-[1.02] duration-200">
+            <Link href="/sell" className="flex items-center gap-3 p-3 md:p-4 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-2xl transition-all shadow-sm border border-blue-100/50 hover:scale-[1.02] duration-200">
               <ShoppingCart className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
               <div>
                 <p className="font-extrabold text-xs md:text-sm">Fast Billing</p>
                 <p className="text-[9px] md:text-[10px] text-blue-600/80 font-medium">Scan & Sell</p>
               </div>
-            </a>
-            <a href="/purchase" className="flex items-center gap-3 p-3 md:p-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl transition-all shadow-sm border border-indigo-100/50 hover:scale-[1.02] duration-200">
+            </Link>
+            <Link href="/purchase" className="flex items-center gap-3 p-3 md:p-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl transition-all shadow-sm border border-indigo-100/50 hover:scale-[1.02] duration-200">
               <PackagePlus className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
               <div>
                 <p className="font-extrabold text-xs md:text-sm">New Purchase</p>
                 <p className="text-[9px] md:text-[10px] text-indigo-600/80 font-medium">Add stock</p>
               </div>
-            </a>
-            <a href="/inventory" className="flex items-center gap-3 p-3 md:p-4 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-2xl transition-all shadow-sm border border-sky-100/50 hover:scale-[1.02] duration-200">
+            </Link>
+            <Link href="/inventory" className="flex items-center gap-3 p-3 md:p-4 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-2xl transition-all shadow-sm border border-sky-100/50 hover:scale-[1.02] duration-200">
               <Package className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
               <div>
                 <p className="font-extrabold text-xs md:text-sm">Inventory</p>
                 <p className="text-[9px] md:text-[10px] text-sky-600/80 font-medium">Manage stock</p>
               </div>
-            </a>
-            <a href="/reports" className="flex items-center gap-3 p-3 md:p-4 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl transition-all shadow-sm border border-slate-200/50 hover:scale-[1.02] duration-200">
+            </Link>
+            <Link href="/reports" className="flex items-center gap-3 p-3 md:p-4 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl transition-all shadow-sm border border-slate-200/50 hover:scale-[1.02] duration-200">
               <FileText className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
               <div>
                 <p className="font-extrabold text-xs md:text-sm">Reports</p>
                 <p className="text-[9px] md:text-[10px] text-slate-500 font-medium">Store analysis</p>
               </div>
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -512,10 +176,10 @@ export default function Dashboard() {
           </div>
           
           <div className="flex-1 mt-3">
-            {searchTerm.trim() === "" ? (
+            {localSearchTerm.trim() === "" ? (
               <p className="text-[10px] md:text-xs text-slate-400 font-medium text-center py-6">Type medicine name above to search instantly.</p>
             ) : searchResults.length === 0 ? (
-              <p className="text-[10px] md:text-xs text-rose-500 font-medium text-center py-6">No medicine found matching &quot;{searchTerm}&quot;</p>
+              <p className="text-[10px] md:text-xs text-rose-500 font-medium text-center py-6">No medicine found matching &quot;{localSearchTerm}&quot;</p>
             ) : (
               <div className="space-y-2 max-h-[120px] overflow-y-auto">
                 {searchResults.map((med) => {
