@@ -116,7 +116,6 @@ export default function useDashboard() {
       fetchDashboardData(true);
     }, 30000); 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   // 📦 BACKUP LENE KA FUNCTION

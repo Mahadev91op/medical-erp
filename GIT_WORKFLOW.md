@@ -53,7 +53,7 @@ cd medical-erp
 ```bash
 git checkout develop
 git pull origin develop
-git checkout -b samrat
+git checkout samrat
 ```
 
 ### 3️⃣ Code Edit Karne Ke Baad Commit & Push Karein:

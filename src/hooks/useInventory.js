@@ -23,18 +23,17 @@ export default function useInventory() {
   const [printQueue, setPrintQueue] = useState([]); 
   
   const isActionActive = useRef(false);
-  const [barcodeConfig, setBarcodeConfig] = useState({
-    showName: true, showPrice: true, showExpiry: true, showBatch: true, showBillNo: true, showPurchaseDate: true, showBarcodeText: true
-  });
-
-  useEffect(() => {
+  const [barcodeConfig, setBarcodeConfig] = useState(() => {
     if (typeof window !== "undefined") {
       const savedBarcode = localStorage.getItem("super_barcode_config");
       if (savedBarcode) {
-        try { setBarcodeConfig(JSON.parse(savedBarcode)); } catch(e) {}
+        try { return JSON.parse(savedBarcode); } catch(e) {}
       }
     }
-  }, []);
+    return {
+      showName: true, showPrice: true, showExpiry: true, showBatch: true, showBillNo: true, showPurchaseDate: true, showBarcodeText: true
+    };
+  });
 
   useEffect(() => {
     isActionActive.current = showBulkModal || !!editMed;

@@ -14,8 +14,11 @@ export default function DashboardDetailModal({ isOpen, onClose, modalType, data,
   const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
-    setSearchTerm("");
-    setActiveTab("all");
+    if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSearchTerm("");
+      setActiveTab("all");
+    }
   }, [modalType, isOpen]);
 
   useEffect(() => {

@@ -11,7 +11,10 @@ export default function ReportDetailModal({ isOpen, onClose, modalType, data }) 
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    setSearchTerm("");
+    if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSearchTerm("");
+    }
   }, [modalType, isOpen]);
 
   useEffect(() => {

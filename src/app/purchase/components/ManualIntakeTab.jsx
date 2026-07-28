@@ -800,7 +800,7 @@ export default function ManualIntakeTab({
               Manual Bill Staging Table Standby
             </h3>
             <p className="text-xs text-slate-500 mt-2 max-w-sm mx-auto leading-relaxed">
-              Left form me medicine details fill karke **"+ Add Medicine to Bill List"** par click karein.
+              Left form me medicine details fill karke **&quot;+ Add Medicine to Bill List&quot;** par click karein.
               Aapke saare medicines bill list me add hotey rahenge aur 1-click me saare items ek sath save honge.
             </p>
           </div>

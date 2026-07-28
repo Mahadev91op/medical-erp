@@ -39,6 +39,9 @@ export default function Dashboard() {
     handleShareMorningAlert
   } = useDashboard();
 
+  // eslint-disable-next-line react-hooks/purity
+  const thresholdDate = React.useMemo(() => new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), []);
+
   if (status === "loading") {
     return (
       <div className="h-[80vh] flex flex-col items-center justify-center text-slate-400">
@@ -185,7 +188,7 @@ export default function Dashboard() {
                 {searchResults.map((med) => {
                   const isExpired = med.expiryDate && new Date(med.expiryDate) < new Date();
                   const isOutOfStock = med.quantity <= 0;
-                  const isExpiringSoon = !isExpired && med.expiryDate && new Date(med.expiryDate) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+                  const isExpiringSoon = !isExpired && med.expiryDate && new Date(med.expiryDate) <= thresholdDate;
                   const isLowStock = !isOutOfStock && med.quantity < 10;
                   
                   let badgeStyle = "bg-emerald-100 text-emerald-700 border border-emerald-200";
