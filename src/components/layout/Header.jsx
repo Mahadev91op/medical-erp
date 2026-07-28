@@ -1,9 +1,11 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Search, Package, PackagePlus, IndianRupee, X, AlertTriangle, TrendingDown, Sparkles } from "lucide-react";
+import { 
+  Search, Package, PackagePlus, IndianRupee, X, AlertTriangle, TrendingDown, Sparkles,
+  Plus, ShoppingCart, ClipboardList, RotateCcw, Users, BarChart3, ChevronDown
+} from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
-import toast from "react-hot-toast";
 
 export default function Header() {
   const { data: session } = useSession();
@@ -118,8 +120,8 @@ export default function Header() {
     };
   }, [session, router]);
   
-  // Real-time Expiry & Low Stock warnings in Header
-  const [alerts, setAlerts] = useState({ lowStock: 0, expiring: 0 });
+  // Real-time Low Stock warning in Header
+  const [alerts, setAlerts] = useState({ lowStock: 0 });
 
   useEffect(() => {
     if (!session || session?.user?.role === "superadmin") return;
@@ -139,8 +141,7 @@ export default function Header() {
         const data = await res.json();
         if (data.success) {
           const newAlerts = {
-            lowStock: data.lowStock?.length || 0,
-            expiring: data.expiringSoon?.length || 0
+            lowStock: data.lowStock?.length || 0
           };
           localStorage.setItem("header_alerts", JSON.stringify(newAlerts));
           localStorage.setItem("header_alerts_time", String(now));
@@ -159,18 +160,24 @@ export default function Header() {
     };
   }, [session]);
   
-  // Search State
+  // Search State & Quick Menu Dropdown State
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const searchRef = useRef(null);
+  const [showQuickMenu, setShowQuickMenu] = useState(false);
 
-  // Click outside to close search dropdown
+  const searchRef = useRef(null);
+  const quickMenuRef = useRef(null);
+
+  // Click outside to close search and quick menu dropdowns
   useEffect(() => {
     function handleClickOutside(event) {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowDropdown(false);
+      }
+      if (quickMenuRef.current && !quickMenuRef.current.contains(event.target)) {
+        setShowQuickMenu(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -292,12 +299,12 @@ export default function Header() {
       </div>
 
       {/* 2. Quick Actions & Profile */}
-      <div className="flex items-center space-x-3 md:space-x-6 shrink-0">
+      <div className="flex items-center space-x-2.5 md:space-x-4 shrink-0">
         
         {/* MedERP AI Assistant Button */}
         <button 
           onClick={() => window.dispatchEvent(new CustomEvent('open-ai-chatbot'))}
-          className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all border border-blue-100/50 hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm shadow-blue-100/20"
+          className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl text-xs font-bold transition-all border border-blue-100/50 hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-sm shadow-blue-100/20"
           title="Ask MedERP AI Assistant"
         >
           <Sparkles className="w-4 h-4 text-blue-500 animate-pulse shrink-0" />
@@ -314,42 +321,135 @@ export default function Header() {
           <span className="font-extrabold font-mono text-slate-700 tracking-tight">{indianTime || "Loading..."}</span>
         </div>
 
-        {/* Live Warnings/Badges */}
-        {session?.user?.role !== "superadmin" && (alerts.lowStock > 0 || alerts.expiring > 0) && (
+        {/* Live Warnings/Badges (Low Stock) */}
+        {session?.user?.role !== "superadmin" && alerts.lowStock > 0 && (
           <div className="hidden md:flex items-center gap-2">
-            {/* Expiring Soon */}
-            {alerts.expiring > 0 && (
-              <button 
-                onClick={() => router.push('/reports')}
-                className="flex items-center bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-600 px-2.5 py-1.5 rounded-xl text-xs font-bold gap-1 shadow-sm transition-all cursor-pointer"
-                title={`${alerts.expiring} items expiring soon`}
-              >
-                <AlertTriangle className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
-                <span>{alerts.expiring} Expiring</span>
-              </button>
-            )}
-            
-            {/* Low Stock */}
-            {alerts.lowStock > 0 && (
-              <button 
-                onClick={() => router.push('/reports')}
-                className="flex items-center bg-amber-50 border border-amber-100 hover:bg-amber-100 text-amber-700 px-2.5 py-1.5 rounded-xl text-xs font-bold gap-1 shadow-sm transition-all cursor-pointer"
-                title={`${alerts.lowStock} items low in stock`}
-              >
-                <TrendingDown className="w-3.5 h-3.5 text-amber-500" />
-                <span>{alerts.lowStock} Low Stock</span>
-              </button>
-            )}
+            <button 
+              onClick={() => router.push('/reports')}
+              className="flex items-center bg-amber-50 border border-amber-100 hover:bg-amber-100 text-amber-700 px-2.5 py-1.5 rounded-xl text-xs font-bold gap-1 shadow-sm transition-all cursor-pointer"
+              title={`${alerts.lowStock} items low in stock`}
+            >
+              <TrendingDown className="w-3.5 h-3.5 text-amber-500" />
+              <span>{alerts.lowStock} Low Stock</span>
+            </button>
           </div>
         )}
 
-        {/* New Sale Quick Button (Useful addition) */}
-        <button 
-          onClick={() => router.push('/sell')} 
-          className="hidden lg:flex items-center bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-slate-200"
-        >
-          <Package className="w-4 h-4 mr-2 text-blue-400" /> New Sale
-        </button>
+        {/* ➕ Quick Shortcuts Dropdown (+) Button */}
+        <div ref={quickMenuRef} className="relative">
+          <button 
+            onClick={() => setShowQuickMenu(prev => !prev)}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-3 py-2 md:px-3.5 md:py-2.5 rounded-xl md:rounded-2xl text-xs font-extrabold transition-all shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer"
+            title="Quick Shortcuts Menu"
+          >
+            <Plus className={`w-4 h-4 md:w-4.5 md:h-4.5 transition-transform duration-200 ${showQuickMenu ? 'rotate-45' : ''}`} />
+            <span className="hidden sm:inline text-xs font-extrabold">Shortcuts</span>
+            <ChevronDown className={`w-3.5 h-3.5 opacity-70 hidden sm:inline transition-transform duration-200 ${showQuickMenu ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showQuickMenu && (
+            <div className="absolute right-0 top-full mt-3 w-64 md:w-72 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.18)] border border-slate-100 overflow-hidden z-50 p-2 animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-3 py-2 border-b border-slate-100 mb-1 flex items-center justify-between">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Quick Shortcuts</span>
+                <span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold">1-Click Navigation</span>
+              </div>
+
+              <div className="space-y-0.5">
+                <button
+                  onClick={() => { router.push('/sell'); setShowQuickMenu(false); }}
+                  className="w-full flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-xl transition-all group text-left cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-colors shrink-0">
+                    <ShoppingCart className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">New Sale (Billing)</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Create counter bill</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { router.push('/purchase'); setShowQuickMenu(false); }}
+                  className="w-full flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-xl transition-all group text-left cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors shrink-0">
+                    <PackagePlus className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Add Purchase Intake</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Stock intake & bills</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { router.push('/reorder'); setShowQuickMenu(false); }}
+                  className="w-full flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-xl transition-all group text-left cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-colors shrink-0">
+                    <ClipboardList className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Shortage / Reorder</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Shortage notebook</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { router.push('/returns'); setShowQuickMenu(false); }}
+                  className="w-full flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-xl transition-all group text-left cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center group-hover:bg-rose-500 group-hover:text-white transition-colors shrink-0">
+                    <RotateCcw className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Returns & Expiry</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Distributor returns</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { router.push('/inventory'); setShowQuickMenu(false); }}
+                  className="w-full flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-xl transition-all group text-left cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
+                    <Package className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Inventory Stock</p>
+                    <p className="text-[10px] text-slate-400 font-medium">View & edit medicines</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { router.push('/khata'); setShowQuickMenu(false); }}
+                  className="w-full flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-xl transition-all group text-left cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center group-hover:bg-purple-500 group-hover:text-white transition-colors shrink-0">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Customer Khata</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Udhar & ledger</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { router.push('/reports'); setShowQuickMenu(false); }}
+                  className="w-full flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-xl transition-all group text-left cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-600 flex items-center justify-center group-hover:bg-cyan-500 group-hover:text-white transition-colors shrink-0">
+                    <BarChart3 className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Reports & Analytics</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Sales & profit reports</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
     </header>
     </div>
