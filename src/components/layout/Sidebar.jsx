@@ -51,7 +51,7 @@ const Sidebar = ({ isCollapsed = false, toggleCollapse }) => {
   const filteredLinks = useMemo(() => {
     if (!session?.user?.role) return [];
     return navLinks.filter(link => 
-      link.roles.includes(session.user.role)
+      link.roles.includes(session?.user?.role)
     );
   }, [session]);
 
