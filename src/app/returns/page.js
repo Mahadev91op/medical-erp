@@ -124,6 +124,7 @@ export default function DistributorReturns() {
       setLoading(false);
     };
     initData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchShopInfo = async () => {
@@ -210,6 +211,7 @@ export default function DistributorReturns() {
       setReturnQtys({});
       fetchMedsForDistributor(selectedDist, 1, "");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDist]);
 
   // DEBOUNCE EFFECT: Only debounce search input, NOT pagination clicks
@@ -226,6 +228,7 @@ export default function DistributorReturns() {
     if (selectedDist) {
       fetchMedsForDistributor(selectedDist, page, medSearchTerm);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, medSearchTerm]);
 
   const handleMedSearchChange = (val) => {

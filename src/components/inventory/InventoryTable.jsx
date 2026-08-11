@@ -12,13 +12,16 @@ export default function InventoryTable({
   formatExpiryDate,
   formatDate
 }) {
+  // eslint-disable-next-line react-hooks/purity
+  const thresholdDate = React.useMemo(() => new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), []);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
       {medicines.map((med) => {
         const isSelected = selectedMeds.includes(med._id);
         const isExpired = med.expiryDate && new Date(med.expiryDate) < new Date();
         const isOutOfStock = med.quantity <= 0;
-        const isExpiringSoon = !isExpired && med.expiryDate && new Date(med.expiryDate) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+        const isExpiringSoon = !isExpired && med.expiryDate && new Date(med.expiryDate) <= thresholdDate;
         const isLowStock = !isOutOfStock && med.quantity < 10;
         
         let statusColor = "border-slate-100 hover:border-slate-200";

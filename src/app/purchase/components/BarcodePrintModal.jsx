@@ -11,10 +11,12 @@ export default function BarcodePrintModal({
   items = []
 }) {
   const printRef = useRef(null);
+  // eslint-disable-next-line react-hooks/purity
+  const printTimestamp = React.useMemo(() => Date.now(), []);
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `Barcode_Stickers_${Date.now()}`,
+    documentTitle: `Barcode_Stickers_${printTimestamp}`,
   });
 
   if (!isOpen || !items || items.length === 0) return null;
@@ -59,7 +61,7 @@ export default function BarcodePrintModal({
           <div ref={printRef} className="p-4 bg-white grid grid-cols-2 sm:grid-cols-3 gap-4 print:grid-cols-2 print:gap-2">
             {items.map((item, idx) => {
               const barcodeValue =
-                item.barcodeId || `MED-${(Date.now() + idx).toString().slice(-6)}`;
+                item.barcodeId || `MED-${(printTimestamp + idx).toString().slice(-6)}`;
               const expFormatted = item.expiryDate
                 ? (typeof item.expiryDate === "string"
                     ? item.expiryDate

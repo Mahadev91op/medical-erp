@@ -247,7 +247,7 @@ export default function BillReconciliationCard({
           </div>
         ) : (
           <div className="text-[11px] text-slate-400 font-medium">
-            💡 Type Paper Bill Total ₹ in top box to instantly tally with distributor's invoice.
+            💡 Type Paper Bill Total ₹ in top box to instantly tally with distributor&apos;s invoice.
           </div>
         )}
 

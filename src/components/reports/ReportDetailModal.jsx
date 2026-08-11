@@ -12,11 +12,10 @@ export default function ReportDetailModal({ isOpen, onClose, modalType, data }) 
   const prevModalRef = useRef(modalType);
 
   useEffect(() => {
-    if (prevModalRef.current !== modalType) {
-      prevModalRef.current = modalType;
-      setTimeout(() => setSearchTerm(""), 0);
+    if (isOpen) {
+      setSearchTerm("");
     }
-  }, [modalType]);
+  }, [modalType, isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {

@@ -135,13 +135,6 @@ export default function ImportHubTab() {
     setLogs(prev => [...prev, { timestamp, text: message, type }]);
   };
 
-  // Fetch local Vyapar paths on load
-  useEffect(() => {
-    if (activeSoftware === "vyapar") {
-      fetchLocalVyaparPaths();
-    }
-  }, [activeSoftware]);
-
   const fetchLocalVyaparPaths = async () => {
     setLoadingLocalPaths(true);
     try {
@@ -159,6 +152,14 @@ export default function ImportHubTab() {
     }
     setLoadingLocalPaths(false);
   };
+
+  // Fetch local Vyapar paths on load
+  useEffect(() => {
+    if (activeSoftware === "vyapar") {
+      fetchLocalVyaparPaths();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSoftware]);
 
   // Fetch Tally Companies List
   const fetchTallyCompanies = async () => {

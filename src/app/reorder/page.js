@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   ClipboardList, Plus, Search, Loader2, CheckCircle2, 
   Send, PhoneCall, Trash2, Clock, AlertCircle, PackageCheck, 
@@ -28,13 +28,7 @@ export default function ReorderNotebook() {
 
   const [shopInfo, setShopInfo] = useState(null);
 
-  useEffect(() => {
-    fetchReorders();
-    fetchDistributors();
-    fetchShopInfo();
-  }, [filterStatus]);
-
-  const fetchShopInfo = async () => {
+  const fetchShopInfo = useCallback(async () => {
     try {
       const res = await fetch("/api/user/profile");
       const data = await res.json();
@@ -44,9 +38,9 @@ export default function ReorderNotebook() {
     } catch (err) {
       console.error("Failed to fetch shop info:", err);
     }
-  };
+  }, []);
 
-  const fetchDistributors = async () => {
+  const fetchDistributors = useCallback(async () => {
     try {
       const res = await fetch("/api/medicine?getDistributors=true");
       const data = await res.json();
@@ -54,9 +48,9 @@ export default function ReorderNotebook() {
         setDistributors(data.distributors || []);
       }
     } catch (err) {}
-  };
+  }, []);
 
-  const fetchReorders = async () => {
+  const fetchReorders = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/reorder?status=${encodeURIComponent(filterStatus)}`);
@@ -68,7 +62,14 @@ export default function ReorderNotebook() {
       toast.error("Failed to fetch shortage items");
     }
     setLoading(false);
-  };
+  }, [filterStatus]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchReorders();
+    fetchDistributors();
+    fetchShopInfo();
+  }, [fetchReorders, fetchDistributors, fetchShopInfo]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
