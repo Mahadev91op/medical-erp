@@ -38,6 +38,7 @@ export async function connectToDatabase() {
       })
       .catch((err) => {
         console.error("❌ MongoDB Connection Error:", err.message);
+        cached.promise = null;
         throw err;
       });
   }

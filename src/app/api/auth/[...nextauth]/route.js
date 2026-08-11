@@ -13,16 +13,8 @@ export const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        await connectToDatabase();
-        
-        // 1. Pura data sirf aur sirf .env se liya jayega (Koi default text nahi)
         const envAdminUser = process.env.ADMIN_USERNAME;
         const envAdminPass = process.env.ADMIN_PASSWORD;
-
-        // Agar galti se .env me data set karna bhul gaye, toh error aayega
-        if (!envAdminUser || !envAdminPass) {
-          throw new Error("Server Error: ADMIN_USERNAME or ADMIN_PASSWORD is not set in the .env file!");
-        }
 
         if (!credentials?.username || !credentials?.password) {
           throw new Error("Please enter both username and password.");
@@ -31,8 +23,8 @@ export const authOptions = {
         const inputUsername = credentials.username.toLowerCase().trim();
         const inputPassword = credentials.password;
 
-        // 2. Pehle check karo ki kya ye Super Admin hai (Seedha .env se)
-        if (inputUsername === envAdminUser.toLowerCase().trim() && inputPassword === envAdminPass) {
+        // 1. Pehle check karo ki kya ye Super Admin hai (Seedha .env se bina DB delay ke)
+        if (envAdminUser && envAdminPass && inputUsername === envAdminUser.toLowerCase().trim() && inputPassword === envAdminPass) {
           return { 
             id: "000000000000000000000000", 
             name: envAdminUser, 
@@ -42,7 +34,15 @@ export const authOptions = {
           };
         }
 
-        // 3. Agar admin nahi hai, toh database me doosre users dhundo (Staff ke liye)
+        // 2. Agar super admin nahi hai, toh database connect karo
+        try {
+          await connectToDatabase();
+        } catch (dbErr) {
+          console.error("Database connection error during login:", dbErr);
+          throw new Error("Database connection error. Please try again.");
+        }
+
+        // 3. Database me user dhundo
         const user = await User.findOne({ username: inputUsername });
         
         if (!user) {
@@ -54,7 +54,7 @@ export const authOptions = {
           throw new Error("Your account has been disabled. Please contact the administrator.");
         }
 
-        // 4. Agar user database me mil gaya, toh password match karo
+        // 4. Password match karo
         const isValid = await bcrypt.compare(inputPassword, user.password);
         if (!isValid) {
           throw new Error("Incorrect password!");
@@ -76,6 +76,8 @@ export const authOptions = {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        token.name = user.name || user.username;
+        token.username = user.name || user.username;
         token.status = user.status;
         token.subscriptionEnd = user.subscriptionEnd;
       }
@@ -85,6 +87,8 @@ export const authOptions = {
       if (session?.user && token) {
         session.user.role = token.role;
         session.user.id = token.id;
+        session.user.name = token.name || token.username;
+        session.user.username = token.username || token.name;
         session.user.status = token.status;
         session.user.subscriptionEnd = token.subscriptionEnd;
         if (token.status === "disabled") {
@@ -100,19 +104,25 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days session validity
+    updateAge: 24 * 60 * 60,   // Refresh session every 24 hours
   },
-  trustHost: true,
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production" && process.env.NEXTAUTH_URL?.startsWith("https://")
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production" && process.env.NEXTAUTH_URL?.startsWith("https://"),
+      },
+    },
+  },
   secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);
 
-export async function GET(req, context) {
-  const params = await context.params;
-  return handler(req, { ...context, params });
-}
-
-export async function POST(req, context) {
-  const params = await context.params;
-  return handler(req, { ...context, params });
-}
+export { handler as GET, handler as POST };

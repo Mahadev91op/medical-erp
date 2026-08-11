@@ -1,35 +1,53 @@
 "use client";
-import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 import { Activity, Lock, User, Loader2, ArrowRight } from "lucide-react";
 
 export default function Login() {
-    const router = useRouter();
+    const { status } = useSession();
     const [formData, setFormData] = useState({ username: "", password: "" });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+
+    // Agar user pehle se logged in hai toh seedha dashboard par redirect karo
+    useEffect(() => {
+        if (status === "authenticated") {
+            window.location.replace("/");
+        }
+    }, [status]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError("");
 
-        const res = await signIn("credentials", {
-            redirect: false,
-            username: formData.username,
-            password: formData.password,
-        });
+        try {
+            const trimmedUsername = formData.username.trim();
+            const res = await signIn("credentials", {
+                redirect: false,
+                username: trimmedUsername,
+                password: formData.password,
+            });
 
-        if (res?.error) {
-            setError(res.error);
+            if (!res || res.error || !res.ok) {
+                let errorMsg = res?.error || "Login failed. Please check your credentials.";
+                if (errorMsg === "CredentialsSignin" || errorMsg.includes("CredentialsSignin")) {
+                    errorMsg = "Invalid username or password. Please try again.";
+                }
+                setError(errorMsg);
+                setLoading(false);
+            } else {
+                // Success: Full page reload to ensure fresh session cookies are loaded immediately
+                window.location.replace("/");
+            }
+        } catch (err) {
+            console.error("Login submission error:", err);
+            setError(err?.message || "An unexpected network error occurred. Please try again.");
             setLoading(false);
-        } else {
-            router.push("/"); // Login success par Dashboard bhej do
-            router.refresh();
         }
     };
+
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">

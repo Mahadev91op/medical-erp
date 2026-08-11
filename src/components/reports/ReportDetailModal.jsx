@@ -9,13 +9,17 @@ import Link from "next/link";
 
 export default function ReportDetailModal({ isOpen, onClose, modalType, data }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const prevModalRef = useRef(modalType);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [prevModalType, setPrevModalType] = useState(modalType);
 
-  useEffect(() => {
+  if (isOpen !== prevIsOpen || modalType !== prevModalType) {
+    setPrevIsOpen(isOpen);
+    setPrevModalType(modalType);
     if (isOpen) {
       setSearchTerm("");
     }
-  }, [modalType, isOpen]);
+  }
+
 
   useEffect(() => {
     const handleKeyDown = (e) => {
