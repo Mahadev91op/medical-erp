@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
+import { safeStorage } from "@/lib/safeStorage";
 
 export default function useReports() {
   const [data, setData] = useState({ expiringSoon: [], lowStock: [], distributorStock: [], todayOverview: {} });
@@ -224,18 +225,21 @@ export default function useReports() {
     setLowStockPage(1);
   }, [lowStockThreshold]);
 
-  const [reportsPdfConfig, setReportsPdfConfig] = useState({
-    showDistributor: true, showBatch: true, showBillNo: true, showQty: true, showExpiryDate: true
-  });
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedReports = localStorage.getItem("super_reports_pdf_config");
-      if (savedReports) {
-        try { setReportsPdfConfig(JSON.parse(savedReports)); } catch(e) {}
-      }
+  const [reportsPdfConfig, setReportsPdfConfig] = useState(() => {
+    const savedReports = safeStorage.getItem("super_reports_pdf_config");
+    if (savedReports) {
+      try {
+        return JSON.parse(savedReports);
+      } catch (e) {}
     }
-  }, []);
+    return {
+      showDistributor: true,
+      showBatch: true,
+      showBillNo: true,
+      showQty: true,
+      showExpiryDate: true
+    };
+  });
 
   const fetchReports = async (isSilent = false, currentExpiryMonths = expiryMonths, currentLowStockThreshold = lowStockThreshold, filter = dateFilter) => {
     if (!isSilent) setLoading(true);

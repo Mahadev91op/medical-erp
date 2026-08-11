@@ -11,17 +11,19 @@ function parseUserAgent(userAgent) {
 
   if (!userAgent) return { os, browser, deviceType };
 
-  if (userAgent.includes("Windows")) os = "Windows";
-  else if (userAgent.includes("Macintosh")) os = "macOS";
-  else if (userAgent.includes("iPhone")) { os = "iOS"; deviceType = "Mobile"; }
+  if (userAgent.includes("iPhone")) { os = "iOS (iPhone)"; deviceType = "Mobile"; }
   else if (userAgent.includes("iPad")) { os = "iPadOS"; deviceType = "Tablet"; }
   else if (userAgent.includes("Android")) { os = "Android"; deviceType = "Mobile"; }
+  else if (userAgent.includes("Windows")) os = "Windows";
+  else if (userAgent.includes("Macintosh")) os = "macOS";
   else if (userAgent.includes("Linux")) os = "Linux";
 
-  if (userAgent.includes("Firefox")) browser = "Firefox";
+  if (userAgent.includes("CriOS")) browser = "Chrome iOS";
+  else if (userAgent.includes("FxiOS")) browser = "Firefox iOS";
+  else if (userAgent.includes("EdgiOS") || userAgent.includes("Edg")) browser = "Edge";
+  else if (userAgent.includes("Firefox")) browser = "Firefox";
   else if (userAgent.includes("Chrome") && !userAgent.includes("Chromium") && !userAgent.includes("Edg")) browser = "Chrome";
   else if (userAgent.includes("Safari") && !userAgent.includes("Chrome")) browser = "Safari";
-  else if (userAgent.includes("Edg")) browser = "Edge";
   else if (userAgent.includes("Opera") || userAgent.includes("OPR")) browser = "Opera";
 
   return { os, browser, deviceType };

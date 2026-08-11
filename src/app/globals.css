@@ -29,13 +29,38 @@ input, textarea, [contenteditable="true"], .aria-selectable {
   }
 }
 
-/* Safe area padding for iPhones with notch / home bar */
+/* Safe area padding & margin utilities for iPhones with Notch / Dynamic Island / Home Indicator */
 .pb-safe {
   padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
 }
 
 .pt-safe {
   padding-top: max(12px, env(safe-area-inset-top, 12px));
+}
+
+.pl-safe {
+  padding-left: max(0px, env(safe-area-inset-left, 0px));
+}
+
+.pr-safe {
+  padding-right: max(0px, env(safe-area-inset-right, 0px));
+}
+
+.mb-safe {
+  margin-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+}
+
+.mt-safe {
+  margin-top: max(12px, env(safe-area-inset-top, 12px));
+}
+
+/* Dynamic viewport height utility for iOS Safari address bar changes */
+.min-h-dvh {
+  min-height: 100dvh;
+}
+
+.h-dvh {
+  height: 100dvh;
 }
 
 /* Custom smooth horizontal touch scrollbars for tables on mobile */

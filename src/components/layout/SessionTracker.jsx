@@ -1,6 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
+import { safeStorage } from "@/lib/safeStorage";
 
 export default function SessionTracker() {
   const { data: session } = useSession();
@@ -8,10 +9,10 @@ export default function SessionTracker() {
   useEffect(() => {
     if (!session?.user) return;
 
-    let deviceSessionId = localStorage.getItem("device_session_id");
+    let deviceSessionId = safeStorage.getItem("device_session_id");
     if (!deviceSessionId) {
       deviceSessionId = "sess_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      localStorage.setItem("device_session_id", deviceSessionId);
+      safeStorage.setItem("device_session_id", deviceSessionId);
     }
 
     const sendHeartbeat = async () => {

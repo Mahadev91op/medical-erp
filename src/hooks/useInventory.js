@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
+import { safeStorage } from "@/lib/safeStorage";
 
 export default function useInventory() {
   const [medicines, setMedicines] = useState([]);
@@ -23,18 +24,23 @@ export default function useInventory() {
   const [printQueue, setPrintQueue] = useState([]); 
   
   const isActionActive = useRef(false);
-  const [barcodeConfig, setBarcodeConfig] = useState({
-    showName: true, showPrice: true, showExpiry: true, showBatch: true, showBillNo: true, showPurchaseDate: true, showBarcodeText: true
-  });
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedBarcode = localStorage.getItem("super_barcode_config");
-      if (savedBarcode) {
-        try { setBarcodeConfig(JSON.parse(savedBarcode)); } catch(e) {}
-      }
+  const [barcodeConfig, setBarcodeConfig] = useState(() => {
+    const savedBarcode = safeStorage.getItem("super_barcode_config");
+    if (savedBarcode) {
+      try {
+        return JSON.parse(savedBarcode);
+      } catch (e) {}
     }
-  }, []);
+    return {
+      showName: true,
+      showPrice: true,
+      showExpiry: true,
+      showBatch: true,
+      showBillNo: true,
+      showPurchaseDate: true,
+      showBarcodeText: true
+    };
+  });
 
   useEffect(() => {
     isActionActive.current = showBulkModal || !!editMed;

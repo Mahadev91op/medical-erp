@@ -5,6 +5,7 @@ import { X, Loader2, Camera } from "lucide-react";
 
 export default function CameraScanner({ onScan, onClose }) {
   const [isStarting, setIsStarting] = useState(true);
+  const [cameraError, setCameraError] = useState(null);
   const scannerRef = useRef(null);
   const isUnmounting = useRef(false);
 
@@ -12,64 +13,68 @@ export default function CameraScanner({ onScan, onClose }) {
     isUnmounting.current = false;
     let html5QrCode;
 
-    // 🔥 FIX 1: 300ms ka delay taaki React apna DOM structure (HTML) properly bana le
-    // Isse 'removeChild' aur 'AbortError' dono fix ho jayenge
+    // Check if browser mediaDevices is supported (iOS Safari requires HTTPS or localhost)
+    if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setTimeout(() => {
+        setIsStarting(false);
+        setCameraError("iOS Safari Camera requires HTTPS or Localhost. On LAN/Wi-Fi (HTTP), you can use the Quick Search bar or manual barcode entry.");
+      }, 0);
+      return;
+    }
+
     const startTimer = setTimeout(() => {
       if (isUnmounting.current) return;
 
-      html5QrCode = new Html5Qrcode("scanner-container");
-      scannerRef.current = html5QrCode;
+      try {
+        html5QrCode = new Html5Qrcode("scanner-container");
+        scannerRef.current = html5QrCode;
 
-      html5QrCode
-        .start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 150 },
-            aspectRatio: 1.0,
-          },
-          (decodedText) => {
-            // Agar pehle hi band ho raha hai toh ignore karo
-            if (isUnmounting.current) return;
+        html5QrCode
+          .start(
+            { facingMode: "environment" },
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 150 },
+              aspectRatio: 1.0,
+            },
+            (decodedText) => {
+              if (isUnmounting.current) return;
+              isUnmounting.current = true;
 
-            // Scan milte hi flag true karo taaki multiple baar scan na ho
-            isUnmounting.current = true;
-
-            if (scannerRef.current) {
-              scannerRef.current
-                .stop()
-                .then(() => {
-                  scannerRef.current.clear();
-                  onScan(decodedText); // Scanner band hone ke baad data bhejo
-                })
-                .catch((err) => {
-                  console.warn("Scanner rokne me issue (Ignored):", err);
-                  onScan(decodedText); // Agar rokne me error aaye tab bhi scan data bhej do
-                });
+              if (scannerRef.current) {
+                scannerRef.current
+                  .stop()
+                  .then(() => {
+                    scannerRef.current.clear();
+                    onScan(decodedText);
+                  })
+                  .catch((err) => {
+                    console.warn("Scanner stop issue (Ignored):", err);
+                    onScan(decodedText);
+                  });
+              }
+            },
+            () => {}
+          )
+          .then(() => {
+            if (isUnmounting.current) {
+              html5QrCode.stop().catch(() => {});
+            } else {
+              setIsStarting(false);
             }
-          },
-          (errorMessage) => {
-            // Background scan processing errors ko ignore karna zaroori hai
-          }
-        )
-        .then(() => {
-          // Camera successfully chalu ho gaya
-          if (isUnmounting.current) {
-            // Par agar user ne chalu hote hi X button daba diya, toh turant rok do
-            html5QrCode.stop().catch(() => {});
-          } else {
-            setIsStarting(false); // Spinner hatao, camera dikhao
-          }
-        })
-        .catch((err) => {
-          // 🔥 FIX 2: Yahan AbortError pakda jayega aur website crash nahi hogi!
-          if (err.name === "NotAllowedError") {
-            alert("Bhai, Camera permission allow karni padegi!");
-          } else {
-            console.warn("Camera Abort Error ko suppress kar diya gaya:", err);
-          }
-          setIsStarting(false);
-        });
+          })
+          .catch((err) => {
+            if (err.name === "NotAllowedError") {
+              setCameraError("Camera permission denied. Please allow Camera access in Safari / iPhone Settings.");
+            } else {
+              setCameraError("Camera initialization issue. You can use the Quick Search bar to find medicines instantly.");
+            }
+            setIsStarting(false);
+          });
+      } catch (err) {
+        setCameraError("Camera is not available in this browser environment. Use Quick Search or manual Barcode.");
+        setIsStarting(false);
+      }
     }, 300);
 
     // 🔥 FIX 3: Cleanup function jo component band hone par sab kuch saaf karega
@@ -116,24 +121,42 @@ export default function CameraScanner({ onScan, onClose }) {
 
         {/* Camera Container */}
         <div className="relative w-full bg-black min-h-[300px] flex items-center justify-center">
-          {/* Jab tak camera full load na ho jaye, ye spinner dikhega */}
-          {isStarting && (
+          {/* Spinner when initializing */}
+          {isStarting && !cameraError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10 bg-slate-900">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
               <p className="text-sm font-medium">Starting Camera...</p>
             </div>
           )}
 
-          <div id="scanner-container" className="w-full"></div>
+          {/* Error / Fallback info */}
+          {cameraError && (
+            <div className="p-6 text-center text-white bg-slate-900 flex flex-col items-center justify-center space-y-3 min-h-[300px]">
+              <div className="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center">
+                <Camera className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-bold text-slate-200 max-w-xs">{cameraError}</p>
+              <button
+                onClick={onClose}
+                className="mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md"
+              >
+                Use Quick Search Instead
+              </button>
+            </div>
+          )}
+
+          {!cameraError && <div id="scanner-container" className="w-full"></div>}
         </div>
 
         {/* Footer Info */}
         <div className="p-5 bg-white text-center">
           <p className="text-sm text-slate-600 font-semibold mb-1">
-            Scan the Barcode
+            {cameraError ? "Alternative Scanning Options" : "Scan the Barcode"}
           </p>
           <p className="text-xs text-slate-400 font-medium">
-            Place the barcode sticker in the center of the scanning area.
+            {cameraError
+              ? "You can type medicine name or barcode directly in the Quick Search bar."
+              : "Place the barcode sticker in the center of the scanning area."}
           </p>
         </div>
       </div>

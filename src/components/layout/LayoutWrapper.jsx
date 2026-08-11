@@ -5,6 +5,7 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import MobileNav from "./MobileNav";
 import AIChatBot from "./AIChatBot";
+import { safeStorage } from "@/lib/safeStorage";
 
 const validDashboardPaths = ["/", "/inventory", "/inventory/import", "/purchase", "/sell", "/lookup", "/reports", "/distributors", "/profile", "/superadmin", "/khata", "/returns", "/reorder"];
 
@@ -13,7 +14,7 @@ export default function LayoutWrapper({ children }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("sidebar_collapsed");
+    const saved = safeStorage.getItem("sidebar_collapsed");
     if (saved === "true") {
       setTimeout(() => {
         setIsCollapsed(true);
@@ -24,7 +25,7 @@ export default function LayoutWrapper({ children }) {
   const toggleCollapse = () => {
     const nextVal = !isCollapsed;
     setIsCollapsed(nextVal);
-    localStorage.setItem("sidebar_collapsed", String(nextVal));
+    safeStorage.setItem("sidebar_collapsed", String(nextVal));
   };
   
   // Hide layout for auth routes, paused route, or any route not matching valid dashboard pages

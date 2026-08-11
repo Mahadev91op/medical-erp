@@ -4,6 +4,7 @@ import { Search, Package, PackagePlus, IndianRupee, X, AlertTriangle, TrendingDo
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import toast from "react-hot-toast";
+import { safeStorage } from "@/lib/safeStorage";
 
 export default function Header() {
   const { data: session } = useSession();
@@ -89,20 +90,22 @@ export default function Header() {
 
     const checkSubscriptionLive = async () => {
       const now = Date.now();
-      const cachedVal = localStorage.getItem("sub_status");
-      const cachedTime = localStorage.getItem("sub_status_time");
+      const cachedVal = safeStorage.getItem("sub_status");
+      const cachedTime = safeStorage.getItem("sub_status_time");
 
       if (cachedVal && cachedTime && (now - Number(cachedTime)) < 120000) {
-        handleSubscriptionData(JSON.parse(cachedVal));
-        return;
+        try {
+          handleSubscriptionData(JSON.parse(cachedVal));
+          return;
+        } catch (e) {}
       }
 
       try {
         const res = await fetch("/api/user/subscription");
         const data = await res.json();
         if (data.success) {
-          localStorage.setItem("sub_status", JSON.stringify(data));
-          localStorage.setItem("sub_status_time", String(now));
+          safeStorage.setItem("sub_status", JSON.stringify(data));
+          safeStorage.setItem("sub_status_time", String(now));
           handleSubscriptionData(data);
         }
       } catch (error) {
@@ -126,12 +129,14 @@ export default function Header() {
 
     const fetchAlerts = async () => {
       const now = Date.now();
-      const cachedVal = localStorage.getItem("header_alerts");
-      const cachedTime = localStorage.getItem("header_alerts_time");
+      const cachedVal = safeStorage.getItem("header_alerts");
+      const cachedTime = safeStorage.getItem("header_alerts_time");
 
       if (cachedVal && cachedTime && (now - Number(cachedTime)) < 60000) {
-        setAlerts(JSON.parse(cachedVal));
-        return;
+        try {
+          setAlerts(JSON.parse(cachedVal));
+          return;
+        } catch (e) {}
       }
 
       try {
@@ -142,8 +147,8 @@ export default function Header() {
             lowStock: data.lowStock?.length || 0,
             expiring: data.expiringSoon?.length || 0
           };
-          localStorage.setItem("header_alerts", JSON.stringify(newAlerts));
-          localStorage.setItem("header_alerts_time", String(now));
+          safeStorage.setItem("header_alerts", JSON.stringify(newAlerts));
+          safeStorage.setItem("header_alerts_time", String(now));
           setAlerts(newAlerts);
         }
       } catch (err) {

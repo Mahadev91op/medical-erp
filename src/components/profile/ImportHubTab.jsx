@@ -770,10 +770,10 @@ export default function ImportHubTab() {
                   <ol className="list-decimal pl-4 text-xs font-bold space-y-2 text-slate-300 leading-relaxed">
                     <li>Open <strong>TallyPrime</strong> on this computer.</li>
                     <li>Go to <strong>F12: Configuration</strong> &gt; <strong>Advanced Configuration</strong>.</li>
-                    <li>Under Connectivity, set <strong>TallyPrime acts as</strong> to <strong>"Both"</strong>.</li>
+                    <li>Under Connectivity, set <strong>TallyPrime acts as</strong> to <strong>&quot;Both&quot;</strong>.</li>
                     <li>Set <strong>Client/Server Port</strong> to <code>9000</code>.</li>
                     <li>Save settings and <strong>Restart TallyPrime</strong>.</li>
-                    <li>Ensure your company is open in Tally, then click <strong>"Connect Tally"</strong> above.</li>
+                    <li>Ensure your company is open in Tally, then click <strong>&quot;Connect Tally&quot;</strong> above.</li>
                   </ol>
                 </div>
                 <div className="border-t border-slate-800 pt-4 space-y-1">
@@ -781,7 +781,7 @@ export default function ImportHubTab() {
                   <ul className="list-disc pl-4 text-xs font-bold space-y-2 text-slate-300 leading-relaxed">
                     <li>Apne computer me TallyPrime khol kar rakhein.</li>
                     <li>Keyboard par <strong>F12</strong> daba kar <strong>Advanced Configuration</strong> me jayein.</li>
-                    <li>Connectivity settings me port <strong>9000</strong> set karein aur client/server mode "Both" karein.</li>
+                    <li>Connectivity settings me port <strong>9000</strong> set karein aur client/server mode &quot;Both&quot; karein.</li>
                     <li>Tally restart karein aur connect tab daba kar select kijiye.</li>
                   </ul>
                 </div>

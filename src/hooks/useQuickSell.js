@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 import { formatExpiryDate } from "@/lib/formatDate";
+import { safeStorage } from "@/lib/safeStorage";
 
 const invoiceCalculations = (invoice) => {
   if (!invoice) return { totalTaxable: 0, totalDiscount: 0, totalCGST: 0, totalSGST: 0 };
@@ -82,7 +83,7 @@ export default function useQuickSell() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const queue = JSON.parse(localStorage.getItem("offline_sales_queue") || "[]");
+      const queue = JSON.parse(safeStorage.getItem("offline_sales_queue") || "[]");
       setOfflineQueue(queue);
       setIsOnline(navigator.onLine);
     }
@@ -102,7 +103,7 @@ export default function useQuickSell() {
       toast.error("Device is still offline. Reconnect to internet first!");
       return;
     }
-    const queue = JSON.parse(localStorage.getItem("offline_sales_queue") || "[]");
+    const queue = JSON.parse(safeStorage.getItem("offline_sales_queue") || "[]");
     if (queue.length === 0) {
       toast.success("No offline bills pending sync!");
       return;
@@ -123,7 +124,7 @@ export default function useQuickSell() {
         if (data.success) {
           successCount++;
           remainingQueue = remainingQueue.filter(item => item.id !== sale.id);
-          localStorage.setItem("offline_sales_queue", JSON.stringify(remainingQueue));
+          safeStorage.setItem("offline_sales_queue", JSON.stringify(remainingQueue));
           setOfflineQueue(remainingQueue);
         }
       } catch (err) {
@@ -143,7 +144,7 @@ export default function useQuickSell() {
   useEffect(() => {
     const syncOfflineQueue = async () => {
       if (!navigator.onLine) return;
-      const queue = JSON.parse(localStorage.getItem("offline_sales_queue") || "[]");
+      const queue = JSON.parse(safeStorage.getItem("offline_sales_queue") || "[]");
       if (queue.length === 0) return;
 
       let successCount = 0;
@@ -160,7 +161,7 @@ export default function useQuickSell() {
           if (data.success) {
             successCount++;
             remainingQueue = remainingQueue.filter(item => item.id !== sale.id);
-            localStorage.setItem("offline_sales_queue", JSON.stringify(remainingQueue));
+            safeStorage.setItem("offline_sales_queue", JSON.stringify(remainingQueue));
             setOfflineQueue(remainingQueue);
           }
         } catch (err) {
@@ -562,7 +563,7 @@ export default function useQuickSell() {
         isOffline: true
       };
 
-      const currentQueue = JSON.parse(localStorage.getItem("offline_sales_queue") || "[]");
+      const currentQueue = JSON.parse(safeStorage.getItem("offline_sales_queue") || "[]");
       const offlineSale = {
         id: "off_" + Date.now() + "_" + Math.random().toString(36).substring(2),
         cartItems: mappedItems,
@@ -573,7 +574,7 @@ export default function useQuickSell() {
       };
       
       const newQueue = [...currentQueue, offlineSale];
-      localStorage.setItem("offline_sales_queue", JSON.stringify(newQueue));
+      safeStorage.setItem("offline_sales_queue", JSON.stringify(newQueue));
       setOfflineQueue(newQueue);
 
       toast.success("🔴 Device is Offline! Bill saved locally in offline queue.");

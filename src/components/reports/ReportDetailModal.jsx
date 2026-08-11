@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   X, IndianRupee, TrendingUp, ShoppingCart, Percent, 
   Banknote, Smartphone, CreditCard, Search, ArrowRight,
@@ -9,10 +9,14 @@ import Link from "next/link";
 
 export default function ReportDetailModal({ isOpen, onClose, modalType, data }) {
   const [searchTerm, setSearchTerm] = useState("");
+  const prevModalRef = useRef(modalType);
 
   useEffect(() => {
-    setSearchTerm("");
-  }, [modalType, isOpen]);
+    if (prevModalRef.current !== modalType) {
+      prevModalRef.current = modalType;
+      setTimeout(() => setSearchTerm(""), 0);
+    }
+  }, [modalType]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {

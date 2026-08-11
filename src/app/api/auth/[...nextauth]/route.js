@@ -101,6 +101,7 @@ export const authOptions = {
   session: {
     strategy: "jwt",
   },
+  trustHost: true,
   secret: process.env.NEXTAUTH_SECRET,
 };
 

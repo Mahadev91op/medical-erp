@@ -8,13 +8,14 @@ import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// Viewport configuration for Native App feel
+// Viewport configuration for Native App feel & iOS Notch/Safe Area support
 export const viewport = {
   themeColor: "#0f172a",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1, // Zooming disable karne ke liye (native feel)
+  maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
 };
 
 export const metadata = {
@@ -23,14 +24,15 @@ export const metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "MedERP",
+    startupImage: "/icon-512x512.png",
   },
   formatDetection: {
-    telephone: false, // Phone numbers ko auto-link hone se roke
+    telephone: false,
   },
   icons: {
-    icon: "/icon-192x192.png", // <-- YE NAYI LINE ADD KARNI HAI
+    icon: "/icon-192x192.png",
     apple: "/apple-icon.png",
   },
 };

@@ -16,6 +16,7 @@ import { Toaster } from "react-hot-toast";
 import SuperAdmin from "./superadmin/page";
 import useDashboard from "@/hooks/useDashboard";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
+import { safeStorage } from "@/lib/safeStorage";
 
 export default function Dashboard() {
   const {
@@ -347,7 +348,7 @@ export default function Dashboard() {
 
             <div className="mt-3 space-y-2 max-h-[220px] overflow-y-auto">
               {dashboardData?.activeSessions?.map((sess) => {
-                const isThisDevice = typeof window !== 'undefined' && localStorage.getItem('device_session_id') === sess.deviceSessionId;
+                const isThisDevice = safeStorage.getItem('device_session_id') === sess.deviceSessionId;
                 return (
                   <div key={sess.deviceSessionId} className={`flex items-center justify-between p-2.5 rounded-2xl border transition-all ${isThisDevice ? 'bg-blue-50/50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
                     <div className="flex items-center gap-2.5 min-w-0">

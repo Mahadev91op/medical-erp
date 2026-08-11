@@ -10,6 +10,7 @@ import {
 import { formatExpiryDate, formatDate } from "@/lib/formatDate";
 import { useReactToPrint } from "react-to-print";
 import toast, { Toaster } from "react-hot-toast";
+import { safeStorage } from "@/lib/safeStorage";
 
 const ReturnsSkeleton = () => {
   return (
@@ -105,7 +106,7 @@ export default function DistributorReturns() {
       setLoading(true);
       
       // Load persisted distributor contact details from localStorage
-      const savedContacts = localStorage.getItem("distributor_contacts");
+      const savedContacts = safeStorage.getItem("distributor_contacts");
       if (savedContacts) {
         try {
           setContacts(JSON.parse(savedContacts));
@@ -245,7 +246,7 @@ export default function DistributorReturns() {
         });
         setContacts(prev => {
           const merged = { ...prev, ...contactMap };
-          localStorage.setItem("distributor_contacts", JSON.stringify(merged));
+          safeStorage.setItem("distributor_contacts", JSON.stringify(merged));
           return merged;
         });
       }
@@ -314,7 +315,7 @@ export default function DistributorReturns() {
       [distName]: { ...editForm }
     };
     setContacts(updated);
-    localStorage.setItem("distributor_contacts", JSON.stringify(updated));
+    safeStorage.setItem("distributor_contacts", JSON.stringify(updated));
     setEditingId(null);
     
     try {
